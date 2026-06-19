@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# uv / virtual environment
+.venv/
+
+# Data — large/immutable artifacts are kept out of git (track only .gitkeep)
+data/raw/*
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+
+# Models & embeddings (large binaries)
+models/
+*.bin
+*.safetensors
+*.npy
+*.npz
+*.pt
+*.faiss
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets / local config
+.env
+*.local
