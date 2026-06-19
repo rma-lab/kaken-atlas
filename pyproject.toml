@@ -9,7 +9,7 @@ authors = [{ name = "Takayuki Ogi", email = "takayuki1997@gmail.com" }]
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/takayuki-ogi/kaken-atlas"
+Repository = "https://github.com/takayuki1997/kaken-atlas"
 
 [build-system]
 requires = ["hatchling"]
