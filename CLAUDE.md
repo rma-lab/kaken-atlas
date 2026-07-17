@@ -25,6 +25,14 @@
 - `data/raw/` ＝ 取得した生データ（不変・git 除外）、`data/interim/` ＝ 前処理途中、`data/processed/` ＝ 成果物。
 - 秘密情報（appid 等）は `.env`（git 除外）。
 
+## データパイプライン（取得・パース済み：2026-07-17）
+- 取得：`uv run python -m kaken_atlas.fetch`（2018–2025年度・238,997件 → `data/raw/opensearch/<年度>/`、計9.6GB）。
+  取得済みページは自動スキップ（再実行安全）。**注意：`rw` は 20/50/100/200/500 のみ。仕様外の値は API がエラーを返さず黙って0件を返す。**
+- パース：`uv run python -m kaken_atlas.parse` → `data/interim/awards.parquet`。
+  パース時はフィルタしない（declined 除外・小区分絞り込み等は `status_code`・`shokubun_codes` 列で下流にて）。
+- **採択時の研究概要（`abstract_initial`）は2019年度採択分から**しか存在しない。2018年度開始課題は
+  成果概要（`abstract_achievement`）のみ → 埋め込みコーパスの2018年の扱い（代替 or 除外）は未決定。
+
 ## HAKUSAN 操作ルール（重要）
 1. 操作前に到達性を確認する（VPN＝F5 が必要）。落ちていたら作業を止め、ユーザに再接続を依頼する。
 2. ログインノード（hakusan1/2）では軽い読み取りコマンドのみ。計算は必ず SLURM 経由。
