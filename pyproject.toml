@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "Takayuki Ogi", email = "takayuki1997@gmail.com" }]
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+]
 
 [project.urls]
 Repository = "https://github.com/takayuki1997/kaken-atlas"
