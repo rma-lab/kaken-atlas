@@ -133,11 +133,18 @@ squeue -u $USER -o "%.10i %.8P %.10j %.2t %.10M %.20R"
 3. `salloc` は開けっ放しにせず即解放。原則 `sbatch`。
 4. 取り返しのつかない操作（`rm`・上書き・他ジョブの `scancel`・クラスタ側の鍵/設定変更）は事前確認。
 
-## 7. 未確定・TODO
+## 7. 確定事項（2026-08-10 実測）
 
-- [ ] GPU ノードでの `nvidia-smi`（ドライバ実バージョン → torch cu128/cu130 の確定）
-- [ ] HAKUSAN 上に uv を導入し、プロジェクトの venv を構築（Python 3.12）
-- [ ] torch（CUDA 版）の動作確認ジョブ（`torch.cuda.is_available()`）
+- [x] **GPU ノードのドライバは CUDA 12.9 世代** → torch は **cu128 ビルド**を使う（PyPI 既定の
+  CUDA 13 ビルドは「driver too old」で失敗）。pyproject の `tool.uv.sources` で Linux のみ
+  `https://download.pytorch.org/whl/cu128` を指定済み。cu128 の torch は **2.11.0 が上限**。
+- [x] uv 導入済み（`~/.local/bin`）。リポジトリは `~/kaken-atlas`（git clone ではなく rsync 同期）。
+- [x] **venv はログインノード（Ubuntu 24.04）と計算ノード（Ubuntu 20.04）で互換がない** →
+  計算ノード初回実行時に uv が Python 3.12.13（managed）を取得して自動再構築する（約1分、自己修復）。
+- [x] 計算ノードからの外部ネットワークは仮定しない：モデルは事前に
+  `snapshot_download` で `~/.cache/huggingface` に取得し、ジョブは `HF_HUB_OFFLINE=1` で実行。
+- ジョブスクリプトには CUDA チェック（`assert torch.cuda.is_available()`）を入れ、
+  環境不整合時に CPU で黙って走り続けるのを防ぐ（ジョブ 540834 はこれで2分で安全に失敗）。
 
 ## 参考リンク
 

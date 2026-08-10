@@ -10,6 +10,8 @@ dependencies = [
     "httpx>=0.28.1",
     "polars>=1.42.1",
     "sentence-transformers>=5.7.0",
+    # Linux(HAKUSAN) は cu128 ビルドの上限が 2.11 のため下限を 2.11 に置く（Mac は最新が入る）
+    "torch>=2.11.0",
     "transformers>=5.14.1",
 ]
 
@@ -29,6 +31,16 @@ dev = [
     "ruff>=0.9",
     "pytest>=8",
 ]
+
+[tool.uv.sources]
+# HAKUSAN の GPU ノードはドライバが CUDA 12.9 世代（2026-08 実測）。
+# PyPI 既定の torch は CUDA 13 ビルドで動かないため、Linux のみ cu128 を使う。
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [tool.ruff]
 line-length = 100
