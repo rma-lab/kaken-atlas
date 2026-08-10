@@ -31,7 +31,11 @@
 - パース：`uv run python -m kaken_atlas.parse` → `data/interim/awards.parquet`。
   パース時はフィルタしない（declined 除外・小区分絞り込み等は `status_code`・`shokubun_codes` 列で下流にて）。
 - **採択時の研究概要（`abstract_initial`）は2019年度採択分から**しか存在しない。2018年度開始課題は
-  成果概要（`abstract_achievement`）のみ → 埋め込みコーパスの2018年の扱い（代替 or 除外）は未決定。
+  成果概要（`abstract_achievement`）のみ → **埋め込みコーパスは2019年度以降に限定（2018年度は除外）**（2026-08決定）。
+  2019年度以降は 209,734件中 206,906件（98.7%）に `abstract_initial` あり。
+- コーパス構築：`uv run python -m kaken_atlas.corpus` → `data/processed/corpus.parquet`（206,078件）。
+  フィルタ＝2019–2025年度・declined除外・`abstract_initial`あり。`text` 列＝タイトル＋キーワード＋概要の改行連結
+  （Ruri v3 は空プレフィックスなので接頭辞なし）。`n_tokens`（Ruri実測）：中央値168・最大661 → 8192超なし。
 
 ## HAKUSAN 操作ルール（重要）
 1. 操作前に到達性を確認する（VPN＝F5 が必要）。落ちていたら作業を止め、ユーザに再接続を依頼する。

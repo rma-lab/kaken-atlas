@@ -9,6 +9,8 @@ authors = [{ name = "Takayuki Ogi", email = "takayuki1997@gmail.com" }]
 dependencies = [
     "httpx>=0.28.1",
     "polars>=1.42.1",
+    "sentence-transformers>=5.7.0",
+    "transformers>=5.14.1",
 ]
 
 [project.urls]
