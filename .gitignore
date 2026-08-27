@@ -34,3 +34,6 @@ models/
 # Secrets / local config
 .env
 *.local
+
+# 分析レポート（実験ノート）は論文・公開物として文脈を整えるまでローカル管理
+reports/

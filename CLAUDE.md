@@ -36,6 +36,10 @@
 - コーパス構築：`uv run python -m kaken_atlas.corpus` → `data/processed/corpus.parquet`（206,078件）。
   フィルタ＝2019–2025年度・declined除外・`abstract_initial`あり。`text` 列＝タイトル＋キーワード＋概要の改行連結
   （Ruri v3 は空プレフィックスなので接頭辞なし）。`n_tokens`（Ruri実測）：中央値168・最大661 → 8192超なし。
+- 埋め込み（済 2026-08-10）：`uv run python -m kaken_atlas.embed` → `data/processed/embeddings.parquet`
+  （561MB、L2正規化済み768次元float32、行順は corpus.parquet と同一）。本番は HAKUSAN GPU-1/A40 で29分
+  （`scripts/hakusan_embed.sh`）。**Linux の torch は cu128 ビルド固定**（GPUノードのドライバが CUDA 12.9 世代のため。
+  `pyproject.toml` の `tool.uv.sources` 参照）。
 
 ## HAKUSAN 操作ルール（重要）
 1. 操作前に到達性を確認する（VPN＝F5 が必要）。落ちていたら作業を止め、ユーザに再接続を依頼する。
