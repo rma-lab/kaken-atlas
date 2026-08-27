@@ -9,6 +9,8 @@
 #SBATCH -J atlas-embed
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=takayuki@jaist.ac.jp
 
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
