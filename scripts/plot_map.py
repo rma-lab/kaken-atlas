@@ -88,8 +88,10 @@ def _clean_axes(ax) -> None:
     for s in ax.spines.values():
         s.set_visible(False)
     ax.annotate(
-        "UMAP (cosine, n_neighbors=15) / Ruri v3 310m 768次元埋め込み",
-        xy=(0, -0.02), xycoords="axes fraction", color=MUTED, fontsize=8,
+        "データ: KAKEN科研費データベース（国立情報学研究所）より取得 | 2019–2025年度開始の採択課題 206,078件"
+        "（採択時概要あり・不採択除く）\n埋め込み: cl-nagoya/ruri-v3-310m（768次元）| 次元削減: UMAP"
+        " (cosine, n_neighbors=15, seed=42) | 作成: KAKEN-ATLAS (26K15524)",
+        xy=(0, -0.03), xycoords="axes fraction", color=MUTED, fontsize=7.5,
     )
 
 
