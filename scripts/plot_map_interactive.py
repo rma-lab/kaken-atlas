@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 sys.path.insert(0, "src")
-from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, classify_dai, load_sho2dai  # noqa: E402
+from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, load_dai_labels  # noqa: E402
 
 SURFACE = "#fcfcfb"
 FOOTER = (
@@ -36,13 +36,10 @@ def main() -> None:
     is_3d = "c2" in coords.columns
     corpus = pl.read_parquet(
         "data/processed/corpus.parquet",
-        columns=["award_number", "kaken_id", "title", "category", "shokubun_codes"],
+        columns=["award_number", "kaken_id", "title", "category"],
     )
     df = coords.join(corpus, on="award_number", how="left")
-    sho2dai = load_sho2dai()
-    df = df.with_columns(
-        dai=pl.Series([classify_dai(c.to_list(), sho2dai) for c in df["shokubun_codes"]])
-    )
+    df = df.join(load_dai_labels(), on="award_number", how="left")
 
     fig = go.Figure()
     for dai in [*DAI_COLORS.keys(), "複数", "区分なし"]:

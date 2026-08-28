@@ -25,6 +25,8 @@ matplotlib.rcParams["font.family"] = "Hiragino Sans"
 import matplotlib.pyplot as plt  # noqa: E402
 import polars as pl  # noqa: E402
 
+sys.path.insert(0, "src")
+
 SURFACE = "#fcfcfb"
 INK = "#0b0b0b"
 MUTED = "#898781"
@@ -51,28 +53,10 @@ DAI_GLOSS = {
 
 
 def load(coords_path: Path) -> pl.DataFrame:
-    tab = pl.read_csv("data/reference/kubun_table.csv", schema_overrides={"sho_code": pl.Utf8})
-    sho2dai: dict[str, set[str]] = {}
-    for r in tab.iter_rows(named=True):
-        sho2dai.setdefault(r["sho_code"], set()).add(r["dai_code"])
+    from kaken_atlas.kubun import load_dai_labels
 
     coords = pl.read_parquet(coords_path)
-    corpus = pl.read_parquet(
-        "data/processed/corpus.parquet", columns=["award_number", "shokubun_codes"]
-    )
-    df = coords.join(corpus, on="award_number", how="left")
-
-    def classify(codes) -> str:
-        dais: set[str] = set()
-        for c in codes:
-            dais |= sho2dai.get(c, set())
-        if not dais:
-            return "区分なし"
-        return next(iter(dais)) if len(dais) == 1 else "複数"
-
-    return df.with_columns(
-        dai=pl.Series([classify(c.to_list()) for c in df["shokubun_codes"]])
-    )
+    return coords.join(load_dai_labels(), on="award_number", how="left")
 
 
 def plot_facets(df: pl.DataFrame, out: Path) -> None:
