@@ -1,0 +1,3759 @@
+{
+ "01010": {
+  "name_ja": "哲学および倫理学関連",
+  "name_en": "Philosophy and ethics-related",
+  "keywords": "哲学一般、倫理学一般、西洋哲学、西洋倫理学、日本哲学、日本倫理学、応用倫理学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01020": {
+  "name_ja": "中国哲学、印度哲学および仏教学関連",
+  "name_en": "Chinese philosophy, Indian philosophy and Buddhist philosophy-related",
+  "keywords": "中国哲学思想、インド哲学思想、仏教思想、書誌学、文献学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01030": {
+  "name_ja": "宗教学関連",
+  "name_en": "Religious studies-related",
+  "keywords": "宗教史、宗教哲学、神学、宗教社会学、宗教心理学、宗教人類学、宗教民俗学、神話学、書誌学、文献学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01040": {
+  "name_ja": "思想史関連",
+  "name_en": "History of thought-related",
+  "keywords": "思想史一般、西洋思想史、東洋思想史、日本思想史、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01050": {
+  "name_ja": "美学および芸術論関連",
+  "name_en": "Aesthetics and art studies-related",
+  "keywords": "芸術哲学、感性論、各種芸術論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01060": {
+  "name_ja": "美術史関連",
+  "name_en": "History of arts-related",
+  "keywords": "日本美術、東洋美術、西洋美術、現代美術、工芸、デザイン、建築、服飾、写真、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01070": {
+  "name_ja": "芸術実践論関連",
+  "name_en": "Theory of art practice-related",
+  "keywords": "各種芸術表現法、アートマネジメント、芸術政策、芸術産業、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "01080": {
+  "name_ja": "科学社会学および科学技術史関連",
+  "name_en": "Sociology of science, history of science and technology-related",
+  "keywords": "科学社会学、科学史、技術史、医学史、産業考古学、科学哲学、科学基礎論、科学技術社会論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   }
+  ]
+ },
+ "90010": {
+  "name_ja": "デザイン学関連",
+  "name_en": "Design-related",
+  "keywords": "情報デザイン、環境デザイン、工業デザイン、空間デザイン、デザイン史、デザイン論、デザイン規格、デザイン支援、デザイン評価、デザイン教育、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 1,
+    "chu_name_ja": "思想、芸術およびその関連分野"
+   },
+   {
+    "dai_code": "C",
+    "chu_code": 23,
+    "chu_name_ja": "建築学およびその関連分野"
+   },
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "02010": {
+  "name_ja": "日本文学関連",
+  "name_en": "Japanese literature-related",
+  "keywords": "日本文学一般、古代文学、中世文学、漢文学、書誌学、文献学、近世文学、近代文学、現代文学、関連文学理論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02020": {
+  "name_ja": "中国文学関連",
+  "name_en": "Chinese literature-related",
+  "keywords": "中国文学、書誌学、文献学、関連文学理論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02030": {
+  "name_ja": "英文学および英語圏文学関連",
+  "name_en": "English literature and literature in the English language-related",
+  "keywords": "英文学、米文学、英語圏文学、関連文学理論、書誌学、文献学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02040": {
+  "name_ja": "ヨーロッパ文学関連",
+  "name_en": "European literature-related",
+  "keywords": "仏文学、仏語圏文学、独文学、独語圏文学、西洋古典学、ロシア東欧文学、その他のヨーロッパ語系文学、関連文学理論、書誌学、文献学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02050": {
+  "name_ja": "文学一般関連",
+  "name_en": "Literature in general-related",
+  "keywords": "諸地域諸言語の文学、文学理論、比較文学、書誌学、文献学、文学教育、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02060": {
+  "name_ja": "言語学関連",
+  "name_en": "Linguistics-related",
+  "keywords": "音声音韻論、意味語用論、形態統語論、社会言語学、対照言語学、心理言語学、神経言語学、通時的研究、コーパス言語学、危機言語、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02070": {
+  "name_ja": "日本語学関連",
+  "name_en": "Japanese linguistics-related",
+  "keywords": "音声音韻、表記、語彙と意味、文法、文体、語用論、言語生活、方言、日本語史、日本語学史、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02080": {
+  "name_ja": "英語学関連",
+  "name_en": "English linguistics-related",
+  "keywords": "音声音韻、語彙と意味、文法、文体、語用論、社会言語学、英語の多様性、コーパス研究、英語史、英語学史、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   }
+  ]
+ },
+ "02090": {
+  "name_ja": "日本語教育関連",
+  "name_en": "Japanese language education-related",
+  "keywords": "学習者研究、言語習得、教材開発、カリキュラム評価、目的別日本語教育、バイリンガル教育、教師研究、日本語教育のための日本語研究、日本語教育史、異文化理解、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "02100": {
+  "name_ja": "外国語教育関連",
+  "name_en": "Foreign language education-related",
+  "keywords": "学習法、コンピュータ支援学習（ＣＡＬＬ）、教材開発、言語テスト、第二言語習得論、早期英語教育、外国語教育政策史、カリキュラム評価、外国語教師養成、異文化理解、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "90020": {
+  "name_ja": "図書館情報学および人文社会情報学関連",
+  "name_en": "Library and information science, humanistic and social informatics-related",
+  "keywords": "図書館学、情報サービス、情報組織化、情報検索、情報メディア、計量情報学、情報資源、情報倫理、人文情報学、社会情報学、ディジタルアーカイブス、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 2,
+    "chu_name_ja": "文学、言語学およびその関連分野"
+   },
+   {
+    "dai_code": "J",
+    "chu_code": 62,
+    "chu_name_ja": "応用情報学およびその関連分野"
+   }
+  ]
+ },
+ "03010": {
+  "name_ja": "史学一般関連",
+  "name_en": "Historical studies in general-related",
+  "keywords": "歴史理論、歴史学方法論、史料研究、記憶とメディア、世界史、交流史、比較史、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "03020": {
+  "name_ja": "日本史関連",
+  "name_en": "Japanese history-related",
+  "keywords": "日本史一般、古代史、中世史、近世史、近現代史、地方史、文化史、宗教史、環境史、都市史、交流史、比較史、史料研究、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "03030": {
+  "name_ja": "アジア史およびアフリカ史関連",
+  "name_en": "History of Asia and Africa-related",
+  "keywords": "中国前近代史、中国近現代史、東アジア史、中央ユーラシア史、東南アジア史、オセアニア史、南アジア史、西アジア史、アフリカ史、交流史、比較史、史料研究、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "03040": {
+  "name_ja": "ヨーロッパ史およびアメリカ史関連",
+  "name_en": "History of Europe and America-related",
+  "keywords": "ヨーロッパ古代史、ヨーロッパ中世史、西ヨーロッパ近現代史、東ヨーロッパ近現代史、南北アメリカ史、交流史、比較史、史料研究、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "03050": {
+  "name_ja": "考古学関連",
+  "name_en": "Archaeology-related",
+  "keywords": "考古学一般、先史学、歴史考古学、日本考古学、アジア考古学、古代文明学、物質文化学、実験考古学、情報考古学、埋蔵文化財研究、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "03060": {
+  "name_ja": "文化財科学関連",
+  "name_en": "Cultural assets study-related",
+  "keywords": "年代測定、材質分析、製作技法、保存科学、遺跡探査、動植物遺体、人骨、文化遺産、文化資源、文化財政策、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "03070": {
+  "name_ja": "博物館学関連",
+  "name_en": "Museology-related",
+  "keywords": "博物館展示学、博物館教育学、博物館情報学、博物館経営学、博物館行財政学、博物館資料論、博物館学史、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 3,
+    "chu_name_ja": "歴史学、考古学、博物館学およびその関連分野"
+   }
+  ]
+ },
+ "04010": {
+  "name_ja": "地理学関連",
+  "name_en": "Geography-related",
+  "keywords": "地理学一般、土地利用、景観、環境システム、地形学、気候学、水文学、地図学、地理情報システム、地域計画、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 4,
+    "chu_name_ja": "地理学、文化人類学、民俗学およびその関連分野"
+   }
+  ]
+ },
+ "04020": {
+  "name_ja": "人文地理学関連",
+  "name_en": "Human geography-related",
+  "keywords": "人文地理学一般、経済地理学、社会地理学、政治地理学、文化地理学、都市地理学、農村地理学、歴史地理学、地誌学、地理教育、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 4,
+    "chu_name_ja": "地理学、文化人類学、民俗学およびその関連分野"
+   }
+  ]
+ },
+ "04030": {
+  "name_ja": "文化人類学および民俗学関連",
+  "name_en": "Cultural anthropology and folklore-related",
+  "keywords": "文化人類学一般、民俗学一般、物質文化、生態、社会関係、宗教、芸術、医療、越境、マイノリティー、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 4,
+    "chu_name_ja": "地理学、文化人類学、民俗学およびその関連分野"
+   }
+  ]
+ },
+ "80010": {
+  "name_ja": "地域研究関連",
+  "name_en": "Area studies-related",
+  "keywords": "地域研究一般、地域間比較、援助、国際協力、地域間交流、環境、トランスナショナリズム、グローバリゼーション、社会開発、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 4,
+    "chu_name_ja": "地理学、文化人類学、民俗学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 6,
+    "chu_name_ja": "政治学およびその関連分野"
+   }
+  ]
+ },
+ "80020": {
+  "name_ja": "観光学関連",
+  "name_en": "Tourism studies-related",
+  "keywords": "観光研究一般、ツーリズム、観光資源、観光政策、観光産業、地域振興、旅行者、聖地巡礼、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 4,
+    "chu_name_ja": "地理学、文化人類学、民俗学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 8,
+    "chu_name_ja": "社会学およびその関連分野"
+   }
+  ]
+ },
+ "80030": {
+  "name_ja": "ジェンダー関連",
+  "name_en": "Gender studies-related",
+  "keywords": "ジェンダー研究一般、フェミニズム、セクシュアリティ、クィアスタディーズ、労働、暴力、売買春、生殖医療、男女共同参画、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 4,
+    "chu_name_ja": "地理学、文化人類学、民俗学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 6,
+    "chu_name_ja": "政治学およびその関連分野"
+   },
+   {
+    "dai_code": "A",
+    "chu_code": 8,
+    "chu_name_ja": "社会学およびその関連分野"
+   }
+  ]
+ },
+ "05010": {
+  "name_ja": "基礎法学関連",
+  "name_en": "Legal theory and history-related",
+  "keywords": "法哲学・法理学、ローマ法、法制史、法社会学、比較法、外国法、法政策学、法と経済、司法制度論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "05020": {
+  "name_ja": "公法学関連",
+  "name_en": "Public law-related",
+  "keywords": "憲法、行政法、租税法、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "05030": {
+  "name_ja": "国際法学関連",
+  "name_en": "International law-related",
+  "keywords": "国際公法、国際私法、国際人権法、国際経済法、ＥＵ法、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "05040": {
+  "name_ja": "社会法学関連",
+  "name_en": "Social law-related",
+  "keywords": "労働法、経済法、社会保障法、教育法、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "05050": {
+  "name_ja": "刑事法学関連",
+  "name_en": "Criminal law-related",
+  "keywords": "刑法、刑事訴訟法、犯罪学、刑事政策、少年法、法と心理、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "05060": {
+  "name_ja": "民事法学関連",
+  "name_en": "Civil law-related",
+  "keywords": "民法、商法、民事訴訟法、倒産法、紛争処理法制、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "05070": {
+  "name_ja": "新領域法学関連",
+  "name_en": "New fields of law-related",
+  "keywords": "環境法、医事法、情報法、消費者法、知的財産法、法とジェンダー、法曹論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 5,
+    "chu_name_ja": "法学およびその関連分野"
+   }
+  ]
+ },
+ "06010": {
+  "name_ja": "政治学関連",
+  "name_en": "Politics-related",
+  "keywords": "政治理論、政治思想史、政治史、日本政治史、現代日本政治、政治過程論、選挙研究、政治経済学、行政学、地方自治、比較政治、公共政策、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 6,
+    "chu_name_ja": "政治学およびその関連分野"
+   }
+  ]
+ },
+ "06020": {
+  "name_ja": "国際関係論関連",
+  "name_en": "International relations-related",
+  "keywords": "国際関係理論、現代国際関係、外交史、国際関係史、対外政策論、安全保障論、国際政治経済論、グローバルガバナンス論、国際協力論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 6,
+    "chu_name_ja": "政治学およびその関連分野"
+   }
+  ]
+ },
+ "07010": {
+  "name_ja": "理論経済学関連",
+  "name_en": "Economic theory-related",
+  "keywords": "ミクロ経済学、マクロ経済学、ゲーム理論、行動経済学、実験経済学、経済理論、進化経済学、経済制度、経済体制、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07020": {
+  "name_ja": "経済学説および経済思想関連",
+  "name_en": "Economic doctrines and economic thought-related",
+  "keywords": "経済学説、経済思想、社会思想、経済哲学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07030": {
+  "name_ja": "経済統計関連",
+  "name_en": "Economic statistics-related",
+  "keywords": "統計制度、統計調査、人口統計、所得分布、資産分布、国民経済計算、計量経済学、計量ファイナンス、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07040": {
+  "name_ja": "経済政策関連",
+  "name_en": "Economic policy-related",
+  "keywords": "国際経済学、産業組織論、経済発展論、都市経済学、地域経済、環境資源経済学、日本経済論、経済政策一般、交通経済学、開発経済学、国際開発、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07050": {
+  "name_ja": "公共経済および労働経済関連",
+  "name_en": "Public economics and labor economics-related",
+  "keywords": "財政学、公共経済学、医療経済学、労働経済学、社会保障論、教育経済学、法と経済学、政治経済学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07060": {
+  "name_ja": "金融およびファイナンス関連",
+  "name_en": "Money and finance-related",
+  "keywords": "金融論、ファイナンス、国際金融論、企業金融、金融工学、保険論、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07070": {
+  "name_ja": "経済史関連",
+  "name_en": "Economic history-related",
+  "keywords": "経済史、経営史、産業史、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07080": {
+  "name_ja": "経営学関連",
+  "name_en": "Business administration-related",
+  "keywords": "企業論、経営組織論、経営戦略論、経営管理論、人的資源管理論、技術経営論、国際経営論、経営情報論、経営工学、経営一般、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07090": {
+  "name_ja": "商学関連",
+  "name_en": "Commerce-related",
+  "keywords": "マーケティング論、消費者行動論、流通論、商学一般、ロジスティクス、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "07100": {
+  "name_ja": "会計学関連",
+  "name_en": "Accounting-related",
+  "keywords": "財務会計論、管理会計論、監査論、会計一般、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 7,
+    "chu_name_ja": "経済学、経営学およびその関連分野"
+   }
+  ]
+ },
+ "08010": {
+  "name_ja": "社会学関連",
+  "name_en": "Sociology-related",
+  "keywords": "社会学一般、地域社会、家族、労働、福祉社会学、ジェンダー、メディア、エスニシティ、社会運動、社会調査法、医療社会学、社会人口学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 8,
+    "chu_name_ja": "社会学およびその関連分野"
+   }
+  ]
+ },
+ "08020": {
+  "name_ja": "社会福祉学関連",
+  "name_en": "Social welfare-related",
+  "keywords": "ソーシャルワーク、社会福祉政策学、社会事業史、児童福祉、障がい者福祉、高齢者福祉、地域福祉、貧困、ボランティア、社会福祉学一般、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 8,
+    "chu_name_ja": "社会学およびその関連分野"
+   }
+  ]
+ },
+ "08030": {
+  "name_ja": "家政学および生活科学関連",
+  "name_en": "Family and consumer sciences, and culture and living-related",
+  "keywords": "生活文化、家庭経済、消費生活、ライフスタイル、衣文化、食文化、住文化、衣生活、食生活、住生活、生活科学一般、家政学一般、家政教育、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 8,
+    "chu_name_ja": "社会学およびその関連分野"
+   }
+  ]
+ },
+ "09010": {
+  "name_ja": "教育学関連",
+  "name_en": "Education-related",
+  "keywords": "教育史、教育哲学、教育方法学、教育評価、教育指導者、学校教育、社会教育、職業教育訓練、生涯学習、教育制度、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09020": {
+  "name_ja": "教育社会学関連",
+  "name_en": "Sociology of education-related",
+  "keywords": "教育社会学、社会化、教育組織、進路キャリア形成、階層格差、ジェンダー、教育政策、比較教育、国際開発、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09030": {
+  "name_ja": "子ども学および保育学関連",
+  "name_en": "Childhood and nursery/pre-school education-related",
+  "keywords": "子ども学、保育学、子どもの権利、発達、保育の内容方法、子育て施設、保育者、保育子育て支援制度、こども文化、歴史と思想、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09040": {
+  "name_ja": "教科教育学および初等中等教育学関連",
+  "name_en": "Education on school subjects and primary/secondary education-related",
+  "keywords": "各教科の教育、教科外教育、生徒指導、キャリア教育、学校経営、教師教育、ＥＳＤ、環境教育、リテラシー、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09050": {
+  "name_ja": "高等教育学関連",
+  "name_en": "Tertiary education-related",
+  "keywords": "政策、入学者選抜、カリキュラム、学習進路支援、教職員、学術研究、地域連携貢献、国際化、大学経営、非大学型高等教育、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09060": {
+  "name_ja": "特別支援教育関連",
+  "name_en": "Special needs education-related",
+  "keywords": "理念と歴史、インクルージョンと共生社会、指導と支援、発達障害、情緒障害、知的障害、言語障害、身体障害、キャリア教育、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09070": {
+  "name_ja": "教育工学関連",
+  "name_en": "Educational technology-related",
+  "keywords": "カリキュラム開発、教授学習支援システム、メディアの活用、ＩＣＴの活用、教師教育、情報リテラシー、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "09080": {
+  "name_ja": "科学教育関連",
+  "name_en": "Science education-related",
+  "keywords": "科学教育、科学コミュニケーション、科学リテラシー、科学と社会、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 9,
+    "chu_name_ja": "教育学およびその関連分野"
+   }
+  ]
+ },
+ "10010": {
+  "name_ja": "社会心理学関連",
+  "name_en": "Social psychology-related",
+  "keywords": "社会心理学一般、自己、集団、態度と行動、感情、対人関係、社会問題、文化、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 10,
+    "chu_name_ja": "心理学およびその関連分野"
+   }
+  ]
+ },
+ "10020": {
+  "name_ja": "教育心理学関連",
+  "name_en": "Educational psychology-related",
+  "keywords": "教育心理学一般、発達、家庭、学校、臨床、パーソナリティ、学習、測定評価、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 10,
+    "chu_name_ja": "心理学およびその関連分野"
+   }
+  ]
+ },
+ "10030": {
+  "name_ja": "臨床心理学関連",
+  "name_en": "Clinical psychology-related",
+  "keywords": "臨床心理学一般、心理的障害、アセスメント、心理学的介入、養成訓練、健康、犯罪非行、コミュニティ、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 10,
+    "chu_name_ja": "心理学およびその関連分野"
+   }
+  ]
+ },
+ "10040": {
+  "name_ja": "実験心理学関連",
+  "name_en": "Experimental psychology-related",
+  "keywords": "実験心理学一般、感覚、知覚、注意、記憶、言語、情動、学習、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 10,
+    "chu_name_ja": "心理学およびその関連分野"
+   }
+  ]
+ },
+ "90030": {
+  "name_ja": "認知科学関連",
+  "name_en": "Cognitive science-related",
+  "keywords": "認知科学一般、認知モデル、感性、ヒューマンファクターズ、認知脳科学、比較認知、認知言語学、認知工学、など",
+  "memberships": [
+   {
+    "dai_code": "A",
+    "chu_code": 10,
+    "chu_name_ja": "心理学およびその関連分野"
+   },
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "11010": {
+  "name_ja": "代数学関連",
+  "name_en": "Algebra-related",
+  "keywords": "群論、環論、表現論、代数的組み合わせ論、数論、数論幾何学、代数幾何、代数解析、代数学一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 11,
+    "chu_name_ja": "代数学、幾何学およびその関連分野"
+   }
+  ]
+ },
+ "11020": {
+  "name_ja": "幾何学関連",
+  "name_en": "Geometry-related",
+  "keywords": "微分幾何学、リーマン幾何学、シンプレクティック幾何学、複素幾何学、位相幾何学、微分位相幾何学、低次元トポロジー、幾何学一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 11,
+    "chu_name_ja": "代数学、幾何学およびその関連分野"
+   }
+  ]
+ },
+ "12010": {
+  "name_ja": "基礎解析学関連",
+  "name_en": "Basic analysis-related",
+  "keywords": "函数解析学、複素解析、確率論、調和解析、作用素論、スペクトル解析、作用素環論、代数解析、表現論、基礎解析学一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 12,
+    "chu_name_ja": "解析学、応用数学およびその関連分野"
+   }
+  ]
+ },
+ "12020": {
+  "name_ja": "数理解析学関連",
+  "name_en": "Mathematical analysis-related",
+  "keywords": "函数方程式論、実解析、力学系、変分法、非線形解析、応用解析一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 12,
+    "chu_name_ja": "解析学、応用数学およびその関連分野"
+   }
+  ]
+ },
+ "12030": {
+  "name_ja": "数学基礎関連",
+  "name_en": "Basic mathematics-related",
+  "keywords": "数学基礎論、情報理論、離散数学、計算機数学、数学基礎一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 12,
+    "chu_name_ja": "解析学、応用数学およびその関連分野"
+   }
+  ]
+ },
+ "12040": {
+  "name_ja": "応用数学および統計数学関連",
+  "name_en": "Applied mathematics and statistics-related",
+  "keywords": "数値解析、数理モデル、最適制御、ゲーム理論、統計数学、応用数学一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 12,
+    "chu_name_ja": "解析学、応用数学およびその関連分野"
+   }
+  ]
+ },
+ "13010": {
+  "name_ja": "数理物理および物性基礎関連",
+  "name_en": "Mathematical physics and fundamental theory of condensed matter physics-related",
+  "keywords": "統計物理、物性基礎論、数理物理、非平衡非線形物理、流体物理、計算物理、量子情報理論、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 13,
+    "chu_name_ja": "物性物理学およびその関連分野"
+   }
+  ]
+ },
+ "13020": {
+  "name_ja": "半導体、光物性および原子物理関連",
+  "name_en": "Semiconductors, optical properties of condensed matter and atomic physics-related",
+  "keywords": "半導体、誘電体、原子分子、メゾスコピック系、結晶、表面界面、光物性、量子エレクトロニクス、量子情報、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 13,
+    "chu_name_ja": "物性物理学およびその関連分野"
+   }
+  ]
+ },
+ "13030": {
+  "name_ja": "磁性、超伝導および強相関系関連",
+  "name_en": "Magnetism, superconductivity and strongly correlated systems-related",
+  "keywords": "磁性、強相関電子系、超伝導、量子流体固体、分子性固体、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 13,
+    "chu_name_ja": "物性物理学およびその関連分野"
+   }
+  ]
+ },
+ "13040": {
+  "name_ja": "生物物理、化学物理およびソフトマターの物理関連",
+  "name_en": "Biophysics, chemical physics and soft matter physics-related",
+  "keywords": "生命現象の物理、生体物質の物理、液体とガラス、ソフトマター、レオロジー、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 13,
+    "chu_name_ja": "物性物理学およびその関連分野"
+   }
+  ]
+ },
+ "14010": {
+  "name_ja": "プラズマ科学関連",
+  "name_en": "Fundamental plasma-related",
+  "keywords": "基礎プラズマ、磁化プラズマ、レーザープラズマ、強結合プラズマ、プラズマ診断、宇宙天体プラズマ、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 14,
+    "chu_name_ja": "プラズマ学およびその関連分野"
+   }
+  ]
+ },
+ "14020": {
+  "name_ja": "核融合学関連",
+  "name_en": "Nuclear fusion-related",
+  "keywords": "プラズマ閉じ込め、プラズマ制御、プラズマ加熱、プラズマ計測、周辺プラズマ、プラズマ壁相互作用、慣性核融合、核融合材料、核融合システム学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 14,
+    "chu_name_ja": "プラズマ学およびその関連分野"
+   }
+  ]
+ },
+ "14030": {
+  "name_ja": "プラズマ応用科学関連",
+  "name_en": "Applied plasma science-related",
+  "keywords": "プラズマプロセス、プラズマフォトニクス、プラズマ材料科学、プラズマ応用一般、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 14,
+    "chu_name_ja": "プラズマ学およびその関連分野"
+   }
+  ]
+ },
+ "80040": {
+  "name_ja": "量子ビーム科学関連",
+  "name_en": "Quantum beam science-related",
+  "keywords": "加速器、ビーム物理、放射線検出器、計測制御、量子ビーム応用、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 14,
+    "chu_name_ja": "プラズマ学およびその関連分野"
+   },
+   {
+    "dai_code": "B",
+    "chu_code": 15,
+    "chu_name_ja": "素粒子、原子核、宇宙物理学およびその関連分野"
+   }
+  ]
+ },
+ "15010": {
+  "name_ja": "素粒子、原子核、宇宙線および宇宙物理に関連する理論",
+  "name_en": "Theoretical studies related to particle-, nuclear-, cosmic ray and astro-physics",
+  "keywords": "素粒子、原子核、宇宙線、宇宙物理、相対論、重力、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 15,
+    "chu_name_ja": "素粒子、原子核、宇宙物理学およびその関連分野"
+   }
+  ]
+ },
+ "15020": {
+  "name_ja": "素粒子、原子核、宇宙線および宇宙物理に関連する実験",
+  "name_en": "Experimental studies related to particle-, nuclear-, cosmic ray and astro-physics",
+  "keywords": "素粒子、原子核、宇宙線、宇宙物理、相対論、重力、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 15,
+    "chu_name_ja": "素粒子、原子核、宇宙物理学およびその関連分野"
+   }
+  ]
+ },
+ "16010": {
+  "name_ja": "天文学関連",
+  "name_en": "Astronomy-related",
+  "keywords": "光学赤外線天文学、電波天文学、太陽物理学、位置天文学、理論天文学、Ｘ線γ線天文学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 16,
+    "chu_name_ja": "天文学およびその関連分野"
+   }
+  ]
+ },
+ "17010": {
+  "name_ja": "宇宙惑星科学関連",
+  "name_en": "Space and planetary sciences-related",
+  "keywords": "太陽地球系科学、超高層物理学、惑星科学、系外惑星科学、地球外物質科学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 17,
+    "chu_name_ja": "地球惑星科学およびその関連分野"
+   }
+  ]
+ },
+ "17020": {
+  "name_ja": "大気水圏科学関連",
+  "name_en": "Atmospheric and hydrospheric sciences-related",
+  "keywords": "気候システム学、大気科学、海洋科学、陸水学、雪氷学、古気候学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 17,
+    "chu_name_ja": "地球惑星科学およびその関連分野"
+   }
+  ]
+ },
+ "17030": {
+  "name_ja": "地球人間圏科学関連",
+  "name_en": "Human geosciences-related",
+  "keywords": "自然環境科学、自然災害科学、地理空間情報学、第四紀学、資源および鉱床学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 17,
+    "chu_name_ja": "地球惑星科学およびその関連分野"
+   }
+  ]
+ },
+ "17040": {
+  "name_ja": "固体地球科学関連",
+  "name_en": "Solid earth sciences-related",
+  "keywords": "固体地球物理学、地質学、地球内部物質科学、固体地球化学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 17,
+    "chu_name_ja": "地球惑星科学およびその関連分野"
+   }
+  ]
+ },
+ "17050": {
+  "name_ja": "地球生命科学関連",
+  "name_en": "Biogeosciences-related",
+  "keywords": "生命の起源および進化学、極限生物学、生物地球化学、古環境学、古生物学、など",
+  "memberships": [
+   {
+    "dai_code": "B",
+    "chu_code": 17,
+    "chu_name_ja": "地球惑星科学およびその関連分野"
+   }
+  ]
+ },
+ "18010": {
+  "name_ja": "材料力学および機械材料関連",
+  "name_en": "Mechanics of materials and materials-related",
+  "keywords": "構造力学、疲労、破壊、生体力学、材料設計、材料物性、材料評価、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 18,
+    "chu_name_ja": "材料力学、生産工学、設計工学およびその関連分野"
+   }
+  ]
+ },
+ "18020": {
+  "name_ja": "加工学および生産工学関連",
+  "name_en": "Manufacturing and production engineering-related",
+  "keywords": "工作機械、機械加工、特殊加工、超精密加工、アディティブマニュファクチャリング、精密計測、生産システム、コンピュータ援用技術、工程設計、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 18,
+    "chu_name_ja": "材料力学、生産工学、設計工学およびその関連分野"
+   }
+  ]
+ },
+ "18030": {
+  "name_ja": "設計工学関連",
+  "name_en": "Design engineering-related",
+  "keywords": "製品設計、サービス設計、信頼性設計、保全性設計、ライフサイクルエンジニアリング、リバースエンジニアリング、安全設計、設計学、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 18,
+    "chu_name_ja": "材料力学、生産工学、設計工学およびその関連分野"
+   }
+  ]
+ },
+ "18040": {
+  "name_ja": "機械要素およびトライボロジー関連",
+  "name_en": "Machine elements and tribology-related",
+  "keywords": "機械要素、機構学、トライボロジー、アクチュエータ、マイクロマシン、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 18,
+    "chu_name_ja": "材料力学、生産工学、設計工学およびその関連分野"
+   }
+  ]
+ },
+ "19010": {
+  "name_ja": "流体工学関連",
+  "name_en": "Fluid engineering-related",
+  "keywords": "流体機械、流体計測、数値流体力学、乱流、混相流、圧縮性流体、非圧縮性流体、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 19,
+    "chu_name_ja": "流体工学、熱工学およびその関連分野"
+   }
+  ]
+ },
+ "19020": {
+  "name_ja": "熱工学関連",
+  "name_en": "Thermal engineering-related",
+  "keywords": "伝熱、対流、燃焼、熱物性、冷凍空調、熱機関、エネルギー変換、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 19,
+    "chu_name_ja": "流体工学、熱工学およびその関連分野"
+   }
+  ]
+ },
+ "20010": {
+  "name_ja": "機械力学およびメカトロニクス関連",
+  "name_en": "Mechanics and mechatronics-related",
+  "keywords": "運動学、動力学、振動学、音響学、自動制御、学習制御、メカトロニクス、マイクロナノメカトロニクス、バイオメカニクス、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 20,
+    "chu_name_ja": "機械力学、ロボティクスおよびその関連分野"
+   }
+  ]
+ },
+ "20020": {
+  "name_ja": "ロボティクスおよび知能機械システム関連",
+  "name_en": "Robotics and intelligent system-related",
+  "keywords": "ロボティクス、知能機械システム、人間機械システム、ヒューマンインタフェース、プラニング、空間知能化システム、仮想現実感、拡張現実感、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 20,
+    "chu_name_ja": "機械力学、ロボティクスおよびその関連分野"
+   }
+  ]
+ },
+ "21010": {
+  "name_ja": "電力工学関連",
+  "name_en": "Power engineering-related",
+  "keywords": "電気エネルギー関連、省エネルギー、電力系統工学、電気機器、パワーエレクトロニクス、電気有効利用、電磁環境、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 21,
+    "chu_name_ja": "電気電子工学およびその関連分野"
+   }
+  ]
+ },
+ "21020": {
+  "name_ja": "通信工学関連",
+  "name_en": "Communication and network engineering-related",
+  "keywords": "情報理論、非線形理論、信号処理、有線通信方式、無線通信方式、変復調、アンテナ、ネットワーク、マルチメディア通信、暗号、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 21,
+    "chu_name_ja": "電気電子工学およびその関連分野"
+   }
+  ]
+ },
+ "21030": {
+  "name_ja": "計測工学関連",
+  "name_en": "Measurement engineering-related",
+  "keywords": "計測理論、計測機器、波動応用計測、システム化技術、信号情報処理、センシングデバイス、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 21,
+    "chu_name_ja": "電気電子工学およびその関連分野"
+   }
+  ]
+ },
+ "21040": {
+  "name_ja": "制御およびシステム工学関連",
+  "name_en": "Control and system engineering-related",
+  "keywords": "制御理論、システム理論、制御システム、知能システム、システム情報処理、システム制御応用、バイオシステム工学、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 21,
+    "chu_name_ja": "電気電子工学およびその関連分野"
+   }
+  ]
+ },
+ "21050": {
+  "name_ja": "電気電子材料工学関連",
+  "name_en": "Electric and electronic materials-related",
+  "keywords": "半導体、誘電体、磁性体、有機物、超伝導体、複合材料、薄膜、量子構造、厚膜、作製評価技術、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 21,
+    "chu_name_ja": "電気電子工学およびその関連分野"
+   }
+  ]
+ },
+ "21060": {
+  "name_ja": "電子デバイスおよび電子機器関連",
+  "name_en": "Electron device and electronic equipment-related",
+  "keywords": "電子デバイス、回路設計、光デバイス、スピンデバイス、ミリ波テラヘルツ波、波動応用デバイス、ストレージ、ディスプレイ、微細プロセス技術、実装技術、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 21,
+    "chu_name_ja": "電気電子工学およびその関連分野"
+   }
+  ]
+ },
+ "22010": {
+  "name_ja": "土木材料、施工および建設マネジメント関連",
+  "name_en": "Civil engineering material, execution and construction management-related",
+  "keywords": "コンクリート、鋼材、複合材料、木材、舗装材料、補修補強材料、施工、維持管理、建設マネジメント、地下空間、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 22,
+    "chu_name_ja": "土木工学およびその関連分野"
+   }
+  ]
+ },
+ "22020": {
+  "name_ja": "構造工学および地震工学関連",
+  "name_en": "Structure engineering and earthquake engineering-related",
+  "keywords": "応用力学、構造工学、鋼構造、コンクリート構造、複合構造、風工学、地震工学、耐震構造、地震防災、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 22,
+    "chu_name_ja": "土木工学およびその関連分野"
+   }
+  ]
+ },
+ "22030": {
+  "name_ja": "地盤工学関連",
+  "name_en": "Geotechnical engineering-related",
+  "keywords": "土質力学、基礎工学、岩盤工学、土木地質、地盤の挙動、土構造物、地盤防災、地盤環境工学、トンネル工学、土壌環境、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 22,
+    "chu_name_ja": "土木工学およびその関連分野"
+   }
+  ]
+ },
+ "22040": {
+  "name_ja": "水工学関連",
+  "name_en": "Hydroengineering-related",
+  "keywords": "水理学、環境水理学、水文学、河川工学、水資源工学、海岸工学、港湾工学、海洋工学、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 22,
+    "chu_name_ja": "土木工学およびその関連分野"
+   }
+  ]
+ },
+ "22050": {
+  "name_ja": "土木計画学および交通工学関連",
+  "name_en": "Civil engineering plan and transportation engineering-related",
+  "keywords": "土木計画、地域都市計画、国土計画、防災計画、交通計画、交通工学、鉄道工学、測量・リモートセンシング、景観デザイン、土木史、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 22,
+    "chu_name_ja": "土木工学およびその関連分野"
+   }
+  ]
+ },
+ "22060": {
+  "name_ja": "土木環境システム関連",
+  "name_en": "Environmental systems for civil engineering-related",
+  "keywords": "環境計画、環境システム、環境保全、用排水システム、廃棄物、水環境、大気循環、騒音振動、環境生態、環境モニタリング、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 22,
+    "chu_name_ja": "土木工学およびその関連分野"
+   }
+  ]
+ },
+ "23010": {
+  "name_ja": "建築構造および材料関連",
+  "name_en": "Building structures and materials-related",
+  "keywords": "荷重論、構造解析、構造設計、各種構造、耐震設計、基礎構造、地盤、構造材料、維持管理、建築工法、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 23,
+    "chu_name_ja": "建築学およびその関連分野"
+   }
+  ]
+ },
+ "23020": {
+  "name_ja": "建築環境および建築設備関連",
+  "name_en": "Architectural environment and building equipment-related",
+  "keywords": "音環境、振動環境、光環境、熱環境、空気環境、環境心理生理、建築設備、火災工学、都市環境、環境設計、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 23,
+    "chu_name_ja": "建築学およびその関連分野"
+   }
+  ]
+ },
+ "23030": {
+  "name_ja": "建築計画および都市計画関連",
+  "name_en": "Architectural planning and city planning-related",
+  "keywords": "計画論、設計論、住宅論、各種建物、都市計画、行政、建築経済、生産管理、防災計画、景観、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 23,
+    "chu_name_ja": "建築学およびその関連分野"
+   }
+  ]
+ },
+ "23040": {
+  "name_ja": "建築史および意匠関連",
+  "name_en": "Architectural history and design-related",
+  "keywords": "建築史、都市史、建築論、意匠、景観、保存、再生、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 23,
+    "chu_name_ja": "建築学およびその関連分野"
+   }
+  ]
+ },
+ "24010": {
+  "name_ja": "航空宇宙工学関連",
+  "name_en": "Aerospace engineering-related",
+  "keywords": "熱流体力学、構造強度、推進、航空宇宙機設計、生産技術、航空機システム、特殊航空機、航行ダイナミクス、宇宙機システム、宇宙利用、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 24,
+    "chu_name_ja": "航空宇宙工学、船舶海洋工学およびその関連分野"
+   }
+  ]
+ },
+ "24020": {
+  "name_ja": "船舶海洋工学関連",
+  "name_en": "Marine engineering-related",
+  "keywords": "航行性能、構造体力学、設計、生産技術、舶用機関、海上輸送、海洋開発工学、海中工学、極地工学、海洋環境技術、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 24,
+    "chu_name_ja": "航空宇宙工学、船舶海洋工学およびその関連分野"
+   }
+  ]
+ },
+ "25010": {
+  "name_ja": "社会システム工学関連",
+  "name_en": "Social systems engineering-related",
+  "keywords": "社会システム、経営工学、オペレーションズリサーチ、インダストリアルマネジメント、信頼性工学、政策科学、規制科学、品質管理、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 25,
+    "chu_name_ja": "社会システム工学、安全工学、防災工学およびその関連分野"
+   }
+  ]
+ },
+ "25020": {
+  "name_ja": "安全工学関連",
+  "name_en": "Safety engineering-related",
+  "keywords": "安全工学、安全システム、リスク工学、リスクマネジメント、労働安全、製品安全、安全情報、人間工学、信頼性工学、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 25,
+    "chu_name_ja": "社会システム工学、安全工学、防災工学およびその関連分野"
+   }
+  ]
+ },
+ "25030": {
+  "name_ja": "防災工学関連",
+  "name_en": "Disaster prevention engineering-related",
+  "keywords": "災害予測、ハザードマップ、建造物防災、ライフライン防災、地域防災計画、災害リスク評価、防災政策、災害レジリエンス、など",
+  "memberships": [
+   {
+    "dai_code": "C",
+    "chu_code": 25,
+    "chu_name_ja": "社会システム工学、安全工学、防災工学およびその関連分野"
+   }
+  ]
+ },
+ "26010": {
+  "name_ja": "金属材料物性関連",
+  "name_en": "Metallic material properties-related",
+  "keywords": "電気磁気物性、電子情報物性、準安定状態、拡散、相変態、状態図、結晶格子欠陥、力学物性、熱光物性、材料計算科学、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 26,
+    "chu_name_ja": "材料工学およびその関連分野"
+   }
+  ]
+ },
+ "26020": {
+  "name_ja": "無機材料および物性関連",
+  "name_en": "Inorganic materials and properties-related",
+  "keywords": "機能性セラミックス、機能性ガラス、構造用セラミックス、カーボン系材料、結晶構造解析、組織制御、電気物性、力学物性、物理的・化学的性質、粒界物性、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 26,
+    "chu_name_ja": "材料工学およびその関連分野"
+   }
+  ]
+ },
+ "26030": {
+  "name_ja": "複合材料および界面関連",
+  "name_en": "Composite materials and interfaces-related",
+  "keywords": "機能性複合材料、構造用複合材料、生体用複合材料、複合高分子、表面処理、分散制御、接合、接着、界面物性、傾斜機能、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 26,
+    "chu_name_ja": "材料工学およびその関連分野"
+   }
+  ]
+ },
+ "26040": {
+  "name_ja": "構造材料および機能材料関連",
+  "name_en": "Structural materials and functional materials-related",
+  "keywords": "社会基盤構造材料、靱性、医療福祉材料、機能性高分子材料、信頼性、光機能材料、センサー材料、エネルギー材料、電池機能材料、環境機能材料、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 26,
+    "chu_name_ja": "材料工学およびその関連分野"
+   }
+  ]
+ },
+ "26050": {
+  "name_ja": "材料加工および組織制御関連",
+  "name_en": "Material processing and microstructure control-related",
+  "keywords": "加工成形、加工熱処理、結晶組織制御、レーザー加工、精密加工、研磨、粉末冶金、コーティング、めっき、腐食防食、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 26,
+    "chu_name_ja": "材料工学およびその関連分野"
+   }
+  ]
+ },
+ "26060": {
+  "name_ja": "金属生産および資源生産関連",
+  "name_en": "Metals production and resources production-related",
+  "keywords": "分離精製、融解凝固、結晶成長、鋳造、資源保障確保、希少資源代替、低環境負荷、リサイクル、エコマテリアル、省エネルギー、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 26,
+    "chu_name_ja": "材料工学およびその関連分野"
+   }
+  ]
+ },
+ "27010": {
+  "name_ja": "移動現象および単位操作関連",
+  "name_en": "Transport phenomena and unit operations-related",
+  "keywords": "相平衡、輸送物性、移動速度論、流体系単位操作、吸着、膜分離、攪拌混合操作、粉粒体操作、晶析操作、製膜成形、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 27,
+    "chu_name_ja": "化学工学およびその関連分野"
+   }
+  ]
+ },
+ "27020": {
+  "name_ja": "反応工学およびプロセスシステム工学関連",
+  "name_en": "Chemical reaction and process system engineering-related",
+  "keywords": "反応操作論、新規反応場、反応機構、反応装置設計、材料合成プロセス、マイクロプロセス、プロセス制御、プロセスシステム設計、プロセス情報処理、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 27,
+    "chu_name_ja": "化学工学およびその関連分野"
+   }
+  ]
+ },
+ "27030": {
+  "name_ja": "触媒プロセスおよび資源化学プロセス関連",
+  "name_en": "Catalyst and resource chemical process-related",
+  "keywords": "触媒反応論、触媒調製化学、触媒機能、エネルギー変換プロセス、エネルギー開発、省エネルギー技術、資源有効利用技術、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 27,
+    "chu_name_ja": "化学工学およびその関連分野"
+   }
+  ]
+ },
+ "27040": {
+  "name_ja": "バイオ機能応用およびバイオプロセス工学関連",
+  "name_en": "Biofunction and bioprocess engineering-related",
+  "keywords": "生体触媒工学、生物機能応用工学、食品工学、医用化学工学、バイオ生産プロセス、ナノバイオプロセス、バイオリアクター、バイオセパレーション、バイオセンサー、バイオリファイナリ―、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 27,
+    "chu_name_ja": "化学工学およびその関連分野"
+   }
+  ]
+ },
+ "28010": {
+  "name_ja": "ナノ構造化学関連",
+  "name_en": "Nanometer-scale chemistry-related",
+  "keywords": "ナノ構造作製、クラスター、ナノ粒子、メゾスコピック化学、超構造、ナノ表面、ナノ界面、自己組織化、ナノカーボン化学、分子デバイス、ナノ光デバイス、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 28,
+    "chu_name_ja": "ナノマイクロ科学およびその関連分野"
+   }
+  ]
+ },
+ "28020": {
+  "name_ja": "ナノ構造物理関連",
+  "name_en": "Nanostructural physics-related",
+  "keywords": "ナノ物性、ナノプローブ、量子効果、量子ドット、量子デバイス、電子デバイス、スピンデバイス、ナノトライポロジー、ナノカーボン物理、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 28,
+    "chu_name_ja": "ナノマイクロ科学およびその関連分野"
+   }
+  ]
+ },
+ "28030": {
+  "name_ja": "ナノ材料科学関連",
+  "name_en": "Nanomaterials-related",
+  "keywords": "ナノ材料創製、ナノ材料解析、ナノ表面、ナノ界面、ナノ機能材料、ナノ構造、ナノ粒子、ナノカーボン材料、ナノ結晶材料、ナノコンポジット、ナノ欠陥、ナノ加工プロセス、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 28,
+    "chu_name_ja": "ナノマイクロ科学およびその関連分野"
+   }
+  ]
+ },
+ "28040": {
+  "name_ja": "ナノバイオサイエンス関連",
+  "name_en": "Nanobioscience-related",
+  "keywords": "バイオ分子デバイス、分子マニピュレーション、分子イメージング、ナノ計測、ナノ合成、１分子科学、ナノバイオインターフェース、バイオ分子アレイ、ゲノム工学、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 28,
+    "chu_name_ja": "ナノマイクロ科学およびその関連分野"
+   }
+  ]
+ },
+ "28050": {
+  "name_ja": "ナノマイクロシステム関連",
+  "name_en": "Nano/micro-systems-related",
+  "keywords": "ＭＥＭＳ、ＮＥＭＳ、ＢｉｏＭＥＭＳ、ナノマイクロ加工、ナノマイクロ光デバイス、ナノマイクロ化学システム、ナノマイクロバイオシステム、ナノマイクロ生体システム、ナノマイクロメカニクス、ナノマイクロセンサー、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 28,
+    "chu_name_ja": "ナノマイクロ科学およびその関連分野"
+   }
+  ]
+ },
+ "29010": {
+  "name_ja": "応用物性関連",
+  "name_en": "Applied physical properties-related",
+  "keywords": "磁性体、超伝導体、誘電体、微粒子、有機分子、液晶、新機能材料、有機分子バイオエレクトロニクス、スピントロニクス、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 29,
+    "chu_name_ja": "応用物理物性およびその関連分野"
+   }
+  ]
+ },
+ "29020": {
+  "name_ja": "薄膜および表面界面物性関連",
+  "name_en": "Thin film/surface and interfacial physical properties-related",
+  "keywords": "薄膜工学、薄膜エレクトロニクス、酸化物エレクトロニクス、真空、表面科学、分析、計測、ナノ顕微技術、表面界面制御、先端機器、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 29,
+    "chu_name_ja": "応用物理物性およびその関連分野"
+   }
+  ]
+ },
+ "29030": {
+  "name_ja": "応用物理一般関連",
+  "name_en": "Applied condensed matter physics-related",
+  "keywords": "基本物理量、標準、単位、物理量計測、物理量検出、エネルギー変換、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 29,
+    "chu_name_ja": "応用物理物性およびその関連分野"
+   }
+  ]
+ },
+ "30010": {
+  "name_ja": "結晶工学関連",
+  "name_en": "Crystal engineering-related",
+  "keywords": "金属材料、半導体材料、セラミックス材料、非晶質材料、結晶成長プロセス、人工構造、結晶評価、プラズマ材料工学、プラズマプロセス応用、プラズマ工学、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 30,
+    "chu_name_ja": "応用物理工学およびその関連分野"
+   }
+  ]
+ },
+ "30020": {
+  "name_ja": "光工学および光量子科学関連",
+  "name_en": "Optical engineering and photon science-related",
+  "keywords": "光材料、光学素子、光物性、光情報処理、レーザー、光計測、光記録、光エレクトロニクス、非線形光学、視覚光学、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 30,
+    "chu_name_ja": "応用物理工学およびその関連分野"
+   }
+  ]
+ },
+ "31010": {
+  "name_ja": "原子力工学関連",
+  "name_en": "Nuclear engineering-related",
+  "keywords": "炉物理安全設計、熱流動構造、燃料材料、原子力化学、原子力ライフサイクル、放射線安全、放射線ビーム工学、核融合炉プラズマ工学、核融合炉機器材料工学、原子力社会環境、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 31,
+    "chu_name_ja": "原子力工学、地球資源工学、エネルギー学およびその関連分野"
+   }
+  ]
+ },
+ "31020": {
+  "name_ja": "地球資源工学およびエネルギー学関連",
+  "name_en": "Earth resource engineering, Energy sciences-related",
+  "keywords": "地球資源論、資源探査、資源開発、資源循環、資源経済、エネルギーシステム、環境負荷評価、再生可能エネルギー、資源エネルギー技術政策、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 31,
+    "chu_name_ja": "原子力工学、地球資源工学、エネルギー学およびその関連分野"
+   }
+  ]
+ },
+ "90110": {
+  "name_ja": "生体医工学関連",
+  "name_en": "Biomedical engineering-related",
+  "keywords": "医用画像、生体モデリング、生体シミュレーション、生体計測、人工臓器学、再生医工学、生体物性、生体制御、バイオメカニクス、ナノバイオシステム、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   },
+   {
+    "dai_code": "I",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   }
+  ]
+ },
+ "90120": {
+  "name_ja": "生体材料学関連",
+  "name_en": "Biomaterials-related",
+  "keywords": "生体機能材料、細胞組織工学材料、生体適合材料、ナノバイオ材料、再生医工学材料、薬物送達システム、刺激応答材料、遺伝子工学材料、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   },
+   {
+    "dai_code": "I",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   }
+  ]
+ },
+ "90130": {
+  "name_ja": "医用システム関連",
+  "name_en": "Medical systems-related",
+  "keywords": "医用超音波システム、画像診断システム、検査診断システム、低侵襲治療システム、遠隔診断治療システム、臓器保存システム、医療情報システム、コンピュータ外科学、医用ロボット、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   },
+   {
+    "dai_code": "I",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   }
+  ]
+ },
+ "90140": {
+  "name_ja": "医療技術評価学関連",
+  "name_en": "Medical technology assessment-related",
+  "keywords": "レギュラトリーサイエンス、安全性評価、臨床研究、医療技術倫理、医療機器、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   },
+   {
+    "dai_code": "I",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   }
+  ]
+ },
+ "90150": {
+  "name_ja": "医療福祉工学関連",
+  "name_en": "Medical assistive technology-related",
+  "keywords": "健康福祉工学、生活支援技術、介護支援技術、バリアフリー、ユニバーサルデザイン、福祉介護用ロボット、生体機能代行、福祉用具、看護理工学、など",
+  "memberships": [
+   {
+    "dai_code": "D",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   },
+   {
+    "dai_code": "I",
+    "chu_code": 90,
+    "chu_name_ja": "人間医工学およびその関連分野"
+   }
+  ]
+ },
+ "32010": {
+  "name_ja": "基礎物理化学関連",
+  "name_en": "Fundamental physical chemistry-related",
+  "keywords": "理論化学、分子分光学、構造化学、電子状態動力学、化学反応ダイナミクス、表面・界面、クラスターとナノ物質、生体関連物理化学、液体構造ダイナミクス、固体物性、分子物性、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 32,
+    "chu_name_ja": "物理化学、機能物性化学およびその関連分野"
+   }
+  ]
+ },
+ "32020": {
+  "name_ja": "機能物性化学関連",
+  "name_en": "Functional solid state chemistry-related",
+  "keywords": "光物性、スピン、デバイスと分子素子、超分子、液晶、結晶、表面・界面、微粒子、コロイド、電気化学、電子物性、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 32,
+    "chu_name_ja": "物理化学、機能物性化学およびその関連分野"
+   }
+  ]
+ },
+ "33010": {
+  "name_ja": "構造有機化学および物理有機化学関連",
+  "name_en": "Structural organic chemistry and physical organic chemistry-related",
+  "keywords": "有機結晶、分子認識、超分子、有機機能物質、拡張π電子系化合物、複素環化学、有機元素化学、有機反応機構、有機光化学、理論有機化学、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 33,
+    "chu_name_ja": "有機化学およびその関連分野"
+   }
+  ]
+ },
+ "33020": {
+  "name_ja": "有機合成化学関連",
+  "name_en": "Synthetic organic chemistry-related",
+  "keywords": "選択的合成、不斉合成、有機金属錯体、触媒設計、有機分子触媒、生体触媒、環境調和型合成、天然物合成、プロセス化学、有機電気化学、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 33,
+    "chu_name_ja": "有機化学およびその関連分野"
+   }
+  ]
+ },
+ "34010": {
+  "name_ja": "無機・錯体化学関連",
+  "name_en": "Inorganic/coordination chemistry-related",
+  "keywords": "金属錯体化学、有機金属化学、無機固体化学、生物無機化学、溶液化学、クラスター、超分子、配位高分子、典型元素、機能物性、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 34,
+    "chu_name_ja": "無機・錯体化学、分析化学およびその関連分野"
+   }
+  ]
+ },
+ "34020": {
+  "name_ja": "分析化学関連",
+  "name_en": "Analytical chemistry-related",
+  "keywords": "スペクトル分析、先端計測、表面・界面分析、分離分析、分析試薬、放射化学、電気化学分析、バイオ分析、新分析法、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 34,
+    "chu_name_ja": "無機・錯体化学、分析化学およびその関連分野"
+   }
+  ]
+ },
+ "34030": {
+  "name_ja": "グリーンサステイナブルケミストリーおよび環境化学関連",
+  "name_en": "Green sustainable chemistry and environmental chemistry-related",
+  "keywords": "グリーンプロセス、グリーン触媒、リサイクル、環境計測、環境調和型物質、環境負荷低減、環境修復、省資源、地球化学、環境放射能、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 34,
+    "chu_name_ja": "無機・錯体化学、分析化学およびその関連分野"
+   }
+  ]
+ },
+ "35010": {
+  "name_ja": "高分子化学関連",
+  "name_en": "Polymer chemistry-related",
+  "keywords": "高分子合成、高分子反応、精密重合、機能性高分子、自己組織化高分子、キラル高分子、生体関連高分子、高分子物性、高分子構造、高分子薄膜・表面、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 35,
+    "chu_name_ja": "高分子、有機材料およびその関連分野"
+   }
+  ]
+ },
+ "35020": {
+  "name_ja": "高分子材料関連",
+  "name_en": "Polymer materials-related",
+  "keywords": "高分子材料物性、高分子材料合成、高分子機能材料、高分子液晶材料、繊維材料、ゴム材料、ゲル、生体関連高分子材料、高分子複合材料、高分子加工、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 35,
+    "chu_name_ja": "高分子、有機材料およびその関連分野"
+   }
+  ]
+ },
+ "35030": {
+  "name_ja": "有機機能材料関連",
+  "name_en": "Organic functional materials-related",
+  "keywords": "有機半導体材料、液晶、光学材料、デバイス関連材料、導電機能材料、ハイブリッド材料、分子機能材料、有機複合材料、エネルギー変換材料、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 35,
+    "chu_name_ja": "高分子、有機材料およびその関連分野"
+   }
+  ]
+ },
+ "36010": {
+  "name_ja": "無機物質および無機材料化学関連",
+  "name_en": "Inorganic compounds and inorganic materials chemistry-related",
+  "keywords": "結晶、アモルファス、セラミックス、半導体、無機デバイス関連材料、低次元化合物関連化学、多孔体関連化学、ナノ粒子関連化学、多元系化合物、ハイブリッド材料、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 36,
+    "chu_name_ja": "無機材料化学、エネルギー関連化学およびその関連分野"
+   }
+  ]
+ },
+ "36020": {
+  "name_ja": "エネルギー関連化学",
+  "name_en": "Energy-related chemistry",
+  "keywords": "エネルギー資源、エネルギー変換材料、エネルギーキャリア関連、光エネルギー利用、物質分離、物質変換と触媒、電池と電気化学材料、省エネルギー材料、再生可能エネルギー、未利用エネルギー、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 36,
+    "chu_name_ja": "無機材料化学、エネルギー関連化学およびその関連分野"
+   }
+  ]
+ },
+ "37010": {
+  "name_ja": "生体関連化学",
+  "name_en": "Bio-related chemistry",
+  "keywords": "生物有機化学、生物無機化学、生体反応化学、生体機能化学、生体機能材料、バイオテクノロジー、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 37,
+    "chu_name_ja": "生体分子化学およびその関連分野"
+   }
+  ]
+ },
+ "37020": {
+  "name_ja": "生物分子化学関連",
+  "name_en": "Chemistry and chemical methodology of biomolecules-related",
+  "keywords": "天然物化学、生物活性分子、活性発現の分子機構、生体機能分子、コンビナトリアル化学、メタボローム解析、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 37,
+    "chu_name_ja": "生体分子化学およびその関連分野"
+   }
+  ]
+ },
+ "37030": {
+  "name_ja": "ケミカルバイオロジー関連",
+  "name_en": "Chemical biology-related",
+  "keywords": "生体内機能発現、生体内化学反応、創薬科学、化合物ライブラリー、構造活性相関、化学プローブ、分子計測、分子イメージング、プロテオミクス、など",
+  "memberships": [
+   {
+    "dai_code": "E",
+    "chu_code": 37,
+    "chu_name_ja": "生体分子化学およびその関連分野"
+   }
+  ]
+ },
+ "38010": {
+  "name_ja": "植物栄養学および土壌学関連",
+  "name_en": "Plant nutrition and soil science-related",
+  "keywords": "植物代謝生理、植物の栄養元素、土壌分類、土壌物理化学、土壌生物、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 38,
+    "chu_name_ja": "農芸化学およびその関連分野"
+   }
+  ]
+ },
+ "38020": {
+  "name_ja": "応用微生物学関連",
+  "name_en": "Applied microbiology-related",
+  "keywords": "微生物遺伝育種、微生物機能、微生物代謝生理、微生物利用、微生物制御、微生物生態、物質生産、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 38,
+    "chu_name_ja": "農芸化学およびその関連分野"
+   }
+  ]
+ },
+ "38030": {
+  "name_ja": "応用生物化学関連",
+  "name_en": "Applied biochemistry-related",
+  "keywords": "細胞生化学、応用生化学、構造生物学、活性制御、代謝生理、細胞機能、分子機能、物質生産、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 38,
+    "chu_name_ja": "農芸化学およびその関連分野"
+   }
+  ]
+ },
+ "38040": {
+  "name_ja": "生物有機化学関連",
+  "name_en": "Bioorganic chemistry-related",
+  "keywords": "生物活性物質、シグナル伝達調節物質、天然物化学、天然物生合成、構造活性相関、有機合成化学、ケミカルバイオロジー、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 38,
+    "chu_name_ja": "農芸化学およびその関連分野"
+   }
+  ]
+ },
+ "38050": {
+  "name_ja": "食品科学関連",
+  "name_en": "Food sciences-related",
+  "keywords": "食品機能、食品化学、栄養化学、食品分析、食品工学、食品衛生、機能性食品、栄養疫学、臨床栄養、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 38,
+    "chu_name_ja": "農芸化学およびその関連分野"
+   }
+  ]
+ },
+ "38060": {
+  "name_ja": "応用分子細胞生物学関連",
+  "name_en": "Applied molecular and cellular biology-related",
+  "keywords": "分子細胞生物学、細胞生物工学、機能分子工学、発現制御、細胞分子間相互作用、細胞機能、物質生産、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 38,
+    "chu_name_ja": "農芸化学およびその関連分野"
+   }
+  ]
+ },
+ "39010": {
+  "name_ja": "遺伝育種科学関連",
+  "name_en": "Science in plant genetics and breeding-related",
+  "keywords": "遺伝資源、育種理論、ゲノム育種、新規形質創生、品質成分、ストレス耐性、収量性、生殖増殖、生長生理、発生、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "39020": {
+  "name_ja": "作物生産科学関連",
+  "name_en": "Crop production science-related",
+  "keywords": "土地利用型作物、作物収量、作物品質、作物形態、生育予測、作物生理、耕地管理、低コスト栽培技術、環境保全型農業、耕地生態系、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "39030": {
+  "name_ja": "園芸科学関連",
+  "name_en": "Horticultural science-related",
+  "keywords": "成長開花結実制御、種苗生産、作型、栽培技術、施設園芸、環境制御、品種開発、品質、ポストハーベスト、社会園芸、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "39040": {
+  "name_ja": "植物保護科学関連",
+  "name_en": "Plant protection science-related",
+  "keywords": "植物病理学、植物医科学、農業害虫、天敵、雑草、農薬、総合的有害生物管理、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "39050": {
+  "name_ja": "昆虫科学関連",
+  "name_en": "Insect science-related",
+  "keywords": "蚕糸昆虫利用学、昆虫遺伝、昆虫病理、昆虫生理生化学、昆虫生態、化学生態学、系統分類、寄生・共生、社会性昆虫、衛生昆虫、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "39060": {
+  "name_ja": "生物資源保全学関連",
+  "name_en": "Conservation of biological resources-related",
+  "keywords": "保全生物、生物多様性保全、系統生物保全、遺伝子資源保全、生態系保全、在来種保全、微生物保全、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "39070": {
+  "name_ja": "ランドスケープ科学関連",
+  "name_en": "Landscape science-related",
+  "keywords": "造園、緑地計画、景観計画、文化的景観、自然環境保全、ランドスケープエコロジー、公園緑地管理、公園、環境緑化、参加型まちづくり、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 39,
+    "chu_name_ja": "生産環境農学およびその関連分野"
+   }
+  ]
+ },
+ "40010": {
+  "name_ja": "森林科学関連",
+  "name_en": "Forest science-related",
+  "keywords": "森林生態、森林生物多様性、森林遺伝育種、造林、森林保護、森林環境、山地保全、森林計画、森林政策、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 40,
+    "chu_name_ja": "森林圏科学、水圏応用科学およびその関連分野"
+   }
+  ]
+ },
+ "40020": {
+  "name_ja": "木質科学関連",
+  "name_en": "Wood science-related",
+  "keywords": "組織構造、材質、リグノセルロース、微量成分、菌類、木材加工、バイオマスリファイナリー、木質材料、木造建築、林産教育、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 40,
+    "chu_name_ja": "森林圏科学、水圏応用科学およびその関連分野"
+   }
+  ]
+ },
+ "40030": {
+  "name_ja": "水圏生産科学関連",
+  "name_en": "Aquatic bioproduction science-related",
+  "keywords": "水圏環境、漁業、水産資源管理、水圏生物、水圏生態系、水産増殖、水産工学、水産政策、水産経営経済、水産教育、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 40,
+    "chu_name_ja": "森林圏科学、水圏応用科学およびその関連分野"
+   }
+  ]
+ },
+ "40040": {
+  "name_ja": "水圏生命科学関連",
+  "name_en": "Aquatic life science-related",
+  "keywords": "水生生物栄養、水生生物病理、水生生物繁殖育種、水生生物生理、水生生物利用、水生生物化学、水生生物工学、水産食品科学、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 40,
+    "chu_name_ja": "森林圏科学、水圏応用科学およびその関連分野"
+   }
+  ]
+ },
+ "41010": {
+  "name_ja": "食料農業経済関連",
+  "name_en": "Agricultural and food economics-related",
+  "keywords": "食料消費経済、農業生産経済、農林水産政策、フードシステム、食料マーケティング、国際農業開発、農畜産物貿易、農村資源環境、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 41,
+    "chu_name_ja": "社会経済農学、農業工学およびその関連分野"
+   }
+  ]
+ },
+ "41020": {
+  "name_ja": "農業社会構造関連",
+  "name_en": "Rural sociology and agricultural structure-related",
+  "keywords": "農業経営組織、農業経営管理、農業構造、農業市場、農業史、農村社会、農村生活、協同組合、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 41,
+    "chu_name_ja": "社会経済農学、農業工学およびその関連分野"
+   }
+  ]
+ },
+ "41030": {
+  "name_ja": "地域環境工学および農村計画学関連",
+  "name_en": "Rural environmental engineering and planning-related",
+  "keywords": "灌漑排水、農地整備、農村計画、地域環境、資源エネルギー循環、地域防災、農業用施設のストックマネジメント、水理水文、土壌物理、材料施工、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 41,
+    "chu_name_ja": "社会経済農学、農業工学およびその関連分野"
+   }
+  ]
+ },
+ "41040": {
+  "name_ja": "農業環境工学および農業情報工学関連",
+  "name_en": "Agricultural environmental engineering and agricultural information engineering-related",
+  "keywords": "生物生産施設、農業機械システム、生産環境調節、農業気象環境、農業情報システム、施設園芸、植物工場、農産物貯蔵流通加工、非破壊生体計測、遠隔計測情報処理、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 41,
+    "chu_name_ja": "社会経済農学、農業工学およびその関連分野"
+   }
+  ]
+ },
+ "41050": {
+  "name_ja": "環境農学関連",
+  "name_en": "Environmental agriculture-related",
+  "keywords": "バイオマス、環境利用改善、生物多様性、環境分析、生態系サービス、資源循環システム、低炭素社会、ライフサイクルアセスメント、環境調和型農業、流域管理、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 41,
+    "chu_name_ja": "社会経済農学、農業工学およびその関連分野"
+   }
+  ]
+ },
+ "42010": {
+  "name_ja": "動物生産科学関連",
+  "name_en": "Animal production science-related",
+  "keywords": "遺伝育種、繁殖、栄養飼養、形態生理、畜産物利用、環境管理、行動、アニマルセラピー、草地、放牧、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 42,
+    "chu_name_ja": "獣医学、畜産学およびその関連分野"
+   }
+  ]
+ },
+ "42020": {
+  "name_ja": "獣医学関連",
+  "name_en": "Veterinary medical science-related",
+  "keywords": "基礎獣医学、病態獣医学、応用獣医学、臨床獣医学、動物看護、動物福祉、野生動物、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 42,
+    "chu_name_ja": "獣医学、畜産学およびその関連分野"
+   }
+  ]
+ },
+ "42030": {
+  "name_ja": "動物生命科学関連",
+  "name_en": "Animal life science-related",
+  "keywords": "恒常性、細胞機能、生体防御、総合遺伝、発生分化、生命工学、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 42,
+    "chu_name_ja": "獣医学、畜産学およびその関連分野"
+   }
+  ]
+ },
+ "42040": {
+  "name_ja": "実験動物学関連",
+  "name_en": "Laboratory animal science-related",
+  "keywords": "遺伝子工学、発生工学、疾患モデル、施設整備、実験動物福祉、実験動物関連技術、バイオリソース、など",
+  "memberships": [
+   {
+    "dai_code": "F",
+    "chu_code": 42,
+    "chu_name_ja": "獣医学、畜産学およびその関連分野"
+   }
+  ]
+ },
+ "43010": {
+  "name_ja": "分子生物学関連",
+  "name_en": "Molecular biology-related",
+  "keywords": "染色体機能、クロマチン、エピジェネティクス、遺伝情報の維持、遺伝情報の継承、遺伝情報の再編、遺伝情報の発現、タンパク質の機能調節、分子遺伝、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 43,
+    "chu_name_ja": "分子レベルから細胞レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "43020": {
+  "name_ja": "構造生物化学関連",
+  "name_en": "Structural biochemistry-related",
+  "keywords": "タンパク質、核酸、脂質、糖、生体膜、分子認識、変性、立体構造解析、立体構造予測、分子動力学、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 43,
+    "chu_name_ja": "分子レベルから細胞レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "43030": {
+  "name_ja": "機能生物化学関連",
+  "name_en": "Functional biochemistry-related",
+  "keywords": "酵素、糖鎖、生体エネルギー変換、生体微量元素、生理活性物質、細胞情報伝達、膜輸送、タンパク質分解、分子認識、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 43,
+    "chu_name_ja": "分子レベルから細胞レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "43040": {
+  "name_ja": "生物物理学関連",
+  "name_en": "Biophysics-related",
+  "keywords": "構造生物学、生体分子の物性、生体膜、光生物、分子モーター、生体計測、バイオイメージング、システム生物学、合成生物学、理論生物学、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 43,
+    "chu_name_ja": "分子レベルから細胞レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "43050": {
+  "name_ja": "ゲノム生物学関連",
+  "name_en": "Genome biology-related",
+  "keywords": "ゲノム構造、ゲノム機能、ゲノム多様性、ゲノム分子進化、ゲノム修復維持、トランスオミックス、エピゲノム、遺伝子資源、ゲノム動態、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 43,
+    "chu_name_ja": "分子レベルから細胞レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "43060": {
+  "name_ja": "システムゲノム科学関連",
+  "name_en": "System genome science-related",
+  "keywords": "ネットワーク解析、合成生物学、バイオデータベース、バイオインフォマティクス、ゲノム解析技術、ゲノム生物工学、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 43,
+    "chu_name_ja": "分子レベルから細胞レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "44010": {
+  "name_ja": "細胞生物学関連",
+  "name_en": "Cell biology-related",
+  "keywords": "細胞骨格、タンパク質分解、オルガネラの動態、核の構造機能、細胞外マトリックス、シグナル伝達、細胞周期、細胞運動、細胞間相互作用、細胞遺伝、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 44,
+    "chu_name_ja": "細胞レベルから個体レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "44020": {
+  "name_ja": "発生生物学関連",
+  "name_en": "Developmental biology-related",
+  "keywords": "細胞分化、幹細胞、再生、胚葉形成、形態形成、器官形成、受精、生殖細胞、遺伝子発現調節、発生遺伝、進化発生、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 44,
+    "chu_name_ja": "細胞レベルから個体レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "44030": {
+  "name_ja": "植物分子および生理科学関連",
+  "name_en": "Plant molecular biology and physiology-related",
+  "keywords": "光合成、成長生理、植物発生、オルガネラ、細胞壁、環境応答、植物微生物相互作用、代謝、植物分子機能、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 44,
+    "chu_name_ja": "細胞レベルから個体レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "44040": {
+  "name_ja": "形態および構造関連",
+  "name_en": "Morphology and anatomical structure-related",
+  "keywords": "動植物形態、微生物形態、分子形態、微細構造、組織構築、形態形成、比較内分泌、顕微鏡技術、イメージング、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 44,
+    "chu_name_ja": "細胞レベルから個体レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "44050": {
+  "name_ja": "動物生理化学、生理学および行動学関連",
+  "name_en": "Animal physiological chemistry, physiology and behavioral biology-related",
+  "keywords": "代謝生理、神経生理、神経行動、行動生理、動物生理化学、時間生物学、比較生理学、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 44,
+    "chu_name_ja": "細胞レベルから個体レベルの生物学およびその関連分野"
+   }
+  ]
+ },
+ "45010": {
+  "name_ja": "遺伝学関連",
+  "name_en": "Genetics-related",
+  "keywords": "遺伝機構、分子遺伝、細胞遺伝、集団遺伝、進化遺伝、発生遺伝、行動遺伝、遺伝的多様性、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 45,
+    "chu_name_ja": "個体レベルから集団レベルの生物学と人類学およびその関連分野"
+   }
+  ]
+ },
+ "45020": {
+  "name_ja": "進化生物学関連",
+  "name_en": "Evolutionary biology-related",
+  "keywords": "進化全般、分子進化、表現型進化、発生進化、生態進化、行動進化、実験進化、進化理論、共生進化、系統進化、種分化、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 45,
+    "chu_name_ja": "個体レベルから集団レベルの生物学と人類学およびその関連分野"
+   }
+  ]
+ },
+ "45030": {
+  "name_ja": "多様性生物学および分類学関連",
+  "name_en": "Biodiversity and systematics-related",
+  "keywords": "分類形質、分類群、分類体系、多様性全般、系統、進化、自然史、種分化、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 45,
+    "chu_name_ja": "個体レベルから集団レベルの生物学と人類学およびその関連分野"
+   }
+  ]
+ },
+ "45040": {
+  "name_ja": "生態学および環境学関連",
+  "name_en": "Ecology and environment-related",
+  "keywords": "化学生態、分子生態、生理生態、進化生態、行動生態、個体群生態、群集生態、生態系、保全生態、自然環境、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 45,
+    "chu_name_ja": "個体レベルから集団レベルの生物学と人類学およびその関連分野"
+   }
+  ]
+ },
+ "45050": {
+  "name_ja": "自然人類学関連",
+  "name_en": "Physical anthropology-related",
+  "keywords": "分子と遺伝、形態全般、骨考古全般、行動認知、生態、霊長類、進化、個体発生、変異、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 45,
+    "chu_name_ja": "個体レベルから集団レベルの生物学と人類学およびその関連分野"
+   }
+  ]
+ },
+ "45060": {
+  "name_ja": "応用人類学関連",
+  "name_en": "Applied anthropology-related",
+  "keywords": "生理人類学、人間工学、法医人類学、医療人類学、生理的多型性、環境適応能全般、生体機能全般、生体計測全般、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 45,
+    "chu_name_ja": "個体レベルから集団レベルの生物学と人類学およびその関連分野"
+   }
+  ]
+ },
+ "46010": {
+  "name_ja": "神経科学一般関連",
+  "name_en": "Neuroscience-general-related",
+  "keywords": "神経化学、神経細胞、グリア細胞、ゲノム、エピジェネティクス、神経生物、情報処理、シナプス、神経発生、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 46,
+    "chu_name_ja": "神経科学およびその関連分野"
+   }
+  ]
+ },
+ "46020": {
+  "name_ja": "神経形態学関連",
+  "name_en": "Anatomy and histopathology of nervous system-related",
+  "keywords": "形態形成、脳構造、回路構造、神経病理、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 46,
+    "chu_name_ja": "神経科学およびその関連分野"
+   }
+  ]
+ },
+ "46030": {
+  "name_ja": "神経機能学関連",
+  "name_en": "Function of nervous system-related",
+  "keywords": "神経生理、神経薬理、情報伝達、情報処理、行動、システム生理、脳循環、自律神経、など",
+  "memberships": [
+   {
+    "dai_code": "G",
+    "chu_code": 46,
+    "chu_name_ja": "神経科学およびその関連分野"
+   }
+  ]
+ },
+ "47010": {
+  "name_ja": "薬系化学および創薬科学関連",
+  "name_en": "Pharmaceutical chemistry and drug development sciences-related",
+  "keywords": "無機化学、有機化学、医薬品化学、医薬分子設計、医薬品探索、生体関連物質、ケミカルバイオロジー、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 47,
+    "chu_name_ja": "薬学およびその関連分野"
+   }
+  ]
+ },
+ "47020": {
+  "name_ja": "薬系分析および物理化学関連",
+  "name_en": "Pharmaceutical analytical chemistry and physicochemistry-related",
+  "keywords": "環境分析、生体分析、物理化学、生物物理、構造解析、放射化学、イメージング、製剤設計、計算科学、情報科学、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 47,
+    "chu_name_ja": "薬学およびその関連分野"
+   }
+  ]
+ },
+ "47030": {
+  "name_ja": "薬系衛生および生物化学関連",
+  "name_en": "Pharmaceutical hygiene and biochemistry-related",
+  "keywords": "環境衛生、健康栄養、疾病予防、毒性学、薬物代謝、生体防御、分子生物学、細胞生物学、生化学、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 47,
+    "chu_name_ja": "薬学およびその関連分野"
+   }
+  ]
+ },
+ "47040": {
+  "name_ja": "薬理学関連",
+  "name_en": "Pharmacology-related",
+  "keywords": "薬理学、ゲノム薬理学、応用薬理学、シグナル伝達、薬物相互作用、薬物応答、薬物治療、安全性学、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 47,
+    "chu_name_ja": "薬学およびその関連分野"
+   }
+  ]
+ },
+ "47050": {
+  "name_ja": "環境および天然医薬資源学関連",
+  "name_en": "Environmental and natural pharmaceutical resources-related",
+  "keywords": "環境資源学、天然物化学、天然活性物質、薬用資源、薬用食品、微生物薬品学、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 47,
+    "chu_name_ja": "薬学およびその関連分野"
+   }
+  ]
+ },
+ "47060": {
+  "name_ja": "医療薬学関連",
+  "name_en": "Clinical pharmacy-related",
+  "keywords": "薬物動態学、医療情報学、社会薬学、医療薬学、医療薬剤学、レギュラトリーサイエンス、薬剤師教育、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 47,
+    "chu_name_ja": "薬学およびその関連分野"
+   }
+  ]
+ },
+ "48010": {
+  "name_ja": "解剖学関連",
+  "name_en": "Anatomy-related",
+  "keywords": "解剖学、組織学、発生学、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 48,
+    "chu_name_ja": "生体の構造と機能およびその関連分野"
+   }
+  ]
+ },
+ "48020": {
+  "name_ja": "生理学関連",
+  "name_en": "Physiology-related",
+  "keywords": "一般生理学、病態生理学、比較生理学、環境生理学、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 48,
+    "chu_name_ja": "生体の構造と機能およびその関連分野"
+   }
+  ]
+ },
+ "48030": {
+  "name_ja": "薬理学関連",
+  "name_en": "Pharmacology-related",
+  "keywords": "ゲノム薬理、分子細胞薬理、病態薬理、行動薬理、創薬薬理学、臨床薬理、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 48,
+    "chu_name_ja": "生体の構造と機能およびその関連分野"
+   }
+  ]
+ },
+ "48040": {
+  "name_ja": "医化学関連",
+  "name_en": "Medical biochemistry-related",
+  "keywords": "生体機能分子医化学、ゲノム医科学、人類遺伝学、疾患モデル、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 48,
+    "chu_name_ja": "生体の構造と機能およびその関連分野"
+   }
+  ]
+ },
+ "49010": {
+  "name_ja": "病態医化学関連",
+  "name_en": "Pathological biochemistry-related",
+  "keywords": "分子病態、代謝異常、分子診断、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "49020": {
+  "name_ja": "人体病理学関連",
+  "name_en": "Human pathology-related",
+  "keywords": "分子病理、細胞組織病理、診断病理、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "49030": {
+  "name_ja": "実験病理学関連",
+  "name_en": "Experimental pathology-related",
+  "keywords": "疾患モデル、病態制御、組織再生、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "49040": {
+  "name_ja": "寄生虫学関連",
+  "name_en": "Parasitology-related",
+  "keywords": "寄生虫、媒介生物、寄生虫病原性、寄生虫疫学、寄生虫感染制御、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "49050": {
+  "name_ja": "細菌学関連",
+  "name_en": "Bacteriology-related",
+  "keywords": "細菌、真菌、薬剤耐性、細菌病原性、細菌疫学、細菌感染制御、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "49060": {
+  "name_ja": "ウイルス学関連",
+  "name_en": "Virology-related",
+  "keywords": "ウイルス、プリオン、ウイルス病原性、ウイルス疫学、ウイルス感染制御、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "49070": {
+  "name_ja": "免疫学関連",
+  "name_en": "Immunology-related",
+  "keywords": "免疫システム、免疫応答、炎症、免疫疾患、免疫制御、など",
+  "memberships": [
+   {
+    "dai_code": "H",
+    "chu_code": 49,
+    "chu_name_ja": "病理病態学、感染・免疫学およびその関連分野"
+   }
+  ]
+ },
+ "50010": {
+  "name_ja": "腫瘍生物学関連",
+  "name_en": "Tumor biology-related",
+  "keywords": "がんと遺伝子、腫瘍形成、浸潤、転移、がん微小環境、がんとシグナル伝達、がん細胞の特性、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 50,
+    "chu_name_ja": "腫瘍学およびその関連分野"
+   }
+  ]
+ },
+ "50020": {
+  "name_ja": "腫瘍診断および治療学関連",
+  "name_en": "Tumor diagnostics and therapeutics-related",
+  "keywords": "ゲノム解析、診断マーカー、分子イメージング、化学療法、核酸治療、遺伝子治療、免疫療法、標的治療、物理療法、放射線療法、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 50,
+    "chu_name_ja": "腫瘍学およびその関連分野"
+   }
+  ]
+ },
+ "51010": {
+  "name_ja": "基盤脳科学関連",
+  "name_en": "Basic brain sciences-related",
+  "keywords": "ブレインマシンインターフェイス、モデル動物、計算論、デコーディング、操作技術、脳画像、計測科学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 51,
+    "chu_name_ja": "ブレインサイエンスおよびその関連分野"
+   }
+  ]
+ },
+ "51020": {
+  "name_ja": "認知脳科学関連",
+  "name_en": "Cognitive and brain science-related",
+  "keywords": "社会行動、コミュニケーション、情動、意志決定、意識、学習、ニューロエコノミクス、神経心理、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 51,
+    "chu_name_ja": "ブレインサイエンスおよびその関連分野"
+   }
+  ]
+ },
+ "51030": {
+  "name_ja": "病態神経科学関連",
+  "name_en": "Pathophysiologic neuroscience-related",
+  "keywords": "臨床神経科学、疼痛学、感覚異常、運動異常、神経疾患、神経再生、神経免疫、細胞変性、病態モデル、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 51,
+    "chu_name_ja": "ブレインサイエンスおよびその関連分野"
+   }
+  ]
+ },
+ "52010": {
+  "name_ja": "内科学一般関連",
+  "name_en": "General internal medicine-related",
+  "keywords": "臨床検査医学、総合診療、老年医学、心療内科、東洋医学、緩和医療、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 52,
+    "chu_name_ja": "内科学一般およびその関連分野"
+   }
+  ]
+ },
+ "52020": {
+  "name_ja": "神経内科学関連",
+  "name_en": "Neurology-related",
+  "keywords": "神経内科学、神経機能画像学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 52,
+    "chu_name_ja": "内科学一般およびその関連分野"
+   }
+  ]
+ },
+ "52030": {
+  "name_ja": "精神神経科学関連",
+  "name_en": "Psychiatry-related",
+  "keywords": "臨床精神医学、基礎精神医学、司法精神医学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 52,
+    "chu_name_ja": "内科学一般およびその関連分野"
+   }
+  ]
+ },
+ "52040": {
+  "name_ja": "放射線科学関連",
+  "name_en": "Radiological sciences-related",
+  "keywords": "画像診断学、放射線治療学、放射線基礎医学、放射線技術学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 52,
+    "chu_name_ja": "内科学一般およびその関連分野"
+   }
+  ]
+ },
+ "52050": {
+  "name_ja": "胎児医学および小児成育学関連",
+  "name_en": "Embryonic medicine and pediatrics-related",
+  "keywords": "胎児医学、新生児医学、小児科学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 52,
+    "chu_name_ja": "内科学一般およびその関連分野"
+   }
+  ]
+ },
+ "53010": {
+  "name_ja": "消化器内科学関連",
+  "name_en": "Gastroenterology-related",
+  "keywords": "上部消化管、下部消化管、肝臓、胆道、膵臓、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 53,
+    "chu_name_ja": "器官システム内科学およびその関連分野"
+   }
+  ]
+ },
+ "53020": {
+  "name_ja": "循環器内科学関連",
+  "name_en": "Cardiology-related",
+  "keywords": "虚血性心疾患、心臓弁膜症、不整脈、心筋症、心不全、末梢動脈疾患、動脈硬化、高血圧、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 53,
+    "chu_name_ja": "器官システム内科学およびその関連分野"
+   }
+  ]
+ },
+ "53030": {
+  "name_ja": "呼吸器内科学関連",
+  "name_en": "Respiratory medicine-related",
+  "keywords": "呼吸器内科学、喘息、びまん性肺疾患、ＣＯＰＤ、肺がん、肺高血圧、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 53,
+    "chu_name_ja": "器官システム内科学およびその関連分野"
+   }
+  ]
+ },
+ "53040": {
+  "name_ja": "腎臓内科学関連",
+  "name_en": "Nephrology-related",
+  "keywords": "急性腎障害、慢性腎臓病、糖尿病性腎症、高血圧、水電解質代謝、人工透析、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 53,
+    "chu_name_ja": "器官システム内科学およびその関連分野"
+   }
+  ]
+ },
+ "53050": {
+  "name_ja": "皮膚科学関連",
+  "name_en": "Dermatology-related",
+  "keywords": "皮膚科学、皮膚免疫疾患、皮膚感染、皮膚腫瘍、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 53,
+    "chu_name_ja": "器官システム内科学およびその関連分野"
+   }
+  ]
+ },
+ "54010": {
+  "name_ja": "血液および腫瘍内科学関連",
+  "name_en": "Hematology and medical oncology-related",
+  "keywords": "血液腫瘍学、血液免疫学、貧血、血栓止血、化学療法、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 54,
+    "chu_name_ja": "生体情報内科学およびその関連分野"
+   }
+  ]
+ },
+ "54020": {
+  "name_ja": "膠原病およびアレルギー内科学関連",
+  "name_en": "Connective tissue disease and allergy-related",
+  "keywords": "膠原病学、アレルギー学、臨床免疫学、炎症学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 54,
+    "chu_name_ja": "生体情報内科学およびその関連分野"
+   }
+  ]
+ },
+ "54030": {
+  "name_ja": "感染症内科学関連",
+  "name_en": "Infectious disease medicine-related",
+  "keywords": "感染症診断学、感染症治療学、生体防御学、国際感染症学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 54,
+    "chu_name_ja": "生体情報内科学およびその関連分野"
+   }
+  ]
+ },
+ "54040": {
+  "name_ja": "代謝および内分泌学関連",
+  "name_en": "Metabolism and endocrinology-related",
+  "keywords": "エネルギー代謝、糖代謝、脂質代謝、プリン代謝、骨代謝、電解質代謝、内分泌学、神経内分泌学、生殖内分泌学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 54,
+    "chu_name_ja": "生体情報内科学およびその関連分野"
+   }
+  ]
+ },
+ "55010": {
+  "name_ja": "外科学一般および小児外科学関連",
+  "name_en": "General surgery and pediatric surgery-related",
+  "keywords": "外科総論、乳腺外科、内分泌外科、小児外科、移植、人工臓器、再生、手術支援、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 55,
+    "chu_name_ja": "恒常性維持器官の外科学およびその関連分野"
+   }
+  ]
+ },
+ "55020": {
+  "name_ja": "消化器外科学関連",
+  "name_en": "Digestive surgery-related",
+  "keywords": "上部消化管外科、下部消化管外科、肝臓外科、胆道外科、膵臓外科、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 55,
+    "chu_name_ja": "恒常性維持器官の外科学およびその関連分野"
+   }
+  ]
+ },
+ "55030": {
+  "name_ja": "心臓血管外科学関連",
+  "name_en": "Cardiovascular surgery-related",
+  "keywords": "冠動脈外科、弁膜疾患外科、心筋疾患外科、大血管外科、脈管外科、先天性心疾患、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 55,
+    "chu_name_ja": "恒常性維持器官の外科学およびその関連分野"
+   }
+  ]
+ },
+ "55040": {
+  "name_ja": "呼吸器外科学関連",
+  "name_en": "Respiratory surgery-related",
+  "keywords": "肺外科、縦隔外科、胸壁外科、気道外科、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 55,
+    "chu_name_ja": "恒常性維持器官の外科学およびその関連分野"
+   }
+  ]
+ },
+ "55050": {
+  "name_ja": "麻酔科学関連",
+  "name_en": "Anesthesiology-related",
+  "keywords": "麻酔、周術期管理、疼痛管理、蘇生、緩和医療、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 55,
+    "chu_name_ja": "恒常性維持器官の外科学およびその関連分野"
+   }
+  ]
+ },
+ "55060": {
+  "name_ja": "救急医学関連",
+  "name_en": "Emergency medicine-related",
+  "keywords": "集中治療、救急救命、外傷外科、災害医学、災害医療、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 55,
+    "chu_name_ja": "恒常性維持器官の外科学およびその関連分野"
+   }
+  ]
+ },
+ "56010": {
+  "name_ja": "脳神経外科学関連",
+  "name_en": "Neurosurgery-related",
+  "keywords": "脳神経外科学、脊髄脊椎疾患学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "56020": {
+  "name_ja": "整形外科学関連",
+  "name_en": "Orthopedics-related",
+  "keywords": "整形外科学、リハビリテーション学、スポーツ医学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "56030": {
+  "name_ja": "泌尿器科学関連",
+  "name_en": "Urology-related",
+  "keywords": "泌尿器科学、男性生殖器学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "56040": {
+  "name_ja": "産婦人科学関連",
+  "name_en": "Obstetrics and gynecology-related",
+  "keywords": "周産期学、生殖内分泌学、婦人科腫瘍学、女性ヘルスケア学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "56050": {
+  "name_ja": "耳鼻咽喉科学関連",
+  "name_en": "Otorhinolaryngology-related",
+  "keywords": "耳鼻咽喉科学、頭頸部外科学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "56060": {
+  "name_ja": "眼科学関連",
+  "name_en": "Ophthalmology-related",
+  "keywords": "眼科学、眼光学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "56070": {
+  "name_ja": "形成外科学関連",
+  "name_en": "Plastic and reconstructive surgery-related",
+  "keywords": "形成外科学、再建外科学、美容外科学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 56,
+    "chu_name_ja": "生体機能および感覚に関する外科学およびその関連分野"
+   }
+  ]
+ },
+ "57010": {
+  "name_ja": "常態系口腔科学関連",
+  "name_en": "Oral biological science-related",
+  "keywords": "口腔解剖学、口腔組織発生学、口腔生理学、口腔生化学、硬組織薬理学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57020": {
+  "name_ja": "病態系口腔科学関連",
+  "name_en": "Oral pathobiological science-related",
+  "keywords": "口腔感染症学、口腔病理学、口腔腫瘍学、免疫炎症科学、病態検査学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57030": {
+  "name_ja": "保存治療系歯学関連",
+  "name_en": "Conservative dentistry-related",
+  "keywords": "保存修復学、歯内治療学、歯周病学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57040": {
+  "name_ja": "口腔再生医学および歯科医用工学関連",
+  "name_en": "Regenerative dentistry and dental engineering-related",
+  "keywords": "口腔再生医学、生体材料、歯科材料学、顎顔面補綴学、歯科インプラント学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57050": {
+  "name_ja": "補綴系歯学関連",
+  "name_en": "Prosthodontics-related",
+  "keywords": "歯科補綴学、咀嚼嚥下機能回復学、老年歯科医学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57060": {
+  "name_ja": "外科系歯学関連",
+  "name_en": "Surgical dentistry-related",
+  "keywords": "口腔外科学、顎顔面再建外科学、歯科麻酔学、歯科心身医学、歯科放射線学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57070": {
+  "name_ja": "成長および発育系歯学関連",
+  "name_en": "Developmental dentistry-related",
+  "keywords": "歯科矯正学、小児歯科学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "57080": {
+  "name_ja": "社会系歯学関連",
+  "name_en": "Social dentistry-related",
+  "keywords": "口腔衛生学、予防歯科学、口腔保健学、歯科医療管理学、歯学教育学、歯科法医学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 57,
+    "chu_name_ja": "口腔科学およびその関連分野"
+   }
+  ]
+ },
+ "58010": {
+  "name_ja": "医療管理学および医療系社会学関連",
+  "name_en": "Medical management and medical sociology-related",
+  "keywords": "医療管理学、医療社会学、医学倫理、医療倫理、医歯薬学教育、医学史、医療経済学、臨床試験、保健医療行政、災害医学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58020": {
+  "name_ja": "衛生学および公衆衛生学分野関連:実験系を含む",
+  "name_en": "Hygiene and public health-related: including laboratory approach",
+  "keywords": "衛生学、公衆衛生学、疫学、国際保健、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58030": {
+  "name_ja": "衛生学および公衆衛生学分野関連:実験系を含まない",
+  "name_en": "Hygiene and public health-related: excluding laboratory approach",
+  "keywords": "衛生学、公衆衛生学、疫学、国際保健、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58040": {
+  "name_ja": "法医学関連",
+  "name_en": "Forensics medicine-related",
+  "keywords": "法医学、法医病理、法中毒、法医遺伝、自殺、虐待、突然死、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58050": {
+  "name_ja": "基礎看護学関連",
+  "name_en": "Fundamental of nursing-related",
+  "keywords": "基礎看護学、看護教育学、看護管理学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58060": {
+  "name_ja": "臨床看護学関連",
+  "name_en": "Clinical nursing-related",
+  "keywords": "重篤救急看護学、周術期看護学、慢性病看護学、がん看護学、精神看護学、緩和ケア、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58070": {
+  "name_ja": "生涯発達看護学関連",
+  "name_en": "Lifelong developmental nursing-related",
+  "keywords": "女性看護学、母性看護学、助産学、家族看護学、小児看護学、学校看護学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "58080": {
+  "name_ja": "高齢者看護学および地域看護学関連",
+  "name_en": "Gerontological nursing and community health nursing-related",
+  "keywords": "高齢者看護学、地域看護学、公衆衛生看護学、災害看護学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 58,
+    "chu_name_ja": "社会医学、看護学およびその関連分野"
+   }
+  ]
+ },
+ "59010": {
+  "name_ja": "リハビリテーション科学関連",
+  "name_en": "Rehabilitation science-related",
+  "keywords": "リハビリテーション医学、リハビリテーション看護学、リハビリテーション医療、理学療法学、作業療法学、福祉工学、言語聴覚療法学、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 59,
+    "chu_name_ja": "スポーツ科学、体育、健康科学およびその関連分野"
+   }
+  ]
+ },
+ "59020": {
+  "name_ja": "スポーツ科学関連",
+  "name_en": "Sports sciences-related",
+  "keywords": "スポーツ生理学、スポーツ生化学、スポーツ医学、スポーツ社会学、スポーツ経営学、スポーツ心理学、スポーツ教育学、トレーニング科学、スポーツバイオメカニクス、アダプテッドスポーツ科学、ドーピング、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 59,
+    "chu_name_ja": "スポーツ科学、体育、健康科学およびその関連分野"
+   }
+  ]
+ },
+ "59030": {
+  "name_ja": "体育および身体教育学関連",
+  "name_en": "Physical education, and physical and health education-related",
+  "keywords": "発育発達、身体教育、学校体育、教育生理学、身体システム学、脳高次機能学、武道論、野外教育、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 59,
+    "chu_name_ja": "スポーツ科学、体育、健康科学およびその関連分野"
+   }
+  ]
+ },
+ "59040": {
+  "name_ja": "栄養学および健康科学関連",
+  "name_en": "Nutrition science and health science-related",
+  "keywords": "栄養生理学、栄養生化学、栄養教育、臨床栄養、機能性食品、生活習慣病、ヘルスプロモーション、老化、など",
+  "memberships": [
+   {
+    "dai_code": "I",
+    "chu_code": 59,
+    "chu_name_ja": "スポーツ科学、体育、健康科学およびその関連分野"
+   }
+  ]
+ },
+ "60010": {
+  "name_ja": "情報学基礎論関連",
+  "name_en": "Theory of informatics-related",
+  "keywords": "離散構造、数理論理学、計算理論、プログラム理論、計算量理論、アルゴリズム理論、情報理論、符号理論、暗号理論、学習理論、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60020": {
+  "name_ja": "数理情報学関連",
+  "name_en": "Mathematical informatics-related",
+  "keywords": "最適化理論、数理システム理論、システム制御理論、システム分析、システム方法論、システムモデリング、システムシミュレーション、組合せ最適化、待ち行列論、数理ファイナンス、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60030": {
+  "name_ja": "統計科学関連",
+  "name_en": "Statistical science-related",
+  "keywords": "統計学、データサイエンス、モデル化、統計的推測、多変量解析、時系列解析、統計的品質管理、応用統計学、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60040": {
+  "name_ja": "計算機システム関連",
+  "name_en": "Computer system-related",
+  "keywords": "計算機アーキテクチャ、回路とシステム、ＬＳＩ設計、ＬＳＩテスト、リコンフィギャラブルシステム、ディペンダブルアーキテクチャ、低消費電力技術、ハードウェア・ソフトウェア協調設計、組込みシステム、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60050": {
+  "name_ja": "ソフトウェア関連",
+  "name_en": "Software-related",
+  "keywords": "プログラミング言語、プログラミング方法論、オペレーティングシステム、並列分散処理、ソフトウェア工学、仮想化技術、クラウドコンピューティング、ソフトウェアディペンダビリティ、ソフトウェアセキュリティ、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60060": {
+  "name_ja": "情報ネットワーク関連",
+  "name_en": "Information network-related",
+  "keywords": "ネットワークアーキテクチャ、ネットワークプロトコル、インターネット、モバイルネットワーク、パーベイシブコンピューティング、センサーネットワーク、ＩｏＴ、トラフィックエンジニアリング、ネットワーク管理、サービス構築基盤技術、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60070": {
+  "name_ja": "情報セキュリティ関連",
+  "name_en": "Information security-related",
+  "keywords": "暗号、耐タンパー技術、認証、バイオメトリクス、アクセス制御、マルウェア対策、サービス妨害攻撃対策、プライバシー保護、ディジタルフォレンジクス、セキュリティ評価認証、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60080": {
+  "name_ja": "データベース関連",
+  "name_en": "Database-related",
+  "keywords": "データモデル、データベースシステム、マルチメディアデータベース、情報検索、コンテンツ管理、メタデータ、ビッグデータ、地理情報システム、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60090": {
+  "name_ja": "高性能計算関連",
+  "name_en": "High performance computing-related",
+  "keywords": "並列処理、分散処理、クラウドコンピューティング、数値解析、可視化、コンピュータグラフィクス、高性能計算アプリケーション、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "60100": {
+  "name_ja": "計算科学関連",
+  "name_en": "Computational science-related",
+  "keywords": "数理工学、計算力学、数値シミュレーション、マルチスケール、大規模計算、超並列計算、数値計算手法、先進アルゴリズム、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 60,
+    "chu_name_ja": "情報科学、情報工学およびその関連分野"
+   }
+  ]
+ },
+ "61010": {
+  "name_ja": "知覚情報処理関連",
+  "name_en": "Perceptual information processing-related",
+  "keywords": "パターン認識、画像処理、コンピュータビジョン、視覚メディア処理、音メディア処理、メディア編集、メディアデータベース、センシング、センサ融合、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "61020": {
+  "name_ja": "ヒューマンインタフェースおよびインタラクション関連",
+  "name_en": "Human interface and interaction-related",
+  "keywords": "ヒューマンインタフェース、マルチモーダルインタフェース、ヒューマンコンピュータインタラクション、協同作業環境、バーチャルリアリティ、拡張現実、臨場感コミュニケーション、ウェアラブル機器、ユーザビリティ、人間工学、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "61030": {
+  "name_ja": "知能情報学関連",
+  "name_en": "Intelligent informatics-related",
+  "keywords": "探索、推論、機械学習、知識獲得、知的システム、知能情報処理、自然言語処理、データマイニング、オントロジー、エージェントシステム、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "61040": {
+  "name_ja": "ソフトコンピューティング関連",
+  "name_en": "Soft computing-related",
+  "keywords": "ニューラルネットワーク、進化計算、ファジィ理論、カオス、複雑系、確率的情報処理、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "61050": {
+  "name_ja": "知能ロボティクス関連",
+  "name_en": "Intelligent robotics-related",
+  "keywords": "知能ロボット、行動環境認識、プランニング、感覚行動システム、自律システム、ディジタルヒューマン、実世界情報処理、物理エージェント、知能化空間、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "61060": {
+  "name_ja": "感性情報学関連",
+  "name_en": "Kansei informatics-related",
+  "keywords": "感性デザイン学、感性認知科学、感性心理学、感性ロボティクス、感性計測評価、感性インタフェース、感性生理学、感性材料科学、感性教育学、感性脳科学、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 61,
+    "chu_name_ja": "人間情報学およびその関連分野"
+   }
+  ]
+ },
+ "62010": {
+  "name_ja": "生命、健康および医療情報学関連",
+  "name_en": "Life, health and medical informatics-related",
+  "keywords": "バイオインフォマティクス、生命情報、生体情報、ニューロインフォマティクス、脳型情報処理、生命分子計算、ＤＮＡコンピュータ、医療情報、健康情報、医用画像、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 62,
+    "chu_name_ja": "応用情報学およびその関連分野"
+   }
+  ]
+ },
+ "62020": {
+  "name_ja": "ウェブ情報学およびサービス情報学関連",
+  "name_en": "Web informatics and service informatics-related",
+  "keywords": "ウェブシステム、ソーシャルウェブ、セマンティックウェブ、ウェブマイニング、社会ネットワーク分析、サービス工学、教育サービス、医療サービス、福祉サービス、社会サービス、情報文化、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 62,
+    "chu_name_ja": "応用情報学およびその関連分野"
+   }
+  ]
+ },
+ "62030": {
+  "name_ja": "学習支援システム関連",
+  "name_en": "Learning support system-related",
+  "keywords": "メディアリテラシー、学習メディア、ソーシャルメディア、学習コンテンツ、学習管理、学習支援、遠隔学習、ｅ－ラーニング、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 62,
+    "chu_name_ja": "応用情報学およびその関連分野"
+   }
+  ]
+ },
+ "62040": {
+  "name_ja": "エンタテインメントおよびゲーム情報学関連",
+  "name_en": "Entertainment and game informatics-related",
+  "keywords": "音楽情報処理、３Ｄコンテンツ、アニメーション、ゲームプログラミング、ネットワークエンタテインメント、メディアアート、ディジタルミュージアム、体験デザイン、など",
+  "memberships": [
+   {
+    "dai_code": "J",
+    "chu_code": 62,
+    "chu_name_ja": "応用情報学およびその関連分野"
+   }
+  ]
+ },
+ "63010": {
+  "name_ja": "環境動態解析関連",
+  "name_en": "Environmental dynamic analysis-related",
+  "keywords": "地球温暖化、環境変動、水・物質循環、極域、化学海洋、生物海洋、環境計測、環境モデル、環境情報、リモートセンシング、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 63,
+    "chu_name_ja": "環境解析評価およびその関連分野"
+   }
+  ]
+ },
+ "63020": {
+  "name_ja": "放射線影響関連",
+  "name_en": "Radiation influence-related",
+  "keywords": "放射線、測定、管理、修復、生物影響、リスク、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 63,
+    "chu_name_ja": "環境解析評価およびその関連分野"
+   }
+  ]
+ },
+ "63030": {
+  "name_ja": "化学物質影響関連",
+  "name_en": "Chemical substance influence on environment-related",
+  "keywords": "トキシコロジー、人体有害物質、微量化学物質、内分泌かく乱物質、修復、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 63,
+    "chu_name_ja": "環境解析評価およびその関連分野"
+   }
+  ]
+ },
+ "63040": {
+  "name_ja": "環境影響評価関連",
+  "name_en": "Environmental impact assessment-related",
+  "keywords": "大気圏、水圏、陸圏、健康影響評価、社会経済影響評価、次世代影響評価、環境アセスメント、評価手法、モニタリング、シミュレーション、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 63,
+    "chu_name_ja": "環境解析評価およびその関連分野"
+   }
+  ]
+ },
+ "64010": {
+  "name_ja": "環境負荷およびリスク評価管理関連",
+  "name_en": "Environmental load and risk assessment-related",
+  "keywords": "環境分析技術、環境負荷解析、調査モニタリング、汚染質動態、モデリング、汚染質評価、暴露評価、毒性評価、リスク評価管理、化学物質管理、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 64,
+    "chu_name_ja": "環境保全対策およびその関連分野"
+   }
+  ]
+ },
+ "64020": {
+  "name_ja": "環境負荷低減技術および保全修復技術関連",
+  "name_en": "Environmental load reduction and remediation-related",
+  "keywords": "汚染物質除去技術、廃棄物処理技術、排出発生抑制、適正処理処分、環境負荷低減、汚染修復技術、騒音振動対策、地盤沈下等対策、生物機能利用、放射能除染、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 64,
+    "chu_name_ja": "環境保全対策およびその関連分野"
+   }
+  ]
+ },
+ "64030": {
+  "name_ja": "環境材料およびリサイクル技術関連",
+  "name_en": "Environmental materials and recycle technology-related",
+  "keywords": "循環再生材料、有価物回収、分離精製高純度化、環境配慮設計、リサイクル化学、グリーンプロダクション、ゼロエミッション、資源循環、再生可能エネルギー、バイオマス利活用、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 64,
+    "chu_name_ja": "環境保全対策およびその関連分野"
+   }
+  ]
+ },
+ "64040": {
+  "name_ja": "自然共生システム関連",
+  "name_en": "Social-ecological systems-related",
+  "keywords": "生物多様性、保全生物、生態系サービス、自然資本、生態系影響解析、生態系管理、生態系修復、生態工学、地域環境計画、気候変動影響、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 64,
+    "chu_name_ja": "環境保全対策およびその関連分野"
+   }
+  ]
+ },
+ "64050": {
+  "name_ja": "循環型社会システム関連",
+  "name_en": "Sound material-cycle social systems-related",
+  "keywords": "物質循環システム、物質エネルギー収支解析、低炭素社会、未利用エネルギー、地域創生、水システム、産業共生、ライフサイクル評価、統合的環境管理、３Ｒ社会システム、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 64,
+    "chu_name_ja": "環境保全対策およびその関連分野"
+   }
+  ]
+ },
+ "64060": {
+  "name_ja": "環境政策および環境配慮型社会関連",
+  "name_en": "Environmental policy and social systems-related",
+  "keywords": "環境理念、環境法、環境経済、環境情報、環境教育、環境社会活動、環境マネジメント、合意形成、安全安心、社会公共システム、持続可能発展、など",
+  "memberships": [
+   {
+    "dai_code": "K",
+    "chu_code": 64,
+    "chu_name_ja": "環境保全対策およびその関連分野"
+   }
+  ]
+ }
+}
