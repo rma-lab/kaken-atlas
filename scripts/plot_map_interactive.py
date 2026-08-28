@@ -36,7 +36,7 @@ def main() -> None:
     is_3d = "c2" in coords.columns
     corpus = pl.read_parquet(
         "data/processed/corpus.parquet",
-        columns=["award_number", "title", "category", "shokubun_codes"],
+        columns=["award_number", "kaken_id", "title", "category", "shokubun_codes"],
     )
     df = coords.join(corpus, on="award_number", how="left")
     sho2dai = load_sho2dai()
@@ -49,15 +49,17 @@ def main() -> None:
         sub = df.filter(pl.col("dai") == dai)
         color = DAI_COLORS.get(dai, "#b9b8b0")
         label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
+        # ホバーは3行: 大区分 / タイトル / 種目・課題番号（件数は凡例のみ）
         text = [
-            f"{(t or '（タイトルなし）')[:48]}<br>{c} / {a}"
+            f"{label}<br>{(t or '（タイトルなし）')[:48]}<br>{c} / {a}"
             for t, c, a in zip(sub["title"], sub["category"], sub["award_number"], strict=True)
         ]
         common = dict(
             mode="markers",
             name=f"{label} {sub.height:,}",
             text=text,
-            hoverinfo="text+name",
+            hoverinfo="text",
+            customdata=sub["kaken_id"].to_list(),  # クリックで KAKEN ページを開くのに使う
             visible=True if dai != "区分なし" else "legendonly",
         )
         if is_3d:
@@ -73,7 +75,7 @@ def main() -> None:
 
     dims = "3D（ドラッグで回転）" if is_3d else "2D（スクロールで拡大縮小・ドラッグで移動・ダブルクリックで全体表示）"
     layout = dict(
-        title=f"科研費 学術地図 {dims} / 凡例クリックで区分の表示切替",
+        title=f"科研費 学術地図 {dims} / 凡例クリックで区分の表示切替 / 点をクリックでKAKENページ",
         paper_bgcolor=SURFACE,
         legend=dict(itemsizing="constant", font=dict(size=11)),
         annotations=[dict(text=FOOTER, x=0, y=0, xref="paper", yref="paper",
@@ -96,7 +98,32 @@ def main() -> None:
     out = Path(f"reports/figures/map_{'3d' if is_3d else '2d'}_interactive.html")
     out.parent.mkdir(parents=True, exist_ok=True)
     # scrollZoom: 2D でもホイール/2本指ジェスチャで拡大縮小できるようにする
-    fig.write_html(out, include_plotlyjs=True, config={"scrollZoom": True, "displaylogo": False})
+    # post_script: ホバー表示中の点をクリックしたときだけ KAKEN ページを開く。
+    # ダブルクリックやリセット直後の巻き込みクリック・二重発火は抑止する。
+    open_kaken = (
+        "var plot = document.getElementsByClassName('plotly-graph-div')[0];"
+        "var hovered = null, lastK = null, lastT = 0, suppressUntil = 0;"
+        "plot.on('plotly_hover', function(d){"
+        "  hovered = (d.points[0] && d.points[0].customdata) || null;"
+        "});"
+        "plot.on('plotly_unhover', function(){ hovered = null; });"
+        "plot.on('plotly_doubleclick', function(){ suppressUntil = Date.now() + 700; });"
+        "plot.on('plotly_relayout', function(){ suppressUntil = Date.now() + 400; });"
+        "plot.on('plotly_click', function(d){"
+        "  var k = d.points[0] && d.points[0].customdata;"
+        "  var now = Date.now();"
+        "  if (!k || now < suppressUntil) return;"
+        "  if (k !== hovered) return;"  # ホバー表示中の点だけをクリック対象にする
+        "  if (k === lastK && now - lastT < 600) return;"
+        "  lastK = k; lastT = now;"
+        "  window.open('https://kaken.nii.ac.jp/ja/grant/' + k + '/', '_blank');"
+        "});"
+    )
+    fig.write_html(
+        out, include_plotlyjs=True,
+        config={"scrollZoom": True, "displaylogo": False, "doubleClick": "reset"},
+        post_script=open_kaken,
+    )
     print(f"出力: {out} ({out.stat().st_size / 1e6:.1f} MB)")
 
 
