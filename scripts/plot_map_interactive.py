@@ -64,12 +64,72 @@ FOOTER = (
 # customdata = kaken_id（点ごと）、meta = 種目名（トレースごと）。
 POST_SCRIPT = """
 var plot = document.getElementsByClassName('plotly-graph-div')[0];
+var is3d = plot.data.length && plot.data[0].type === 'scatter3d';
 
-// ---- 自前ツールチップ（固定サイズ・常にカーソル右側） ----
+// ==== デザイントークン ====
+var INK = '#0b0b0b', MUTED = '#898781', SUB = '#52514e', LINE = '#e1e0d9';
+var PANEL = 'background:#fcfcfb;border:1px solid ' + LINE + ';border-radius:8px;' +
+  'box-shadow:0 3px 12px rgba(0,0,0,0.10);font:12.5px/1.7 -apple-system,sans-serif;color:' + INK;
+
+// ==== ヘッダーバー ====
+document.body.style.margin = '0';
+var bar = document.createElement('div');
+bar.style.cssText = 'position:fixed;top:0;left:0;right:0;height:48px;z-index:998;' +
+  'display:flex;align-items:center;gap:14px;padding:0 18px;background:#fcfcfb;' +
+  'border-bottom:1px solid ' + LINE + ';font:13px -apple-system,sans-serif;color:' + INK;
+bar.innerHTML =
+  '<div style="white-space:nowrap"><b style="font-size:14.5px">__MAP_TITLE__</b>' +
+  ' <span style="color:' + MUTED + ';font-size:12px">__MAP_SUB__</span></div>' +
+  '<div style="position:relative;flex:0 1 300px;min-width:170px">' +
+  '  <input id="ka-q" type="search" placeholder="タイトル・キーワード・課題番号を検索"' +
+  '   style="width:100%;box-sizing:border-box;padding:6px 12px;border:1px solid #cfcec7;' +
+  '   border-radius:15px;background:#fff;font:12.5px -apple-system,sans-serif;outline:none">' +
+  '  <div id="ka-results" style="display:none;position:absolute;top:36px;left:0;width:380px;' +
+  '   max-height:55vh;overflow-y:auto;padding:8px 12px;' + PANEL + '"></div>' +
+  '</div>' +
+  '<div style="flex:1"></div>' +
+  '<div id="ka-filter-wrap" style="position:relative">' +
+  '  <span style="cursor:default;color:' + SUB + '">種目フィルタ ▾</span>' +
+  '  <div id="ka-body" style="display:none;position:absolute;top:26px;right:0;' +
+  '   max-height:70vh;overflow-y:auto;padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
+  '</div>' +
+  '<div id="ka-help-wrap" style="position:relative">' +
+  '  <span style="cursor:default;color:' + SUB + '">操作 ▾</span>' +
+  '  <div id="ka-help-body" style="display:none;position:absolute;top:26px;right:0;' +
+  '   padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
+  '</div>';
+document.body.insertBefore(bar, document.body.firstChild);
+
+// 地図をヘッダー分下げる
+plot.style.marginTop = '48px';
+plot.style.height = 'calc(100vh - 48px)';
+if (window.Plotly && Plotly.Plots) Plotly.Plots.resize(plot);
+
+// ホバーで開閉（ボタンとパネルを同じラッパに入れてあるので間の移動で閉じない）
+[['ka-filter-wrap', 'ka-body'], ['ka-help-wrap', 'ka-help-body']].forEach(function (pair) {
+  var wrap = document.getElementById(pair[0]);
+  var body = document.getElementById(pair[1]);
+  wrap.addEventListener('mouseenter', function () { body.style.display = 'block'; });
+  wrap.addEventListener('mouseleave', function () { body.style.display = 'none'; });
+});
+
+// 操作ヘルプの中身
+document.getElementById('ka-help-body').innerHTML = is3d
+  ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
+    '<div>点にホバー→クリック: KAKENページを開く</div>' +
+    '<div>凡例クリック: 大区分の表示切替</div>'
+  : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
+    '<div>ダブルクリック: 全体表示に戻る</div>' +
+    '<div>点にホバー→クリック: KAKENページを開く</div>' +
+    '<div>凡例クリック: 大区分の表示切替</div>' +
+    '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
+    '<div>Esc: 選択解除</div>';
+
+// ==== 自前ツールチップ（固定サイズ・常にカーソル右側） ====
 var tip = document.createElement('div');
 tip.style.cssText = 'position:fixed;display:none;z-index:1000;background:#fff;' +
-  'border:1.5px solid #999;border-radius:4px;padding:6px 9px;' +
-  'font:12px/1.5 sans-serif;color:#0b0b0b;pointer-events:none;width:320px;' +
+  'border:1.5px solid #999;border-radius:6px;padding:6px 9px;' +
+  'font:12px/1.5 -apple-system,sans-serif;color:' + INK + ';pointer-events:none;width:320px;' +
   'box-shadow:0 2px 8px rgba(0,0,0,0.15)';
 document.body.appendChild(tip);
 var mx = 0, my = 0, hovered = null, lastK = null, lastT = 0, suppressUntil = 0;
@@ -91,7 +151,7 @@ plot.on('plotly_hover', function (d) {
   var ell = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
   tip.innerHTML =
     '<div style="' + ell + ';background:' + color + ';color:#fff;font-weight:600;' +
-    'margin:-6px -9px 4px -9px;padding:4px 9px;border-radius:2.5px 2.5px 0 0">' +
+    'margin:-6px -9px 4px -9px;padding:4px 9px;border-radius:4.5px 4.5px 0 0">' +
     lines[0] + '</div>' +
     lines.slice(1).map(function (x) {
       return '<div style="' + ell + '">' + x + '</div>';
@@ -101,7 +161,7 @@ plot.on('plotly_hover', function (d) {
 });
 plot.on('plotly_unhover', function () { hovered = null; tip.style.display = 'none'; });
 
-// ---- ホバー中の点をクリックで KAKEN ページ ----
+// ==== ホバー中の点をクリックで KAKEN ページ ====
 plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
 plot.on('plotly_relayout', function () { suppressUntil = Date.now() + 400; });
 plot.on('plotly_click', function (d) {
@@ -114,33 +174,84 @@ plot.on('plotly_click', function (d) {
   window.open('https://kaken.nii.ac.jp/ja/grant/' + k + '/', '_blank');
 });
 
-// ---- 操作ヘルプ（畳んでおき、ホバーで展開） ----
-var is3d = plot.data.length && plot.data[0].type === 'scatter3d';
-var help = document.createElement('div');
-help.style.cssText = 'position:fixed;top:14px;left:10px;z-index:999;' +
-  'background:rgba(252,252,251,0.96);border:1px solid #ccc;border-radius:6px;' +
-  'padding:6px 12px;font:12px/1.7 sans-serif;color:#0b0b0b;' +
-  'box-shadow:0 2px 8px rgba(0,0,0,0.12)';
-var helpBody2d = '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
-  '<div>ダブルクリック: 全体表示に戻る</div>' +
-  '<div>点にホバー→クリック: KAKENページを開く</div>' +
-  '<div>凡例クリック: 大区分の表示切替</div>' +
-  '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
-  '<div>Esc: 選択解除</div>';
-var helpBody3d = '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
-  '<div>点にホバー→クリック: KAKENページを開く</div>' +
-  '<div>凡例クリック: 大区分の表示切替</div>';
-help.innerHTML = '<b>操作</b><span id="ka-help-hint" style="color:#898781"> ▸</span>' +
-  '<div id="ka-help-body" style="display:none">' + (is3d ? helpBody3d : helpBody2d) + '</div>';
-document.body.appendChild(help);
-var helpBodyEl = document.getElementById('ka-help-body');
-var helpHint = document.getElementById('ka-help-hint');
-help.addEventListener('mouseenter', function () { helpBodyEl.style.display = 'block'; helpHint.textContent = ''; });
-help.addEventListener('mouseleave', function () { helpBodyEl.style.display = 'none'; helpHint.textContent = ' ▸'; });
+// ==== 検索（タイトル・キーワード・課題番号の部分一致 → ハイライト＋一覧） ====
+var qInput = document.getElementById('ka-q');
+var qResults = document.getElementById('ka-results');
+var hlIndex = null, qTimer = null;
 
-// ---- 種目フィルタ（トレース＝大区分×種目。表示/非表示切替のみで高速） ----
-// チェック解除 → visible=false。チェック → 同じ大区分グループ内で種目オフでない
-// トレースの表示状態（true / legendonly）を継承し、大区分の凡例スイッチと両立させる。
+function clearHighlight() {
+  if (hlIndex !== null) { Plotly.deleteTraces(plot, hlIndex); hlIndex = null; }
+  qResults.style.display = 'none';
+}
+function runSearch(q) {
+  clearHighlight();
+  q = q.trim().toLowerCase();
+  if (q.length < 2) return;
+  var hits = [];
+  for (var i = 0; i < plot.data.length; i++) {
+    var t = plot.data[i];
+    if (!t.meta || !t.text) continue;
+    if (t.visible === false || t.visible === 'legendonly') continue;
+    var fd = plot._fullData[i];
+    for (var j = 0; j < t.text.length; j++) {
+      var cd = t.customdata[j];
+      var hay = (t.text[j] + '\u3001' + (cd && cd[1] || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) continue;
+      var h = { x: fd.x[j], y: fd.y[j], text: t.text[j], kaken: cd && cd[0] };
+      if (is3d) h.z = fd.z[j];
+      hits.push(h);
+      if (hits.length >= 2000) break;
+    }
+    if (hits.length >= 2000) break;
+  }
+  if (!hits.length) {
+    qResults.innerHTML = '<span style="color:' + MUTED + '">該当なし</span>';
+    qResults.style.display = 'block';
+    return;
+  }
+  var overlay = {
+    x: hits.map(function (h) { return h.x; }),
+    y: hits.map(function (h) { return h.y; }),
+    mode: 'markers', hoverinfo: 'none', showlegend: false,
+    marker: { size: is3d ? 4 : 9, color: 'rgba(11,11,11,0)',
+              line: { width: 2, color: INK } },
+    type: is3d ? 'scatter3d' : 'scattergl',
+  };
+  if (is3d) overlay.z = hits.map(function (h) { return h.z; });
+  Plotly.addTraces(plot, overlay).then(function () { hlIndex = plot.data.length - 1; });
+  var html = '<b>' + hits.length.toLocaleString() + (hits.length >= 2000 ? '+' : '') +
+    '件ヒット</b><span style="color:' + MUTED + '">（先頭30件）</span><br>';
+  hits.slice(0, 30).forEach(function (h, k) {
+    var lines = h.text.split('<br>');
+    html += '<a href="#" class="ka-hit" data-k="' + k + '" style="display:block;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1c5cab;' +
+      'text-decoration:none;padding:1px 0">' + lines[1] + ' <span style="color:' + MUTED + '">' +
+      lines[2] + '</span></a>';
+  });
+  qResults.innerHTML = html;
+  qResults.style.display = 'block';
+  qResults.querySelectorAll('.ka-hit').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var h = hits[parseInt(a.getAttribute('data-k'), 10)];
+      if (is3d) return;
+      var span = 1.5;
+      Plotly.relayout(plot, {
+        'xaxis.range': [h.x - span, h.x + span],
+        'yaxis.range': [h.y - span, h.y + span],
+      });
+    });
+  });
+}
+qInput.addEventListener('input', function () {
+  if (qTimer) clearTimeout(qTimer);
+  qTimer = setTimeout(function () { runSearch(qInput.value); }, 300);
+});
+qInput.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { qInput.value = ''; clearHighlight(); qInput.blur(); e.stopPropagation(); }
+});
+
+// ==== 種目フィルタ ====
 var counts = {};
 plot.data.forEach(function (t) {
   if (t.meta) counts[t.meta] = (counts[t.meta] || 0) + (t.customdata ? t.customdata.length : 0);
@@ -150,33 +261,22 @@ var cats = order.filter(function (c) { return counts[c] !== undefined; }).concat
   Object.keys(counts).filter(function (c) { return order.indexOf(c) < 0; })
     .sort(function (a, b) { return counts[b] - counts[a]; }));
 
-var panel = document.createElement('div');
-panel.style.cssText = 'position:fixed;top:52px;left:10px;z-index:999;' +
-  'background:rgba(252,252,251,0.96);border:1px solid #ccc;border-radius:6px;' +
-  'padding:8px 12px;font:12px/1.7 sans-serif;color:#0b0b0b;max-height:70vh;' +
-  'overflow-y:auto;box-shadow:0 2px 8px rgba(0,0,0,0.12)';
-panel.innerHTML = '<b>種目フィルタ</b><span id="ka-hint" style="color:#898781"> ▸</span>' +
-  '<div id="ka-body" style="display:none">' +
-  '<a href="#" id="ka-selall">全選択</a>&nbsp;<a href="#" id="ka-selnone">全解除</a><br>' +
+document.getElementById('ka-body').innerHTML =
+  '<a href="#" id="ka-selall" style="color:#1c5cab;text-decoration:none">全選択</a>&nbsp; ' +
+  '<a href="#" id="ka-selnone" style="color:#1c5cab;text-decoration:none">全解除</a>' +
   cats.map(function (c) {
-    return '<label style="display:block;white-space:nowrap">' +
-      '<input type="checkbox" class="ka-cat" checked> ' +
-      c + ' (' + counts[c].toLocaleString() + ')</label>';
-  }).join('') + '</div>';
-document.body.appendChild(panel);
-// 普段は畳んでおき、ホバーで展開する
-var body = document.getElementById('ka-body');
-var hint = document.getElementById('ka-hint');
-panel.addEventListener('mouseenter', function () { body.style.display = 'block'; hint.textContent = ''; });
-panel.addEventListener('mouseleave', function () { body.style.display = 'none'; hint.textContent = ' ▸'; });
-var boxes = panel.querySelectorAll('.ka-cat');
+    return '<label style="display:block;white-space:nowrap;cursor:pointer">' +
+      '<input type="checkbox" class="ka-cat" checked style="vertical-align:-2px"> ' +
+      c + ' <span style="color:' + MUTED + '">' + counts[c].toLocaleString() + '</span></label>';
+  }).join('');
+var boxes = document.querySelectorAll('.ka-cat');
 
 function setCategory(cat, on) {
   var idx = [], vis = [];
   plot.data.forEach(function (t, i) {
     if (t.meta !== cat) return;
     if (!on) { idx.push(i); vis.push(false); return; }
-    var v = true;  // 大区分グループの現在の表示状態を継承
+    var v = true;
     plot.data.some(function (s) {
       if (s.legendgroup === t.legendgroup && s.visible !== false) {
         v = (s.visible === undefined) ? true : s.visible;
@@ -200,12 +300,10 @@ document.getElementById('ka-selnone').addEventListener('click', function (e) {
   boxes.forEach(function (cb, i) { cb.checked = false; setCategory(cats[i], false); });
 });
 
-// ---- 選択パネル（なげなわ/矩形で囲うと内訳・キーワード集計を即時表示） ----
+// ==== 選択パネル（なげなわ/矩形で囲うと内訳・キーワード集計を即時表示） ====
 var selPanel = document.createElement('div');
-selPanel.style.cssText = 'position:fixed;bottom:14px;left:10px;z-index:999;display:none;' +
-  'background:rgba(252,252,251,0.97);border:1px solid #ccc;border-radius:6px;' +
-  'padding:10px 14px;font:12px/1.6 sans-serif;color:#0b0b0b;max-width:380px;' +
-  'max-height:55vh;overflow-y:auto;box-shadow:0 2px 10px rgba(0,0,0,0.15)';
+selPanel.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:999;display:none;' +
+  'max-width:400px;max-height:55vh;overflow-y:auto;padding:10px 14px;' + PANEL;
 document.body.appendChild(selPanel);
 
 function topEntries(obj, n) {
@@ -214,7 +312,7 @@ function topEntries(obj, n) {
 var outlineClearedAt = 0;
 plot.on('plotly_selected', function (d) {
   if (!d || !d.points || !d.points.length) {
-    if (Date.now() - outlineClearedAt < 800) return;  // 囲い線の自動削除による誤発火は無視
+    if (Date.now() - outlineClearedAt < 800) return;
     selPanel.style.display = 'none'; return;
   }
   var n = d.points.length, dais = {}, cts = {}, kws = {};
@@ -229,36 +327,33 @@ plot.on('plotly_selected', function (d) {
     }
   });
   var html = '<b>選択: ' + n.toLocaleString() + '件</b>' +
-    ' <a href="#" id="ka-selclear" style="color:#898781">閉じる</a><br>';
-  html += '<span style="color:#52514e">大区分:</span> ' + topEntries(dais, 5).map(function (g) {
+    ' <a href="#" id="ka-selclear" style="color:' + MUTED + '">閉じる</a><br>';
+  html += '<span style="color:' + SUB + '">大区分:</span> ' + topEntries(dais, 5).map(function (g) {
     return g + ' ' + dais[g].toLocaleString();
   }).join(' / ') + '<br>';
-  html += '<span style="color:#52514e">種目:</span> ' + topEntries(cts, 4).map(function (c) {
+  html += '<span style="color:' + SUB + '">種目:</span> ' + topEntries(cts, 4).map(function (c) {
     return c + ' ' + cts[c].toLocaleString();
   }).join(' / ') + '<br>';
-  html += '<span style="color:#52514e">頻出キーワード:</span><br>' +
+  html += '<span style="color:' + SUB + '">頻出キーワード:</span><br>' +
     topEntries(kws, 15).map(function (w) {
       return '<span style="display:inline-block;background:#eef3fa;border:1px solid #c9d8ee;' +
-        'border-radius:3px;padding:0 6px;margin:1px 2px">' + w +
-        ' <span style="color:#898781">' + kws[w] + '</span></span>';
+        'border-radius:4px;padding:0 6px;margin:1px 2px">' + w +
+        ' <span style="color:' + MUTED + '">' + kws[w] + '</span></span>';
     }).join('');
   selPanel.innerHTML = html;
   selPanel.style.display = 'block';
   document.getElementById('ka-selclear').addEventListener('click', function (e) {
     e.preventDefault(); selPanel.style.display = 'none';
   });
-  // 囲い線はイベントを横取りする（内側でホバー/ズーム不能になる）ため、
-  // 集計後すぐ消す。選択状態（薄暗さ）とパネルは残る。
   outlineClearedAt = Date.now();
   Plotly.relayout(plot, { selections: [] });
 });
 plot.on('plotly_deselect', function () {
-  if (Date.now() - outlineClearedAt < 800) return;  // 囲い線の自動削除による誤発火は無視
+  if (Date.now() - outlineClearedAt < 800) return;
   selPanel.style.display = 'none';
 });
 
 // Esc: 選択を解除してパン操作モードに戻る
-// selectedpoints は全トレース分の null 配列で解除し、囲い線（layout.selections）も消す
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   selPanel.style.display = 'none';
@@ -335,12 +430,11 @@ def main() -> None:
                 ))
 
     layout = dict(
-        title=f"科研費 学術地図 {'3D' if is_3d else '2D'}（2019–2025年度・206,078件）",
         paper_bgcolor=SURFACE,
         legend=dict(itemsizing="constant", font=dict(size=11), groupclick="togglegroup"),
         annotations=[dict(text=FOOTER, x=0, y=0, xref="paper", yref="paper",
                           showarrow=False, font=dict(size=9, color="#898781"))],
-        margin=dict(l=0, r=0, t=50, b=30),
+        margin=dict(l=0, r=0, t=24, b=30),
     )
     if is_3d:
         layout["scene"] = dict(
@@ -361,7 +455,12 @@ def main() -> None:
     fig.write_html(
         out, include_plotlyjs=True,
         config={"scrollZoom": True, "displaylogo": False, "doubleClick": "reset"},
-        post_script=POST_SCRIPT.replace("__CAT_ORDER__", json.dumps(CATEGORY_ORDER, ensure_ascii=False)),
+        post_script=(
+            POST_SCRIPT
+            .replace("__CAT_ORDER__", json.dumps(CATEGORY_ORDER, ensure_ascii=False))
+            .replace("__MAP_TITLE__", f"科研費 学術地図 {'3D' if is_3d else '2D'}")
+            .replace("__MAP_SUB__", "2019–2025年度・206,078件")
+        ),
     )
     n_traces = len(fig.data)
     print(f"出力: {out} ({out.stat().st_size / 1e6:.1f} MB, {n_traces} トレース)")
