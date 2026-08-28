@@ -41,6 +41,28 @@
   （`scripts/hakusan_embed.sh`）。**Linux の torch は cu128 ビルド固定**（GPUノードのドライバが CUDA 12.9 世代のため。
   `pyproject.toml` の `tool.uv.sources` 参照）。
 
+## 審査区分表・大区分の扱い
+- **正典は `data/reference/kubun_table.csv` / `.json`**（公式マスタ由来、`scripts/build_kubun_table.py` で再生成、
+  実データ23.9万件と全数照合済み）。小区分コードは**5桁ゼロ埋め文字列**で扱う（数値化禁止）。
+- 大区分の割り当ては `kaken_atlas/kubun.py` の `load_dai_labels()` に一本化。審査区分の**3階層を解釈**：
+  基盤B/C・若手=小区分、基盤A・挑戦的=中区分、基盤S=大区分直接。複数大区分にまたがる場合は「複数」、
+  体系外（特別研究員奨励費・スタート支援・新学術・学術変革等）は「区分なし」。
+- 大区分11色は**意味順色相環**（重心距離の最短巡回路→OKLCH等間隔。導出は `scripts/plot_map_dai.py` コメント）。
+
+## 可視化パイプライン
+- 次元削減：`uv run python -m kaken_atlas.reduce [--n-components 3]` → `data/processed/umap*_nn15_md0.1.parquet`
+  （cosine・seed=42固定。2Dは M3 Air で約2分）。
+- 静的図：`scripts/plot_map.py`（密度）、`scripts/plot_map_dai.py`（大区分パネル・一覧）→ `reports/figures/*.png`。
+  **全図に出所・件数・年度・パラメータの脚注を焼き込む**こと。
+- インタラクティブ：`scripts/plot_map_interactive.py <座標parquet>` → 自己完結HTML（約135MB）。
+  検索・種目フィルタ・なげなわ集計・KAKENリンク等はスクリプト内 POST_SCRIPT（JS）に実装。
+- `reports/` は **git 管理外**（実験ノート扱い。公開物として文脈を整えるまでローカル）。
+- UI 変更時は**ヘッドレスChromeで検証**（puppeteer-core、ハーネスは /tmp/ptest に作る流儀。
+  小さい座標サブセットでテストHTMLを作り、マウス操作を再現して回帰確認してから渡す）。
+
+## 発表資料
+- Marp 原稿 `reports/slides/*.md` → `npx -y @marp-team/marp-cli <md> --pdf --allow-local-files` で PDF 化。
+
 ## HAKUSAN 操作ルール（重要）
 1. 操作前に到達性を確認する（VPN＝F5 が必要）。落ちていたら作業を止め、ユーザに再接続を依頼する。
 2. ログインノード（hakusan1/2）では軽い読み取りコマンドのみ。計算は必ず SLURM 経由。
