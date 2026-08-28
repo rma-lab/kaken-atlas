@@ -70,6 +70,20 @@ def _int_or_none(value: str | None) -> int | None:
     return int(value) if value else None
 
 
+def _title_with_fallback(award: ET.Element, summary: ET.Element) -> str | None:
+    """タイトルは日本語 summary を優先し、無ければ他言語（英語）の summary から補完する。
+
+    英語で応募された課題は ja summary にタイトルが無いことがある（2,279件確認済み）。
+    """
+    title = summary.findtext("title")
+    if title:
+        return title
+    for s in award.findall("summary"):
+        if title := s.findtext("title"):
+            return title
+    return None
+
+
 def parse_award(award: ET.Element, source_file: str = "") -> dict | None:
     """1課題（grantAward 要素）をフラットな dict にする。summary が無ければ None。"""
     summary = _ja_summary(award)
@@ -104,7 +118,7 @@ def parse_award(award: ET.Element, source_file: str = "") -> dict | None:
         "award_number": award.get("awardNumber"),
         "kaken_id": award.get("id"),
         "project_type": award.get("projectType"),
-        "title": summary.findtext("title"),
+        "title": _title_with_fallback(award, summary),
         "category": category.text if category is not None else None,
         "category_code": category.get("niiCode") if category is not None else None,
         "review_sections": review_sections,
