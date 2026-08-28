@@ -88,14 +88,14 @@ bar.innerHTML =
   '   max-height:55vh;overflow-y:auto;padding:8px 12px;' + PANEL + '"></div>' +
   '</div>' +
   '<div style="flex:1"></div>' +
-  '<div id="ka-filter-wrap" style="position:relative">' +
+  '<div id="ka-filter-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
   '  <span style="cursor:default;color:' + SUB + '">種目フィルタ ▾</span>' +
-  '  <div id="ka-body" style="display:none;position:absolute;top:26px;right:0;' +
+  '  <div id="ka-body" style="display:none;position:absolute;top:100%;right:0;' +
   '   max-height:70vh;overflow-y:auto;padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
   '</div>' +
-  '<div id="ka-help-wrap" style="position:relative">' +
+  '<div id="ka-help-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
   '  <span style="cursor:default;color:' + SUB + '">操作 ▾</span>' +
-  '  <div id="ka-help-body" style="display:none;position:absolute;top:26px;right:0;' +
+  '  <div id="ka-help-body" style="display:none;position:absolute;top:100%;right:0;' +
   '   padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
   '</div>';
 document.body.insertBefore(bar, document.body.firstChild);
@@ -105,12 +105,19 @@ plot.style.marginTop = '48px';
 plot.style.height = 'calc(100vh - 48px)';
 if (window.Plotly && Plotly.Plots) Plotly.Plots.resize(plot);
 
-// ホバーで開閉（ボタンとパネルを同じラッパに入れてあるので間の移動で閉じない）
+// ホバーで開閉。ボタン→パネルへの斜め移動で一瞬外に出ても閉じないよう、
+// 350ms の閉じ猶予を置く（メニューUIの定石）
 [['ka-filter-wrap', 'ka-body'], ['ka-help-wrap', 'ka-help-body']].forEach(function (pair) {
   var wrap = document.getElementById(pair[0]);
   var body = document.getElementById(pair[1]);
-  wrap.addEventListener('mouseenter', function () { body.style.display = 'block'; });
-  wrap.addEventListener('mouseleave', function () { body.style.display = 'none'; });
+  var closeTimer = null;
+  wrap.addEventListener('mouseenter', function () {
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    body.style.display = 'block';
+  });
+  wrap.addEventListener('mouseleave', function () {
+    closeTimer = setTimeout(function () { body.style.display = 'none'; }, 350);
+  });
 });
 
 // 操作ヘルプの中身
