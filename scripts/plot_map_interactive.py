@@ -384,7 +384,11 @@ def main() -> None:
     df = df.join(load_dai_labels(), on="award_number", how="left")
 
     fig = go.Figure()
-    for dai in [*DAI_COLORS.keys(), "複数", "区分なし"]:
+    # 描画順 = 重なり順（先に追加したものが下層）。目立たせない「区分なし」「複数」を
+    # 最下層に敷き、大区分 A〜K を上に描く。凡例の並びは legendrank で A〜K→複数→区分なし。
+    draw_order = ["区分なし", "複数", *DAI_COLORS.keys()]
+    legend_order = [*DAI_COLORS.keys(), "複数", "区分なし"]
+    for dai in draw_order:
         dsub = df.filter(pl.col("dai") == dai)
         color = DAI_COLORS.get(dai, "#b9b8b0")
         label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
@@ -394,6 +398,7 @@ def main() -> None:
             mode="markers",
             name=f"{label} {dsub.height:,}",
             legendgroup=dai,
+            legendrank=legend_order.index(dai) + 1,
             showlegend=True,
             hoverinfo="none",
             visible=True if dai != "区分なし" else "legendonly",
