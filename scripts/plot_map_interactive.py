@@ -247,11 +247,11 @@ plot.on('plotly_selected', function (d) {
 plot.on('plotly_deselect', function () { selPanel.style.display = 'none'; });
 
 // Esc: 選択を解除してパン操作モードに戻る
+// selectedpoints は全トレース分の null 配列で解除し、囲い線（layout.selections）も消す
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   selPanel.style.display = 'none';
-  Plotly.restyle(plot, { selectedpoints: [null] });
-  Plotly.relayout(plot, { dragmode: 'pan' });
+  Plotly.update(plot, { selectedpoints: null }, { selections: [], dragmode: 'pan' });
 });
 """
 
