@@ -78,9 +78,13 @@ document.addEventListener('mousemove', function (e) {
   mx = e.clientX; my = e.clientY;
   if (tip.style.display !== 'none') place();
 });
+function kakenId(p) {
+  var cd = p && p.customdata;
+  return Array.isArray(cd) ? cd[0] : cd;
+}
 plot.on('plotly_hover', function (d) {
   var p = d.points[0];
-  hovered = (p && p.customdata) || null;
+  hovered = kakenId(p);
   if (!p || !p.text) return;
   var color = (p.fullData && p.fullData.marker && p.fullData.marker.color) || '#999';
   var lines = p.text.split('<br>');
@@ -101,7 +105,7 @@ plot.on('plotly_unhover', function () { hovered = null; tip.style.display = 'non
 plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
 plot.on('plotly_relayout', function () { suppressUntil = Date.now() + 400; });
 plot.on('plotly_click', function (d) {
-  var k = d.points[0] && d.points[0].customdata;
+  var k = kakenId(d.points[0]);
   var now = Date.now();
   if (!k || now < suppressUntil) return;
   if (k !== hovered) return;
@@ -109,6 +113,30 @@ plot.on('plotly_click', function (d) {
   lastK = k; lastT = now;
   window.open('https://kaken.nii.ac.jp/ja/grant/' + k + '/', '_blank');
 });
+
+// ---- 操作ヘルプ（畳んでおき、ホバーで展開） ----
+var is3d = plot.data.length && plot.data[0].type === 'scatter3d';
+var help = document.createElement('div');
+help.style.cssText = 'position:fixed;top:14px;left:10px;z-index:999;' +
+  'background:rgba(252,252,251,0.96);border:1px solid #ccc;border-radius:6px;' +
+  'padding:6px 12px;font:12px/1.7 sans-serif;color:#0b0b0b;' +
+  'box-shadow:0 2px 8px rgba(0,0,0,0.12)';
+var helpBody2d = '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
+  '<div>ダブルクリック: 全体表示に戻る</div>' +
+  '<div>点にホバー→クリック: KAKENページを開く</div>' +
+  '<div>凡例クリック: 大区分の表示切替</div>' +
+  '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
+  '<div>Esc: 選択解除</div>';
+var helpBody3d = '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
+  '<div>点にホバー→クリック: KAKENページを開く</div>' +
+  '<div>凡例クリック: 大区分の表示切替</div>';
+help.innerHTML = '<b>操作</b><span id="ka-help-hint" style="color:#898781"> ▸</span>' +
+  '<div id="ka-help-body" style="display:none">' + (is3d ? helpBody3d : helpBody2d) + '</div>';
+document.body.appendChild(help);
+var helpBodyEl = document.getElementById('ka-help-body');
+var helpHint = document.getElementById('ka-help-hint');
+help.addEventListener('mouseenter', function () { helpBodyEl.style.display = 'block'; helpHint.textContent = ''; });
+help.addEventListener('mouseleave', function () { helpBodyEl.style.display = 'none'; helpHint.textContent = ' ▸'; });
 
 // ---- 種目フィルタ（トレース＝大区分×種目。表示/非表示切替のみで高速） ----
 // チェック解除 → visible=false。チェック → 同じ大区分グループ内で種目オフでない
@@ -123,7 +151,7 @@ var cats = order.filter(function (c) { return counts[c] !== undefined; }).concat
     .sort(function (a, b) { return counts[b] - counts[a]; }));
 
 var panel = document.createElement('div');
-panel.style.cssText = 'position:fixed;top:56px;left:10px;z-index:999;' +
+panel.style.cssText = 'position:fixed;top:52px;left:10px;z-index:999;' +
   'background:rgba(252,252,251,0.96);border:1px solid #ccc;border-radius:6px;' +
   'padding:8px 12px;font:12px/1.7 sans-serif;color:#0b0b0b;max-height:70vh;' +
   'overflow-y:auto;box-shadow:0 2px 8px rgba(0,0,0,0.12)';
@@ -171,6 +199,60 @@ document.getElementById('ka-selnone').addEventListener('click', function (e) {
   e.preventDefault();
   boxes.forEach(function (cb, i) { cb.checked = false; setCategory(cats[i], false); });
 });
+
+// ---- 選択パネル（なげなわ/矩形で囲うと内訳・キーワード集計を即時表示） ----
+var selPanel = document.createElement('div');
+selPanel.style.cssText = 'position:fixed;bottom:14px;left:10px;z-index:999;display:none;' +
+  'background:rgba(252,252,251,0.97);border:1px solid #ccc;border-radius:6px;' +
+  'padding:10px 14px;font:12px/1.6 sans-serif;color:#0b0b0b;max-width:380px;' +
+  'max-height:55vh;overflow-y:auto;box-shadow:0 2px 10px rgba(0,0,0,0.15)';
+document.body.appendChild(selPanel);
+
+function topEntries(obj, n) {
+  return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, n);
+}
+plot.on('plotly_selected', function (d) {
+  if (!d || !d.points || !d.points.length) { selPanel.style.display = 'none'; return; }
+  var n = d.points.length, dais = {}, cts = {}, kws = {};
+  d.points.forEach(function (p) {
+    var g = p.fullData.legendgroup || '?';
+    dais[g] = (dais[g] || 0) + 1;
+    var m = p.fullData.meta || '?';
+    cts[m] = (cts[m] || 0) + 1;
+    var cd = p.customdata;
+    if (Array.isArray(cd) && cd[1]) {
+      cd[1].split('、').forEach(function (w) { if (w) kws[w] = (kws[w] || 0) + 1; });
+    }
+  });
+  var html = '<b>選択: ' + n.toLocaleString() + '件</b>' +
+    ' <a href="#" id="ka-selclear" style="color:#898781">閉じる</a><br>';
+  html += '<span style="color:#52514e">大区分:</span> ' + topEntries(dais, 5).map(function (g) {
+    return g + ' ' + dais[g].toLocaleString();
+  }).join(' / ') + '<br>';
+  html += '<span style="color:#52514e">種目:</span> ' + topEntries(cts, 4).map(function (c) {
+    return c + ' ' + cts[c].toLocaleString();
+  }).join(' / ') + '<br>';
+  html += '<span style="color:#52514e">頻出キーワード:</span><br>' +
+    topEntries(kws, 15).map(function (w) {
+      return '<span style="display:inline-block;background:#eef3fa;border:1px solid #c9d8ee;' +
+        'border-radius:3px;padding:0 6px;margin:1px 2px">' + w +
+        ' <span style="color:#898781">' + kws[w] + '</span></span>';
+    }).join('');
+  selPanel.innerHTML = html;
+  selPanel.style.display = 'block';
+  document.getElementById('ka-selclear').addEventListener('click', function (e) {
+    e.preventDefault(); selPanel.style.display = 'none';
+  });
+});
+plot.on('plotly_deselect', function () { selPanel.style.display = 'none'; });
+
+// Esc: 選択を解除してパン操作モードに戻る
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  selPanel.style.display = 'none';
+  Plotly.restyle(plot, { selectedpoints: [null] });
+  Plotly.relayout(plot, { dragmode: 'pan' });
+});
 """
 
 
@@ -181,8 +263,8 @@ def main() -> None:
     corpus = pl.read_parquet(
         "data/processed/corpus.parquet", columns=["award_number", "kaken_id", "category"]
     )
-    titles = pl.read_parquet(  # 英語タイトル補完済みの awards から
-        "data/interim/awards.parquet", columns=["award_number", "title"]
+    titles = pl.read_parquet(  # 英語タイトル補完済み。keywords は選択パネルの集計用
+        "data/interim/awards.parquet", columns=["award_number", "title", "keywords"]
     )
     df = coords.join(corpus, on="award_number", how="left")
     df = df.join(titles, on="award_number", how="left")
@@ -224,7 +306,10 @@ def main() -> None:
                 showlegend=False,  # 凡例はアンカーが担う
                 text=text,
                 hoverinfo="none",  # 吹き出しは自前ツールチップ（POST_SCRIPT）で描く
-                customdata=sub["kaken_id"].to_list(),
+                customdata=[
+                    [k, "、".join(kw)] for k, kw in
+                    zip(sub["kaken_id"], sub["keywords"], strict=True)
+                ],
                 visible=True if dai != "区分なし" else "legendonly",
             )
             if is_3d:
@@ -238,9 +323,8 @@ def main() -> None:
                     marker=dict(size=2.2, color=color, opacity=0.5), **common,
                 ))
 
-    dims = "3D（ドラッグで回転）" if is_3d else "2D（スクロールで拡大縮小・ドラッグで移動・ダブルクリックで全体表示）"
     layout = dict(
-        title=f"科研費 学術地図 {dims} / 凡例クリックで区分の表示切替 / 点をクリックでKAKENページ",
+        title=f"科研費 学術地図 {'3D' if is_3d else '2D'}（2019–2025年度・206,078件）",
         paper_bgcolor=SURFACE,
         legend=dict(itemsizing="constant", font=dict(size=11), groupclick="togglegroup"),
         annotations=[dict(text=FOOTER, x=0, y=0, xref="paper", yref="paper",
