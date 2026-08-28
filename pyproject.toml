@@ -9,6 +9,7 @@ authors = [{ name = "Takayuki Ogi", email = "takayuki1997@gmail.com" }]
 dependencies = [
     "httpx>=0.28.1",
     "matplotlib>=3.11.1",
+    "plotly>=7.0.0",
     "polars>=1.42.1",
     "sentence-transformers>=5.7.0",
     # Linux(HAKUSAN) は cu128 ビルドの上限が 2.11 のため下限を 2.11 に置く（Mac は最新が入る）
@@ -55,6 +56,8 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # テストの XML フィクスチャは実データの構造を保つため行長を許容する。
 "tests/*" = ["E501"]
+# 図の脚注（出所表記）の長い日本語リテラルは折り返さない。
+"scripts/plot_map*.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
