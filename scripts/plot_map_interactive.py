@@ -251,6 +251,7 @@ def main() -> None:
         layout["scene"] = dict(
             xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
             aspectmode="data", bgcolor=SURFACE,
+            dragmode="orbit",  # つっかかりのない自由回転（定量分析には使わない前提）
         )
     else:
         layout.update(
