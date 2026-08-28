@@ -211,8 +211,12 @@ document.body.appendChild(selPanel);
 function topEntries(obj, n) {
   return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, n);
 }
+var outlineClearedAt = 0;
 plot.on('plotly_selected', function (d) {
-  if (!d || !d.points || !d.points.length) { selPanel.style.display = 'none'; return; }
+  if (!d || !d.points || !d.points.length) {
+    if (Date.now() - outlineClearedAt < 800) return;  // 囲い線の自動削除による誤発火は無視
+    selPanel.style.display = 'none'; return;
+  }
   var n = d.points.length, dais = {}, cts = {}, kws = {};
   d.points.forEach(function (p) {
     var g = p.fullData.legendgroup || '?';
@@ -243,8 +247,15 @@ plot.on('plotly_selected', function (d) {
   document.getElementById('ka-selclear').addEventListener('click', function (e) {
     e.preventDefault(); selPanel.style.display = 'none';
   });
+  // 囲い線はイベントを横取りする（内側でホバー/ズーム不能になる）ため、
+  // 集計後すぐ消す。選択状態（薄暗さ）とパネルは残る。
+  outlineClearedAt = Date.now();
+  Plotly.relayout(plot, { selections: [] });
 });
-plot.on('plotly_deselect', function () { selPanel.style.display = 'none'; });
+plot.on('plotly_deselect', function () {
+  if (Date.now() - outlineClearedAt < 800) return;  // 囲い線の自動削除による誤発火は無視
+  selPanel.style.display = 'none';
+});
 
 // Esc: 選択を解除してパン操作モードに戻る
 // selectedpoints は全トレース分の null 配列で解除し、囲い線（layout.selections）も消す
