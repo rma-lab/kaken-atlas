@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>科研費 学術地図 — KAKEN-ATLAS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+<style>
+  body { margin:0; background:#fcfcfb; color:#0b0b0b;
+    font:15px/1.8 -apple-system,"Hiragino Sans",sans-serif;
+    display:flex; min-height:100vh; align-items:center; justify-content:center; }
+  main { max-width:560px; padding:32px 24px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:#898781; font-size:13px; margin-bottom:24px; }
+  a.card { display:block; border:1px solid #e1e0d9; border-radius:10px;
+    padding:14px 18px; margin:10px 0; text-decoration:none; color:#0b0b0b;
+    background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  a.card:hover { border-color:#1c5cab; }
+  a.card b { color:#1c5cab; }
+  .note { color:#52514e; font-size:12.5px; margin-top:24px; }
+  .foot { color:#898781; font-size:11px; margin-top:16px; border-top:1px solid #e1e0d9;
+    padding-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>科研費 学術地図</h1>
+  <div class="sub">KAKEN-ATLAS — 2019–2025年度開始の採択課題 206,078件の意味空間マップ</div>
+  <a class="card" href="map2d/"><b>2D 地図を開く</b><br>
+    <span style="font-size:13px">検索・種目フィルタ・なげなわ集計・KAKENリンク。まずはこちら</span></a>
+  <a class="card" href="map3d/"><b>3D 地図を開く</b><br>
+    <span style="font-size:13px">自由回転で眺める探索用ビュー</span></a>
+  <div class="note">
+    点の読み込みは数秒で完了します。開いた直後はタイトル等の詳細データを背景で
+    読み込んでおり（右下に進捗表示）、完了すると検索が使えます。PCでの閲覧を推奨。
+  </div>
+  <div class="foot">
+    データ: <a href="https://kaken.nii.ac.jp/">KAKEN科研費データベース</a>（国立情報学研究所）より取得・加工 |
+    埋め込み: cl-nagoya/ruri-v3-310m | UMAP (cosine, n_neighbors=15, seed=42) |
+    作成: KAKEN-ATLAS（科研費 基盤研究(C) 26K15524） |
+    <a href="https://github.com/takayuki1997/kaken-atlas">コード</a>
+  </div>
+</main>
+</body>
+</html>

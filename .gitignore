@@ -17,6 +17,8 @@ data/processed/*
 # Models & embeddings (large binaries)
 models/
 *.bin
+# ウェブ地図の量子化座標（points.bin）は配信物なので追跡する
+!docs/**/*.bin
 *.safetensors
 *.npy
 *.npz
