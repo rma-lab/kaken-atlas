@@ -19,7 +19,8 @@
 - **データ源：KAKEN opensearch API**（`https://kaken.nii.ac.jp/opensearch/`、`format=xml`、`rw=500`、`st` ページング）。
   **appid 必須** → `.env` の `KAKEN_APP_ID`（git 除外）に置く。コードに直書きしない。
 - **データ対象範囲：2018年度以降のみ**（小区分306は2018年の審査区分改革で導入。それ以前は比較対象外）。
-- **計算環境**：開発＝ローカル Mac（CPU/MPS）、大規模埋め込み＝JAIST HAKUSAN GPU。詳細は `docs/compute-hakusan.md`。
+- **計算環境**：開発＝ローカル Mac（CPU/MPS）、大規模埋め込み＝JAIST HAKUSAN GPU。詳細は `reports/compute-hakusan.md`
+  （公開リポジトリから外すため git 管理外の reports/ に置く。2026-09-04）。
 
 ## ディレクトリ・データ規約
 - `data/raw/` ＝ 取得した生データ（不変・git 除外）、`data/interim/` ＝ 前処理途中、`data/processed/` ＝ 成果物。
