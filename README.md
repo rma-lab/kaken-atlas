@@ -48,7 +48,7 @@ uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet 
 - **次元削減**: UMAP（cosine、seed 固定）
 - **クラスタリング（R9予定）**: HDBSCAN
 - **可視化**: matplotlib（静的図・時系列KDE）/ Plotly（インタラクティブ地図）
-- **計算環境**: 開発=ローカル（CPU/MPS で可）/ 埋め込みは GPU 1枚で約30分（NVIDIA A40 実測）
+- **計算環境**: 開発=ローカル（CPU/MPS で可）/ 埋め込みは GPU 1枚で約30分（NVIDIA A40 実測。JAIST スーパーコンピュータ HAKUSAN を利用）
 
 ## ディレクトリ構成
 
