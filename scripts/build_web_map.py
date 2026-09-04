@@ -800,9 +800,10 @@ document.addEventListener('keydown', function (e) {
   Plotly.update(plot, { selectedpoints: null }, { selections: [], dragmode: 'pan' });
 });
 
-// ---- 大区分ドロワー（スマホ幅のみ。Plotly凡例の代替: 下部ボタン→引き出し表示） ----
+// ---- 大区分シート（スマホ幅のみ。Plotly凡例の代替: 下部ボタン→ボトムシート） ----
 if (narrow) {
-  var anchors = M.traces.filter(function (t) { return t.k === 'a'; });
+  var anchors = M.traces.filter(function (t) { return t.k === 'a'; })
+    .sort(function (a, b) { return a.rank - b.rank; });  // 凡例順（A〜K→複数→区分なし）
   var daiOn = {};
   anchors.forEach(function (t) { daiOn[t.dai] = t.vis; });
 
@@ -819,31 +820,51 @@ if (narrow) {
   var daiBtn = document.createElement('div');
   daiBtn.id = 'ka-dai-btn';
   daiBtn.textContent = '大区分 ▴';
-  daiBtn.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);' +
-    'z-index:999;padding:6px 18px;border-radius:17px;color:#1c5cab;' + PANEL;
+  daiBtn.style.cssText = 'position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));' +
+    'left:50%;transform:translateX(-50%);z-index:999;padding:7px 20px;border-radius:18px;' +
+    'color:#1c5cab;font-weight:600;' + PANEL;
   document.body.appendChild(daiBtn);
+
+  var backdrop = document.createElement('div');
+  backdrop.id = 'ka-dai-backdrop';
+  backdrop.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(20,20,15,0.3);' +
+    'opacity:0;visibility:hidden;transition:opacity .25s';
+  document.body.appendChild(backdrop);
 
   var drawer = document.createElement('div');
   drawer.id = 'ka-dai-drawer';
-  drawer.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:1001;display:none;' +
-    'max-height:60vh;overflow-y:auto;padding:12px 18px 22px;border-radius:14px 14px 0 0;' + PANEL;
+  drawer.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:1001;' +
+    'background:#fcfcfb;border-top:1px solid ' + LINE + ';border-radius:16px 16px 0 0;' +
+    'box-shadow:0 -6px 24px rgba(0,0,0,0.18);transform:translateY(105%);' +
+    'transition:transform .28s cubic-bezier(.2,.8,.25,1);' +
+    'padding:10px 16px calc(16px + env(safe-area-inset-bottom));' +
+    'font:12.5px/1.6 -apple-system,sans-serif;color:' + INK;
   drawer.innerHTML =
-    '<div style="display:flex;justify-content:space-between;margin-bottom:6px">' +
-    '<b>大区分（タップで表示切替）</b>' +
-    '<a href="#" id="ka-dai-close" style="color:' + MUTED + ';text-decoration:none">閉じる ▾</a></div>' +
+    '<div style="width:36px;height:4px;border-radius:2px;background:#d5d4cc;margin:0 auto 10px"></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">' +
+    '<b style="font-size:14px">大区分</b>' +
+    '<span style="color:' + MUTED + ';font-size:11.5px">タップで表示切替</span></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">' +
     anchors.map(function (t, i) {
-      return '<div class="ka-dai-item" data-i="' + i + '" style="padding:4px 0;cursor:pointer;' +
-        (t.vis ? '' : 'opacity:0.35') + '">' +
-        '<span style="display:inline-block;width:11px;height:11px;border-radius:50%;' +
-        'background:' + t.color + ';margin-right:8px;vertical-align:-1px"></span>' +
-        esc(t.label) + ' <span style="color:' + MUTED + '">' + fmt(t.n) + '</span></div>';
-    }).join('');
+      return '<div class="ka-dai-item" data-i="' + i + '" style="display:flex;align-items:center;' +
+        'min-width:0;gap:7px;border:1px solid ' + LINE + ';border-radius:9px;padding:7px 9px;' +
+        'background:#fff;transition:opacity .15s;' + (t.vis ? '' : 'opacity:0.35') + '">' +
+        '<span style="flex:none;width:11px;height:11px;border-radius:50%;background:' + t.color + '"></span>' +
+        '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+        esc(t.label) + '</span>' +
+        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(t.n) + '</span></div>';
+    }).join('') + '</div>';
   document.body.appendChild(drawer);
 
-  daiBtn.addEventListener('click', function () { drawer.style.display = 'block'; });
-  document.getElementById('ka-dai-close').addEventListener('click', function (e) {
-    e.preventDefault(); drawer.style.display = 'none';
-  });
+  function openDrawer(on) {
+    drawer.style.transform = on ? 'translateY(0)' : 'translateY(105%)';
+    drawer.dataset.open = on ? '1' : '';
+    backdrop.style.opacity = on ? '1' : '0';
+    backdrop.style.visibility = on ? 'visible' : 'hidden';
+    daiBtn.style.display = on ? 'none' : '';
+  }
+  daiBtn.addEventListener('click', function () { openDrawer(true); });
+  backdrop.addEventListener('click', function () { openDrawer(false); });
   drawer.querySelectorAll('.ka-dai-item').forEach(function (el) {
     el.addEventListener('click', function () {
       var t = anchors[parseInt(el.getAttribute('data-i'), 10)];
@@ -856,12 +877,12 @@ if (narrow) {
 
 // ---- 2本指ピンチズーム（2D・タッチ端末のみ。Plotly 2Dカルテシアンは
 // タッチのピンチに対応していないため自前実装。1本指パンはPlotly標準） ----
+function tDist(t) {
+  var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 if (isTouch && !is3d) {
   var pinch = null, pinchRaf = false;
-  function tDist(t) {
-    var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
   plot.addEventListener('touchstart', function (e) {
     if (e.touches.length !== 2) return;
     e.stopPropagation();  // Plotlyのパン処理に2本指を渡さない
@@ -896,6 +917,39 @@ if (isTouch && !is3d) {
   }, { capture: true, passive: false });
   plot.addEventListener('touchend', function (e) {
     if (e.touches.length < 2) pinch = null;
+  }, { capture: true, passive: true });
+}
+
+// ---- 3Dのピンチズーム（タッチ端末のみ。gl3dはピンチが効かない環境があるため、
+// 2本指の間隔に応じてカメラの視点距離をスケール。1本指回転はPlotly標準） ----
+if (isTouch && is3d) {
+  var pinch3 = null, raf3 = false;
+  plot.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 2) return;
+    e.stopPropagation();
+    var cam = (plot._fullLayout.scene && plot._fullLayout.scene.camera) || {};
+    var eye = cam.eye || { x: 1.25, y: 1.25, z: 1.25 };
+    var ctr = cam.center || { x: 0, y: 0, z: 0 };
+    pinch3 = { d0: tDist(e.touches), eye: { x: eye.x, y: eye.y, z: eye.z }, ctr: ctr };
+  }, { capture: true, passive: true });
+  plot.addEventListener('touchmove', function (e) {
+    if (!pinch3 || e.touches.length !== 2) return;
+    e.preventDefault(); e.stopPropagation();
+    if (raf3) return;
+    raf3 = true;
+    var s = Math.max(0.05, pinch3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
+    requestAnimationFrame(function () {
+      raf3 = false;
+      if (!pinch3) return;
+      Plotly.relayout(plot, { 'scene.camera.eye': {
+        x: pinch3.ctr.x + (pinch3.eye.x - pinch3.ctr.x) * s,
+        y: pinch3.ctr.y + (pinch3.eye.y - pinch3.ctr.y) * s,
+        z: pinch3.ctr.z + (pinch3.eye.z - pinch3.ctr.z) * s,
+      } });
+    });
+  }, { capture: true, passive: false });
+  plot.addEventListener('touchend', function (e) {
+    if (e.touches.length < 2) pinch3 = null;
   }, { capture: true, passive: true });
 }
 
