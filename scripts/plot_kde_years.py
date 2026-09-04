@@ -347,7 +347,7 @@ def plot_change(fields: dict[int, np.ndarray], extent: list[float], out: Path) -
         "領域名は各ピーク周辺課題のキーワード・タイトルの実査により同定。\n"
         "生成AI関連の伸びは帯状に分散するため点ピークとしては現れにくい\n"
         "（分布は別図 kde_genai.png を参照）。",
-        va="top", color=INK, fontsize=10.5, linespacing=1.6,
+        va="top", color=INK, fontsize=13, linespacing=1.6,
     )
     fig.text(
         0.62, 0.32,
@@ -406,7 +406,7 @@ def plot_genai(
         "技術の生産地と消費地が意味空間上で分離している。\n"
         "年度別件数は 24→40→58→98→104→307→366（2024年度に急増。\n"
         "2024年度課題の申請書は2023年秋＝ChatGPT公開後に執筆）。",
-        va="top", color=INK, fontsize=10.5, linespacing=1.6,
+        va="top", color=INK, fontsize=13, linespacing=1.6,
     )
     fig.text(
         0.60, 0.30,
