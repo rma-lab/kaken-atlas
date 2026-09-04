@@ -538,7 +538,11 @@ function openKaken(gid) {
   var k = kakenId(row), now = Date.now();
   if (k === lastK && now - lastT < 600) return;
   lastK = k; lastT = now;
-  window.open('https://kaken.nii.ac.jp/ja/grant/' + k + '/', '_blank');
+  // window.open は iOS の standalone(PWA) 表示で失敗することがあるためアンカー方式
+  var a = document.createElement('a');
+  a.href = 'https://kaken.nii.ac.jp/ja/grant/' + k + '/';
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 plot.on('plotly_click', function (d) {
   if (isTouch && !is3d) return;  // 2Dタッチは自前のタップ処理（下記）に任せる
@@ -572,11 +576,22 @@ function nearestGid(cx, cy) {
   }
   return best;
 }
+var lastTapXY = null;
 function handleTap(cx, cy) {
   if (Date.now() < suppressUntil) return;
+  var now = Date.now();
+  // 直前にツールチップを出した位置の近くを再タップ → 同じ点への2回目とみなして開く。
+  // （指の精度で最近傍点が隣にずれ、密集地で「同じ点」の一致判定に失敗するため、
+  //   点の同一性でなくタップ位置の近さで判定する）
+  if (lastTapGid !== null && now - lastTapAt < 6000 && lastTapXY &&
+      Math.abs(cx - lastTapXY[0]) < 30 && Math.abs(cy - lastTapXY[1]) < 30) {
+    openKaken(lastTapGid);
+    lastTapGid = null; lastTapXY = null;
+    return;
+  }
   var gid = nearestGid(cx, cy);
   if (gid === null) {  // 空白タップ: ツールチップを閉じる
-    hoveredGid = null; lastTapGid = null; tip.style.display = 'none';
+    hoveredGid = null; lastTapGid = null; lastTapXY = null; tip.style.display = 'none';
     return;
   }
   mx = cx; my = cy;
@@ -588,13 +603,7 @@ function handleTap(cx, cy) {
       if (hoveredGid === gid) renderTip(gid, tr);
     }).catch(function () {});
   }
-  var now = Date.now();
-  if (gid === lastTapGid && now - lastTapAt < 6000) {
-    openKaken(gid);
-    lastTapGid = null;
-  } else {
-    lastTapGid = gid; lastTapAt = now;
-  }
+  lastTapGid = gid; lastTapAt = now; lastTapXY = [cx, cy];
 }
 if (isTouch && !is3d) {
   var tapStart = null;
