@@ -1,0 +1,13 @@
+{
+  "name": "科研費 学術地図 — KAKEN-ATLAS",
+  "short_name": "学術地図",
+  "start_url": "/kaken-atlas/",
+  "scope": "/kaken-atlas/",
+  "display": "standalone",
+  "background_color": "#fcfcfb",
+  "theme_color": "#fcfcfb",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
