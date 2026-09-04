@@ -58,7 +58,10 @@ def build_order(df: pl.DataFrame) -> tuple[pl.DataFrame, list[dict]]:
             k="a", dai=dai, label=label, color=color, n=dsub.height,
             rank=legend_order.index(dai) + 1, vis=visible,
         ))
-        cat_counts = dsub.group_by("category").len().sort("len", descending=True)
+        # len 同数の種目間の順序を固定するため category 名でタイブレーク（出力の再現性）
+        cat_counts = dsub.group_by("category").len().sort(
+            ["len", "category"], descending=[True, False]
+        )
         for cat in cat_counts["category"]:
             sub = dsub.filter(pl.col("category") == cat)
             traces.append(dict(
@@ -162,6 +165,8 @@ TEMPLATE = r"""<!doctype html>
 <title>__TITLE__ — KAKEN-ATLAS</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
 <script src="__PLOTLY_CDN__" charset="utf-8"></script>
+<script data-goatcounter="https://rma-lab.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 <style>
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); }
