@@ -563,17 +563,15 @@ function hideRing() { ring.style.display = 'none'; }
 
 function renderCard(gid, tr) {
   var row = getRow(gid);
+  // タイトルは2行分の高さで固定（1行でもカードの高さが変わらない。3行以上は省略記号）
   var body =
-    '<div style="font-weight:600;line-height:1.4;margin:2px 0">' +
+    '<div style="font-weight:600;line-height:1.4;min-height:2.8em;margin:2px 0;overflow:hidden;' +
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' +
     (row ? esc(row[2] || '（タイトルなし）') : '<span style="color:' + MUTED + '">（読み込み中…）</span>') +
     '</div>' +
     '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? tr.cat + ' / ' + row[0] : tr.cat) + '</div>' +
-    (row && row[3] ? '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px">' + esc(row[3]) + '</div>' : '');
-  var foot = row
-    ? '<div style="margin-top:6px;padding-top:5px;border-top:1px solid ' + LINE + ';color:#1c5cab;font-weight:600">' +
-      (isTouch ? 'タップ' : 'クリック') + 'でKAKENページを開く ↗</div>'
-    : '<div style="margin-top:6px;color:' + MUTED + ';font-size:11px">詳細を読み込み中…</div>';
-  var inner = headerHtml(tr, true) + body + foot;
+    '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px;min-height:1.5em">' + esc(row ? row[3] : '') + '</div>';
+  var inner = headerHtml(tr, true) + body;
   card.innerHTML = row
     ? '<a data-open="1" href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener"' +
       ' style="display:block;color:inherit;text-decoration:none;cursor:pointer">' + inner + '</a>'
