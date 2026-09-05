@@ -386,7 +386,10 @@ function renderTip(gid, tr) {
 
 plot.on('plotly_hover', function (d) {
   var gid = gidOf(d.points[0]);
-  if (gid === null) return;
+  if (gid === null) {  // 球面の下地など点以外に乗った: 点から外れた扱い（gl3d は unhover を出さない）
+    hoveredGid = null; tip.style.display = 'none';
+    return;
+  }
   hoveredGid = gid;
   if (resolveTap(gid)) return;      // タップ/クリック直後の遅れて届いた判定 → その点を選択
   if (isTouch || selGid !== null) return;  // タッチ端末はプレビューなし。カード表示中もプレビューは出さない
