@@ -384,16 +384,18 @@ function renderTip(gid, tr) {
   tip.style.borderColor = tr.color;
   tip.style.display = 'block'; placeTip();
 }
+
 plot.on('plotly_hover', function (d) {
-  if (isTouch) return;  // タッチ端末はタップ→カードのみ（合成マウスイベントによるちらつきを避ける）
   var gid = gidOf(d.points[0]);
   if (gid === null) return;
   hoveredGid = gid;
+  if (resolveTap(gid)) return;      // タップ/クリック直後の遅れて届いた判定 → その点を選択
+  if (isTouch || selGid !== null) return;  // タッチ端末はプレビューなし。カード表示中もプレビューは出さない
   var tr = M.traces[traceOf[gid]];
   renderTip(gid, tr);
   if (!getRow(gid)) {  // 未取得シャードはその場で取得し、まだ同じ点なら描き直す
     ensureShard(gid >> SHARD_SHIFT).then(function () {
-      if (hoveredGid === gid) renderTip(gid, tr);
+      if (hoveredGid === gid && selGid === null) renderTip(gid, tr);
     }).catch(function () {});
   }
 });
@@ -459,7 +461,7 @@ function placeCard(cx, cy) {  // 点（画面座標）と重ならない位置�
 }
 function selectPoint(gid, cx, cy) {
   if (!is3d) { var pj = projected(gid); cx = pj[0]; cy = pj[1]; }  // 2Dは点の正確な位置に吸着
-  selGid = gid; selXY = [cx, cy]; selDown = downSeq;
+  selGid = gid; selXY = [cx, cy];
   var tr = M.traces[traceOf[gid]];
   tip.style.display = 'none';
   showRing(cx, cy);
@@ -516,25 +518,44 @@ if (is3d) {
     lastTouchXY = [c.clientX, c.clientY]; lastTouchAt = Date.now();
   }, { capture: true, passive: true });
 }
-plot.on('plotly_click', function (d) {
-  if (isTouch && !is3d) return;  // 2Dタッチは自前のタップ処理（下記）に任せる
-  var gid = gidOf(d.points[0]);
+// 選択のトリガ（2Dタッチ以外）は DOM の click（押下→離すで動いていない操作）:
+//  (a) ホバー中の点があればその場で選択（PC はマウスが点の上で止まってからクリックされる）
+//  (b) なければ、遅れて届く plotly_click / plotly_hover を少し待ってその点を選択
+//      （gl3d の判定は描画フレーム後に届き、押下が短いと click 自体が出ないこともある）
+//  (c) 期限内に届かなければ点のない場所として選択解除
+// 古いカードは新しい判定が届くまで消さない（消えてから出る「ちらつき」を避ける）
+var pendingTap = null;
+function resolveTap(gid) {
+  if (!pendingTap) return false;
+  var t = pendingTap; clearTimeout(t.timer); pendingTap = null;
+  selectPoint(gid, t.x, t.y);
+  return true;
+}
+function cancelTap(clear) {
+  if (!pendingTap) return;
+  clearTimeout(pendingTap.timer); pendingTap = null;
+  if (clear) clearSelection();
+}
+plot.addEventListener('click', function (e) {
+  if (isTouch && !is3d) return;  // 2Dタッチは自前のタップ処理（下記）
   var now = Date.now();
-  if (gid === null || now < suppressUntil || gestureMoved) return;
-  var xy = (d.event && d.event.clientX != null) ? [d.event.clientX, d.event.clientY]
-         : (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [mx, my];
-  selectPoint(gid, xy[0], xy[1]);
+  if (gestureMoved || now < suppressUntil) return;
+  var xy = (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [e.clientX, e.clientY];
+  cancelTap(false);
+  if (!isTouch && hoveredGid !== null) { selectPoint(hoveredGid, xy[0], xy[1]); return; }
+  // 2D の plotly_click は DOM click より先に同期で届くので待ちは短くてよい。gl3d は描画フレーム後に届く
+  pendingTap = { x: xy[0], y: xy[1], timer: setTimeout(function () { cancelTap(true); }, is3d ? 700 : 60) };
 });
-// 点のない場所のクリック/タップ: 選択解除。「同じ押下（pointerdown）から選択が起きたか」で判定する
-// （選択は touchend / mouseup / 遅れて来る plotly_click のいずれでも起こるため、時刻でなく押下の通し番号で対応づける。
-//   gl3d の pick は少し遅れて click を出すので待ってから判定）
-var downSeq = 0, selDown = -1;
-plot.addEventListener('pointerdown', function () { downSeq++; }, true);
-plot.addEventListener('click', function () {
-  var seq = downSeq;
-  setTimeout(function () {
-    if (selDown !== seq && !gestureMoved && Date.now() >= suppressUntil) clearSelection();
-  }, is3d ? 300 : 60);
+plot.on('plotly_click', function (d) {
+  if (isTouch && !is3d) return;
+  var gid = gidOf(d.points[0]);
+  if (gid === null) { cancelTap(true); return; }  // 球面の下地など点以外 → 空白扱い
+  if (Date.now() < suppressUntil || gestureMoved) return;
+  if (!resolveTap(gid) && selGid !== gid) {
+    // 待ちが無い（click より先に届いた等）場合もその点を選択
+    var xy = (isTouch && Date.now() - lastTouchAt < 1000) ? lastTouchXY : [mx, my];
+    selectPoint(gid, xy[0], xy[1]);
+  }
 });
 
 // ---- 2Dタッチ端末のタップ処理（Plotlyのタッチ経由ヒットテストは信頼できないため、
