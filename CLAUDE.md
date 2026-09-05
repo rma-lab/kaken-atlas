@@ -51,7 +51,9 @@
 - 大区分11色は**意味順色相環**（重心距離の最短巡回路→OKLCH等間隔。導出は `scripts/plot_map_dai.py` コメント）。
 
 ## 可視化パイプライン
-- 次元削減：`uv run python -m kaken_atlas.reduce [--n-components 3]` → `data/processed/umap*_nn15_md0.1.parquet`
+- 次元削減：`uv run python -m kaken_atlas.reduce [--n-components 3 | --sphere]` → `data/processed/umap*_nn15_md0.1.parquet`
+  （`--sphere` は `output_metric='haversine'` の球面埋め込み。`umapsphere_*.parquet` に単位球面上の c0,c1,c2 と
+  theta/phi。全件で約8分。`build_web_map.py` に渡すと `docs/globe/` の地球儀ビューになる）
   （cosine・seed=42固定。2Dは M3 Air で約2分）。
 - 静的図：`scripts/plot_map.py`（密度）、`scripts/plot_map_dai.py`（大区分パネル・一覧）→ `reports/figures/*.png`。
   **全図に出所・件数・年度・パラメータの脚注を焼き込む**こと。

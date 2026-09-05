@@ -33,6 +33,7 @@ def reduce_embeddings(
     min_dist: float = 0.1,
     n_components: int = 2,
     random_state: int = 42,
+    output_metric: str = "euclidean",
 ) -> np.ndarray:
     from umap import UMAP
 
@@ -41,10 +42,23 @@ def reduce_embeddings(
         min_dist=min_dist,
         n_components=n_components,
         metric="cosine",
+        output_metric=output_metric,
         random_state=random_state,
         verbose=True,
     )
     return reducer.fit_transform(X)
+
+
+def sphere_xyz(coords: np.ndarray) -> np.ndarray:
+    """haversine 出力（極角 θ, 方位角 φ）を単位球面上の xyz に変換する（UMAP 公式ドキュメントの流儀）。
+
+    球面には端がないため、平面 UMAP で起きる「周辺部が引き伸ばされる／切れる」歪みがない。
+    """
+    theta, phi = coords[:, 0], coords[:, 1]
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    return np.stack([x, y, z], axis=1)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -56,7 +70,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--n-components", type=int, default=2)
     ap.add_argument("--random-state", type=int, default=42)
     ap.add_argument("--limit", type=int, default=None, help="先頭N件のみ（動作確認用）")
+    ap.add_argument("--sphere", action="store_true",
+                    help="球面に埋め込む（output_metric='haversine'）。出力は単位球面上の c0,c1,c2 と極角 theta・方位角 phi")
     args = ap.parse_args(argv)
+    if args.sphere and args.n_components != 2:
+        ap.error("--sphere は n_components=2（球面の2パラメータ）でのみ使えます")
 
     emb = pl.read_parquet(args.in_path)
     if args.limit:
@@ -71,18 +89,28 @@ def main(argv: list[str] | None = None) -> None:
         min_dist=args.min_dist,
         n_components=args.n_components,
         random_state=args.random_state,
+        output_metric="haversine" if args.sphere else "euclidean",
     )
     print(f"UMAP 完了: {time.time() - start:.0f}秒")
 
     out = args.out
     if out is None:
-        tag = f"umap{args.n_components}d_nn{args.n_neighbors}_md{args.min_dist}"
+        kind = "sphere" if args.sphere else f"{args.n_components}d"
+        tag = f"umap{kind}_nn{args.n_neighbors}_md{args.min_dist}"
         if args.limit:
             tag += f"_limit{args.limit}"
         out = DATA_PROCESSED / f"{tag}.parquet"
-    df = pl.DataFrame({"award_number": emb["award_number"]}).with_columns(
-        [pl.Series(f"c{i}", coords[:, i].astype("float32")) for i in range(args.n_components)]
-    )
+    if args.sphere:
+        xyz = sphere_xyz(coords)
+        df = pl.DataFrame({"award_number": emb["award_number"]}).with_columns(
+            [pl.Series(f"c{i}", xyz[:, i].astype("float32")) for i in range(3)]
+            + [pl.Series("theta", coords[:, 0].astype("float32")),
+               pl.Series("phi", coords[:, 1].astype("float32"))]
+        )
+    else:
+        df = pl.DataFrame({"award_number": emb["award_number"]}).with_columns(
+            [pl.Series(f"c{i}", coords[:, i].astype("float32")) for i in range(args.n_components)]
+        )
     df.write_parquet(out)
     print(f"出力: {out}")
 

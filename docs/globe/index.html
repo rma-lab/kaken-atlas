@@ -1,182 +1,15 @@
-"""ウェブ公開用の軽量インタラクティブ地図を生成する（GitHub Pages 向け）。
-
-reports/figures/map_*_interactive.html（自己完結・約128MB）の外部データ版。
-二段階読み込みで初期表示を数秒にする:
-
-  フェーズ1  points.bin … 量子化座標(int16)。プログレスバー付きで取得→描画
-  フェーズ2  shards/NNN.json … タイトル・キーワード等（SHARD_SIZE件/片）。
-             描画後に背景先読み（完了で検索が有効化）。未取得片への
-             ホバーはその片だけ即時取得して穴埋めする。
-
-トレース構成・配色・UI（検索/種目フィルタ/なげなわ集計/ツールチップ/KAKENリンク）は
-plot_map_interactive.py と同一仕様。kaken_id は「KAKENHI-<種別>-<課題番号>」に
-分解できるため種別コードのみ持つ。
-
-使い方:
-    uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet
-    uv run python scripts/build_web_map.py data/processed/umap3d_nn15_md0.1.parquet
-出力: docs/map2d/ または docs/map3d/（index.html + points.bin + shards/）
-"""
-
-from __future__ import annotations
-
-import json
-import sys
-from pathlib import Path
-
-import numpy as np
-import polars as pl
-
-sys.path.insert(0, "src")
-sys.path.insert(0, "scripts")
-from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, load_dai_labels  # noqa: E402
-from plot_map_interactive import CATEGORY_ORDER, FOOTER  # noqa: E402
-
-SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使う）
-PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
-
-
-def build_order(df: pl.DataFrame) -> tuple[pl.DataFrame, list[dict]]:
-    """plot_map_interactive.py と同じ描画順に並べ、トレース表を作る。
-
-    点は「大区分（下層→上層）×種目（件数降順）」でトレースごとに連続配置。
-    グローバル添字＝この並びの行番号がシャード分割の単位になる。
-    """
-    draw_order = ["区分なし", "複数", *DAI_COLORS.keys()]
-    legend_order = [*DAI_COLORS.keys(), "複数", "区分なし"]
-    parts: list[pl.DataFrame] = []
-    traces: list[dict] = []
-    offset = 0
-    for dai in draw_order:
-        dsub = df.filter(pl.col("dai") == dai)
-        if dsub.height == 0:
-            continue
-        color = DAI_COLORS.get(dai, "#b9b8b0")
-        label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
-        visible = dai != "区分なし"
-        traces.append(dict(
-            k="a", dai=dai, label=label, color=color, n=dsub.height,
-            rank=legend_order.index(dai) + 1, vis=visible,
-        ))
-        # len 同数の種目間の順序を固定するため category 名でタイブレーク（出力の再現性）
-        cat_counts = dsub.group_by("category").len().sort(
-            ["len", "category"], descending=[True, False]
-        )
-        for cat in cat_counts["category"]:
-            sub = dsub.filter(pl.col("category") == cat)
-            traces.append(dict(
-                k="d", dai=dai, label=label, color=color, cat=cat,
-                off=offset, n=sub.height, vis=visible,
-            ))
-            parts.append(sub)
-            offset += sub.height
-    return pl.concat(parts), traces
-
-
-def main() -> None:
-    coords_path = Path(sys.argv[1])
-    coords = pl.read_parquet(coords_path)
-    is_3d = "c2" in coords.columns
-    is_globe = "theta" in coords.columns  # 球面 UMAP（reduce --sphere）: 単位球面上の xyz
-    corpus = pl.read_parquet(
-        "data/processed/corpus.parquet", columns=["award_number", "kaken_id", "category"]
-    )
-    titles = pl.read_parquet(  # 英語タイトル補完済み
-        "data/interim/awards.parquet", columns=["award_number", "title", "keywords"]
-    )
-    df = coords.join(corpus, on="award_number", how="left")
-    df = df.join(titles, on="award_number", how="left")
-    df = df.join(load_dai_labels(), on="award_number", how="left")
-    df = df.with_columns(
-        pl.col("kaken_id").str.extract(r"^KAKENHI-([A-Z]+)-", 1).alias("ktype")
-    )
-    ktypes = sorted(df["ktype"].unique().to_list())
-    # kaken_id が「KAKENHI-<種別>-<課題番号>」で復元できることを保証（JS側で組み立てる）
-    bad = df.filter(
-        pl.col("kaken_id") != "KAKENHI-" + pl.col("ktype") + "-" + pl.col("award_number")
-    )
-    assert bad.height == 0, f"kaken_id を分解できない行が {bad.height} 件"
-
-    big, traces = build_order(df)
-    n = big.height
-    dims = ["c0", "c1"] + (["c2"] if is_3d else [])
-    if is_globe:
-        # 全点が同じ半径だと、重なりの勝者が描画順（最後の大区分）で決まって色が偏る。
-        # 半径に微小な乱数を与え、奥行きテストで「一番外側の点」が見えるようにする（再現性のため seed 固定）
-        rng = np.random.default_rng(42)
-        r = 1.0 + np.clip(rng.normal(0.0, 0.004, n), -0.01, 0.01)
-        big = big.with_columns([(pl.col(c) * pl.Series(r)).alias(c) for c in dims])
-
-    # 座標の量子化: 各軸を int16 全域に線形写像（分解能=値域/65535、1ピクセル未満）
-    quant = []
-    qarrs = []
-    for c in dims:
-        v = big[c].to_numpy()
-        lo, hi = float(v.min()), float(v.max())
-        qarrs.append(np.round((v - lo) / (hi - lo) * 65535 - 32768).astype("<i2"))
-        quant.append(dict(lo=lo, hi=hi))
-    points_bin = b"".join(a.tobytes() for a in qarrs)
-
-    out_dir = Path("docs/globe" if is_globe else f"docs/map{'3d' if is_3d else '2d'}")
-    (out_dir / "shards").mkdir(parents=True, exist_ok=True)
-    (out_dir / "points.bin").write_bytes(points_bin)
-
-    ktype_idx = {t: i for i, t in enumerate(ktypes)}
-    rows = list(zip(
-        big["award_number"],
-        (ktype_idx[t] for t in big["ktype"]),
-        big["title"],
-        ("、".join(kw) if kw is not None else "" for kw in big["keywords"]),
-        strict=False,
-    ))
-    n_shards = (n + SHARD_SIZE - 1) // SHARD_SIZE
-    for s in range(n_shards):
-        chunk = rows[s * SHARD_SIZE:(s + 1) * SHARD_SIZE]
-        (out_dir / "shards" / f"{s:03d}.json").write_text(
-            json.dumps([list(r) for r in chunk], ensure_ascii=False,
-                       separators=(",", ":")),
-            encoding="utf-8",
-        )
-
-    manifest = dict(
-        n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
-        pointsBytes=len(points_bin), quant=quant, ktypes=ktypes,
-        traces=traces, catOrder=CATEGORY_ORDER,
-        footer=FOOTER + (" | 球面埋め込み: output_metric=haversine" if is_globe else ""),
-        title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
-        sub=f"2019–2025年度・{n:,}件",
-    )
-    html = (
-        TEMPLATE
-        .replace("__TITLE__", manifest["title"])
-        .replace("__PLOTLY_CDN__", PLOTLY_CDN)
-        .replace("__MANIFEST__", json.dumps(manifest, ensure_ascii=False,
-                                            separators=(",", ":")))
-    )
-    (out_dir / "index.html").write_text(html, encoding="utf-8")
-
-    total = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
-    print(f"出力: {out_dir}/ 合計 {total / 1e6:.1f} MB "
-          f"(points.bin {len(points_bin) / 1e6:.1f} MB, シャード {n_shards} 個, "
-          f"index.html {(out_dir / 'index.html').stat().st_size / 1e3:.0f} KB)")
-
-
-# ---------------------------------------------------------------------------
-# HTML/JS テンプレート。UI仕様は plot_map_interactive.py の POST_SCRIPT を踏襲し、
-# 点ごとの文字列参照を「グローバル添字 gid → シャード」の遅延解決に置き換えている。
-# ---------------------------------------------------------------------------
-TEMPLATE = r"""<!doctype html>
+<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>__TITLE__ — KAKEN-ATLAS</title>
+<title>科研費 学術地図 球面 — KAKEN-ATLAS</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<script src="__PLOTLY_CDN__" charset="utf-8"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <script data-goatcounter="https://rma-lab.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <style>
@@ -207,7 +40,7 @@ TEMPLATE = r"""<!doctype html>
 </head>
 <body>
 <div id="ka-loading">
-  <div><b style="font-size:16px">__TITLE__</b></div>
+  <div><b style="font-size:16px">科研費 学術地図 球面</b></div>
   <div id="ka-load-msg">マップ（点）を読み込み中…</div>
   <div id="ka-bar1-wrap"><div id="ka-bar1"></div></div>
 </div>
@@ -218,7 +51,7 @@ TEMPLATE = r"""<!doctype html>
 <div id="plot"></div>
 <script>
 'use strict';
-var M = __MANIFEST__;
+var M = {"n":206078,"is3d":true,"globe":true,"shardSize":2048,"nShards":101,"pointsBytes":1236468,"quant":[{"lo":-1.0087709376692087,"hi":1.0093654245138168},{"lo":-1.0084820997714996,"hi":1.0095064533890656},{"lo":-1.0097206687927247,"hi":1.0099970501661302}],"ktypes":["ORGANIZER","PLANNED","PROJECT","PUBLICLY","WRAPUP"],"traces":[{"k":"a","dai":"区分なし","label":"区分なし","color":"#b9b8b0","n":19564,"rank":13,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"研究活動スタート支援","off":0,"n":10094,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"学術変革領域研究(A)","off":10094,"n":3169,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"新学術領域研究(研究領域提案型)","off":13263,"n":2679,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"奨励研究","off":15942,"n":2599,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"学術変革領域研究(B)","off":18541,"n":539,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":19080,"n":120,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"特別推進研究","off":19200,"n":73,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"挑戦的研究(萌芽)","off":19273,"n":65,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"国際共同研究加速基金(帰国発展研究)","off":19338,"n":57,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"国際共同研究加速基金(国際先導研究)","off":19395,"n":37,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"基盤研究(C)","off":19432,"n":36,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"基盤研究(B)","off":19468,"n":22,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"挑戦的研究(開拓)","off":19490,"n":20,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"若手研究(B)","off":19510,"n":16,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"国際共同研究加速基金(国際共同研究強化)","off":19526,"n":12,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"特別研究促進費","off":19538,"n":10,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"特別研究員奨励費","off":19548,"n":10,"vis":false},{"k":"d","dai":"区分なし","label":"区分なし","color":"#b9b8b0","cat":"学術変革領域研究(学術研究支援基盤形成)","off":19558,"n":6,"vis":false},{"k":"a","dai":"複数","label":"複数","color":"#b9b8b0","n":4531,"rank":12,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"基盤研究(C)","off":19564,"n":1897,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"若手研究","off":21461,"n":877,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"基盤研究(B)","off":22338,"n":757,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"特別研究員奨励費","off":23095,"n":441,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"挑戦的研究(萌芽)","off":23536,"n":353,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"基盤研究(A)","off":23889,"n":115,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"挑戦的研究(開拓)","off":24004,"n":48,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":24052,"n":22,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"国際共同研究加速基金(海外連携研究)","off":24074,"n":11,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":24085,"n":8,"vis":true},{"k":"d","dai":"複数","label":"複数","color":"#b9b8b0","cat":"国際共同研究加速基金(国際共同研究強化)","off":24093,"n":2,"vis":true},{"k":"a","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","n":42894,"rank":1,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"基盤研究(C)","off":24095,"n":24092,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"若手研究","off":48187,"n":8423,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"基盤研究(B)","off":56610,"n":4084,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"特別研究員奨励費","off":60694,"n":3582,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"挑戦的研究(萌芽)","off":64276,"n":1381,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"基盤研究(A)","off":65657,"n":663,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":66320,"n":195,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"挑戦的研究(開拓)","off":66515,"n":147,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":66662,"n":131,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"国際共同研究加速基金(海外連携研究)","off":66793,"n":105,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"国際共同研究加速基金(国際共同研究強化)","off":66898,"n":54,"vis":true},{"k":"d","dai":"A","label":"A〈人文学・社会科学〉","color":"#bf50a0","cat":"基盤研究(S)","off":66952,"n":37,"vis":true},{"k":"a","dai":"B","label":"B〈数物系科学〉","color":"#0088db","n":12130,"rank":2,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"基盤研究(C)","off":66989,"n":4339,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"特別研究員奨励費","off":71328,"n":2466,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"若手研究","off":73794,"n":2076,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"基盤研究(B)","off":75870,"n":1762,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"基盤研究(A)","off":77632,"n":601,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"挑戦的研究(萌芽)","off":78233,"n":507,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"基盤研究(S)","off":78740,"n":99,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"挑戦的研究(開拓)","off":78839,"n":95,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":78934,"n":91,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"国際共同研究加速基金(海外連携研究)","off":79025,"n":41,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":79066,"n":34,"vis":true},{"k":"d","dai":"B","label":"B〈数物系科学〉","color":"#0088db","cat":"国際共同研究加速基金(国際共同研究強化)","off":79100,"n":19,"vis":true},{"k":"a","dai":"C","label":"C〈化学〉","color":"#6473e4","n":14249,"rank":3,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"基盤研究(C)","off":79119,"n":5911,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"基盤研究(B)","off":85030,"n":2738,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"若手研究","off":87768,"n":2441,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"特別研究員奨励費","off":90209,"n":1522,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"挑戦的研究(萌芽)","off":91731,"n":781,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"基盤研究(A)","off":92512,"n":506,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"挑戦的研究(開拓)","off":93018,"n":106,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":93124,"n":89,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"基盤研究(S)","off":93213,"n":57,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":93270,"n":45,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"国際共同研究加速基金(海外連携研究)","off":93315,"n":38,"vis":true},{"k":"d","dai":"C","label":"C〈化学〉","color":"#6473e4","cat":"国際共同研究加速基金(国際共同研究強化)","off":93353,"n":15,"vis":true},{"k":"a","dai":"D","label":"D〈工学〉","color":"#0098b6","n":7996,"rank":4,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"基盤研究(C)","off":93368,"n":2346,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"基盤研究(B)","off":95714,"n":1834,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"若手研究","off":97548,"n":1283,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"特別研究員奨励費","off":98831,"n":1079,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"挑戦的研究(萌芽)","off":99910,"n":735,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"基盤研究(A)","off":100645,"n":428,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"挑戦的研究(開拓)","off":101073,"n":118,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"基盤研究(S)","off":101191,"n":86,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":101277,"n":39,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"国際共同研究加速基金(海外連携研究)","off":101316,"n":21,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":101337,"n":15,"vis":true},{"k":"d","dai":"D","label":"D〈工学〉","color":"#0098b6","cat":"国際共同研究加速基金(国際共同研究強化)","off":101352,"n":12,"vis":true},{"k":"a","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","n":7514,"rank":5,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"基盤研究(C)","off":101364,"n":2363,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"基盤研究(B)","off":103727,"n":1426,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"特別研究員奨励費","off":105153,"n":1367,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"若手研究","off":106520,"n":1222,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"挑戦的研究(萌芽)","off":107742,"n":694,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"基盤研究(A)","off":108436,"n":253,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"挑戦的研究(開拓)","off":108689,"n":80,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"基盤研究(S)","off":108769,"n":49,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":108818,"n":33,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"国際共同研究加速基金(海外連携研究)","off":108851,"n":17,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":108868,"n":7,"vis":true},{"k":"d","dai":"E","label":"E〈材料・応用工学〉","color":"#009f7d","cat":"国際共同研究加速基金(国際共同研究強化)","off":108875,"n":3,"vis":true},{"k":"a","dai":"F","label":"F〈農学〉","color":"#868700","n":11497,"rank":6,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"基盤研究(C)","off":108878,"n":4788,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"基盤研究(B)","off":113666,"n":2121,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"若手研究","off":115787,"n":1812,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"特別研究員奨励費","off":117599,"n":1370,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"挑戦的研究(萌芽)","off":118969,"n":819,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"基盤研究(A)","off":119788,"n":286,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":120074,"n":104,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"挑戦的研究(開拓)","off":120178,"n":86,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"国際共同研究加速基金(海外連携研究)","off":120264,"n":39,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":120303,"n":32,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"基盤研究(S)","off":120335,"n":32,"vis":true},{"k":"d","dai":"F","label":"F〈農学〉","color":"#868700","cat":"国際共同研究加速基金(国際共同研究強化)","off":120367,"n":8,"vis":true},{"k":"a","dai":"G","label":"G〈生物学〉","color":"#b66f00","n":8445,"rank":7,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"基盤研究(C)","off":120375,"n":2934,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"特別研究員奨励費","off":123309,"n":1613,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"若手研究","off":124922,"n":1476,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"基盤研究(B)","off":126398,"n":1331,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"挑戦的研究(萌芽)","off":127729,"n":655,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"基盤研究(A)","off":128384,"n":227,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"挑戦的研究(開拓)","off":128611,"n":80,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":128691,"n":51,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"基盤研究(S)","off":128742,"n":41,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":128783,"n":19,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"国際共同研究加速基金(海外連携研究)","off":128802,"n":14,"vis":true},{"k":"d","dai":"G","label":"G〈生物学〉","color":"#b66f00","cat":"国際共同研究加速基金(国際共同研究強化)","off":128816,"n":4,"vis":true},{"k":"a","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","n":8793,"rank":8,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"基盤研究(C)","off":128820,"n":4282,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"若手研究","off":133102,"n":1961,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"基盤研究(B)","off":135063,"n":1045,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"特別研究員奨励費","off":136108,"n":758,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"挑戦的研究(萌芽)","off":136866,"n":474,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"基盤研究(A)","off":137340,"n":103,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"挑戦的研究(開拓)","off":137443,"n":51,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":137494,"n":42,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":137536,"n":26,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"基盤研究(S)","off":137562,"n":20,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"国際共同研究加速基金(海外連携研究)","off":137582,"n":17,"vis":true},{"k":"d","dai":"H","label":"H〈薬学・基礎医学〉","color":"#ce5601","cat":"国際共同研究加速基金(国際共同研究強化)","off":137599,"n":14,"vis":true},{"k":"a","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","n":57561,"rank":9,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"基盤研究(C)","off":137613,"n":31073,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"若手研究","off":168686,"n":18010,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"基盤研究(B)","off":186696,"n":4251,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"挑戦的研究(萌芽)","off":190947,"n":1869,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"特別研究員奨励費","off":192816,"n":1361,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"基盤研究(A)","off":194177,"n":392,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"挑戦的研究(開拓)","off":194569,"n":191,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":194760,"n":169,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":194929,"n":85,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"国際共同研究加速基金(海外連携研究)","off":195014,"n":71,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"基盤研究(S)","off":195085,"n":46,"vis":true},{"k":"d","dai":"I","label":"I〈医歯薬学（臨床）〉","color":"#d14a63","cat":"国際共同研究加速基金(国際共同研究強化)","off":195131,"n":43,"vis":true},{"k":"a","dai":"J","label":"J〈情報学〉","color":"#9b5fce","n":7573,"rank":10,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"基盤研究(C)","off":195174,"n":3139,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"若手研究","off":198313,"n":1350,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"基盤研究(B)","off":199663,"n":1181,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"特別研究員奨励費","off":200844,"n":952,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"挑戦的研究(萌芽)","off":201796,"n":441,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"基盤研究(A)","off":202237,"n":340,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"挑戦的研究(開拓)","off":202577,"n":68,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"基盤研究(S)","off":202645,"n":36,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":202681,"n":27,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"国際共同研究加速基金(海外連携研究)","off":202708,"n":17,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":202725,"n":15,"vis":true},{"k":"d","dai":"J","label":"J〈情報学〉","color":"#9b5fce","cat":"国際共同研究加速基金(国際共同研究強化)","off":202740,"n":7,"vis":true},{"k":"a","dai":"K","label":"K〈環境学〉","color":"#2e9932","n":3331,"rank":11,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"基盤研究(C)","off":202747,"n":1202,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"基盤研究(B)","off":203949,"n":715,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"若手研究","off":204664,"n":484,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"特別研究員奨励費","off":205148,"n":316,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"挑戦的研究(萌芽)","off":205464,"n":264,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"基盤研究(A)","off":205728,"n":192,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"国際共同研究加速基金(国際共同研究強化(B))","off":205920,"n":51,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"挑戦的研究(開拓)","off":205971,"n":46,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"国際共同研究加速基金(海外連携研究)","off":206017,"n":23,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"基盤研究(S)","off":206040,"n":19,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"国際共同研究加速基金(国際共同研究強化(A))","off":206059,"n":14,"vis":true},{"k":"d","dai":"K","label":"K〈環境学〉","color":"#2e9932","cat":"国際共同研究加速基金(国際共同研究強化)","off":206073,"n":5,"vis":true}],"catOrder":["特別推進研究","基盤研究(S)","基盤研究(A)","基盤研究(B)","基盤研究(C)","挑戦的研究(開拓)","挑戦的研究(萌芽)","若手研究","若手研究(B)","研究活動スタート支援","特別研究員奨励費","新学術領域研究(研究領域提案型)","学術変革領域研究(A)","学術変革領域研究(B)","学術変革領域研究(学術研究支援基盤形成)","国際共同研究加速基金(国際先導研究)","国際共同研究加速基金(国際共同研究強化)","国際共同研究加速基金(国際共同研究強化(A))","国際共同研究加速基金(国際共同研究強化(B))","国際共同研究加速基金(海外連携研究)","国際共同研究加速基金(帰国発展研究)","奨励研究","特別研究促進費"],"footer":"データ: KAKEN科研費データベース（国立情報学研究所）より取得 | 2019–2025年度開始の採択課題 206,078件（採択時概要あり・不採択除く） | 埋め込み: cl-nagoya/ruri-v3-310m | UMAP (cosine, n_neighbors=15, seed=42) | 作成: KAKEN-ATLAS (26K15524) | 球面埋め込み: output_metric=haversine","title":"科研費 学術地図 球面","sub":"2019–2025年度・206,078件"};
 var is3d = M.is3d;
 var isGlobe = !!M.globe;  // 球面ビュー: 単位球面上の点＋不透明な球（裏側の点を隠して地球儀に見せる）
 var SHARD_SHIFT = Math.log2(M.shardSize);
@@ -1115,8 +948,3 @@ if (isTouch && is3d) {
 </script>
 </body>
 </html>
-"""
-
-
-if __name__ == "__main__":
-    main()
