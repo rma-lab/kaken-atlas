@@ -34,12 +34,14 @@ def reduce_embeddings(
     n_components: int = 2,
     random_state: int = 42,
     output_metric: str = "euclidean",
+    spread: float = 1.0,
 ) -> np.ndarray:
     from umap import UMAP
 
     reducer = UMAP(
         n_neighbors=n_neighbors,
         min_dist=min_dist,
+        spread=spread,
         n_components=n_components,
         metric="cosine",
         output_metric=output_metric,
@@ -72,6 +74,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--limit", type=int, default=None, help="先頭N件のみ（動作確認用）")
     ap.add_argument("--sphere", action="store_true",
                     help="球面に埋め込む（output_metric='haversine'）。出力は単位球面上の c0,c1,c2 と極角 theta・方位角 phi")
+    ap.add_argument("--spread", type=float, default=1.0,
+                    help="UMAP の spread（『近い』とみなす距離スケール）。球面は一周が 2π しかないので 1.0 だと"
+                         "点が一様に広がる。0.3 で平面並みの粗密が出る（2026-09-05 の2万件実験）")
     args = ap.parse_args(argv)
     if args.sphere and args.n_components != 2:
         ap.error("--sphere は n_components=2（球面の2パラメータ）でのみ使えます")
@@ -90,6 +95,7 @@ def main(argv: list[str] | None = None) -> None:
         n_components=args.n_components,
         random_state=args.random_state,
         output_metric="haversine" if args.sphere else "euclidean",
+        spread=args.spread,
     )
     print(f"UMAP 完了: {time.time() - start:.0f}秒")
 
@@ -97,6 +103,8 @@ def main(argv: list[str] | None = None) -> None:
     if out is None:
         kind = "sphere" if args.sphere else f"{args.n_components}d"
         tag = f"umap{kind}_nn{args.n_neighbors}_md{args.min_dist}"
+        if args.spread != 1.0:
+            tag += f"_sp{args.spread}"
         if args.limit:
             tag += f"_limit{args.limit}"
         out = DATA_PROCESSED / f"{tag}.parquet"

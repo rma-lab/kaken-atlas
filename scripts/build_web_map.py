@@ -73,6 +73,18 @@ def build_order(df: pl.DataFrame) -> tuple[pl.DataFrame, list[dict]]:
     return pl.concat(parts), traces
 
 
+def globe_params(path: Path) -> str:
+    """球面座標ファイル名のタグ（md0.0_sp0.3 等）から脚注用のパラメータ表記を作る。"""
+    import re
+    m = re.search(r"_md([\d.]+)", path.stem)
+    sp = re.search(r"_sp([\d.]+)", path.stem)
+    parts = []
+    if m:
+        parts.append(f"min_dist={m.group(1)}")
+    parts.append(f"spread={sp.group(1) if sp else '1.0'}")
+    return ", " + ", ".join(parts)
+
+
 def main() -> None:
     coords_path = Path(sys.argv[1])
     coords = pl.read_parquet(coords_path)
@@ -142,7 +154,7 @@ def main() -> None:
         n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
         pointsBytes=len(points_bin), quant=quant, ktypes=ktypes,
         traces=traces, catOrder=CATEGORY_ORDER,
-        footer=FOOTER + (" | 球面埋め込み: output_metric=haversine" if is_globe else ""),
+        footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
     )

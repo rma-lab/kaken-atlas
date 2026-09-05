@@ -52,7 +52,8 @@
 
 ## 可視化パイプライン
 - 次元削減：`uv run python -m kaken_atlas.reduce [--n-components 3 | --sphere]` → `data/processed/umap*_nn15_md0.1.parquet`
-  （`--sphere` は `output_metric='haversine'` の球面埋め込み。`umapsphere_*.parquet` に単位球面上の c0,c1,c2 と
+  （`--sphere` は `output_metric='haversine'` の球面埋め込み。**本番は `--sphere --min-dist 0.0 --spread 0.3`**（既定の spread=1.0 だと
+  球面の一周 2π に対して広すぎ、点が一様に広がって粗密が消える。2026-09-05 決定）。`umapsphere_*.parquet` に単位球面上の c0,c1,c2 と
   theta/phi。全件で約8分。`build_web_map.py` に渡すと `docs/globe/` の地球儀ビューになる）
   （cosine・seed=42固定。2Dは M3 Air で約2分）。
 - 静的図：`scripts/plot_map.py`（密度）、`scripts/plot_map_dai.py`（大区分パネル・一覧）→ `reports/figures/*.png`。
