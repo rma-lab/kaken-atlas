@@ -552,12 +552,13 @@ var selGid = null, selXY = null;
 // gl3d では極端に遅くなるため使わない）。2Dはパン・ズーム後に再投影して追随、3Dは回転で消す
 var ring = document.createElement('div');
 ring.id = 'ka-ring';
-ring.style.cssText = 'position:fixed;display:none;z-index:997;width:24px;height:24px;border-radius:50%;' +
-  'box-sizing:border-box;border:3px solid ' + INK + ';box-shadow:0 0 0 2px #fff,inset 0 0 0 2px #fff;' +
-  'pointer-events:none';
+var RING = 16;  // 直径(px)
+ring.style.cssText = 'position:fixed;display:none;z-index:997;width:' + RING + 'px;height:' + RING + 'px;' +
+  'border-radius:50%;box-sizing:border-box;border:2.5px solid ' + INK + ';' +
+  'box-shadow:0 0 0 1.5px #fff,inset 0 0 0 1.5px #fff;pointer-events:none';
 document.body.appendChild(ring);
 function showRing(x, y) {
-  ring.style.left = (x - 12) + 'px'; ring.style.top = (y - 12) + 'px'; ring.style.display = 'block';
+  ring.style.left = (x - RING / 2) + 'px'; ring.style.top = (y - RING / 2) + 'px'; ring.style.display = 'block';
 }
 function hideRing() { ring.style.display = 'none'; }
 
@@ -581,9 +582,10 @@ function renderCard(gid, tr) {
 }
 function placeCard(cx, cy) {  // 点（画面座標）と重ならない位置に置く
   var W = window.innerWidth, H = window.innerHeight;
-  if (narrow) {  // スマホ幅: 点が下半分なら上端、上半分なら下端（大区分ボタンの上）
+  if (narrow) {  // スマホ幅: 基本は下端（大区分ボタンの上）。点が下端のカードと重なる位置のときだけ上端
     card.style.top = ''; card.style.bottom = '';
-    if (cy > H / 2) card.style.top = '56px';
+    var bottomTop = H - 64 - 34 - card.offsetHeight - 24;  // 下端カードの上辺（safe-area 最大34px と余白を見込む）
+    if (cy > bottomTop) card.style.top = '56px';
     else card.style.bottom = 'calc(64px + env(safe-area-inset-bottom))';
     return;
   }
