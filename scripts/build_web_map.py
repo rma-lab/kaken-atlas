@@ -461,93 +461,73 @@ document.getElementById('ka-help-body').innerHTML = isTouch
   ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小</div>'
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
             '<div>ダブルタップ: 全体表示に戻る</div>') +
-    '<div>点をタップ: 詳細表示 → 「KAKENページを開く」をタップ</div>' +
-    '<div>（同じ点をもう一度タップしても開く）</div>' +
+    '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
     '<div>凡例タップ: 大区分の表示切替</div>'
   : is3d
   ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
-    '<div>点にホバー→クリック: KAKENページを開く</div>' +
+    '<div>点にホバー: 概要 / クリック: 詳細カード</div>' +
+    '<div>カードをクリック: KAKENページを開く</div>' +
     '<div>凡例クリック: 大区分の表示切替</div>'
   : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
     '<div>ダブルクリック: 全体表示に戻る</div>' +
-    '<div>点にホバー→クリック: KAKENページを開く</div>' +
+    '<div>点にホバー: 概要 / クリック: 詳細カード</div>' +
+    '<div>カードをクリック: KAKENページを開く</div>' +
     '<div>凡例クリック: 大区分の表示切替</div>' +
     '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
     '<div>Esc: 選択解除</div>';
 
-// ---- 自前ツールチップ（マウス: 固定サイズ・常にカーソル右側 / タッチ: タップ可能なカード。
-// スマホ幅ではヘッダー直下に固定表示し、指で隠れない位置に「KAKENページを開く」リンクを置く） ----
+// ---- 点の詳細表示 ----
+// マウス: ホバーで軽いプレビュー（カーソル追従・操作不可）、クリックで「詳細カード」を固定。
+// タッチ: タップで詳細カード。カードは点と重ならない位置に置き、点はリングで強調する。
+// カードのどこをクリック/タップしても KAKEN ページが開く（本物のリンク。スクリプトからの
+// 新規タブ起動は iOS で弾かれることがあるため）。× または点のない場所のクリックで閉じる。
+var mx = 0, my = 0, hoveredGid = null, suppressUntil = 0;
+document.addEventListener('mousemove', function (e) {
+  mx = e.clientX; my = e.clientY;
+  if (tip.style.display !== 'none') placeTip();
+});
+function gidOf(p) {
+  if (!p || !(gidOffset[p.curveNumber] >= 0)) return null;  // 強調リング等の補助トレースは対象外
+  return gidOffset[p.curveNumber] + p.pointNumber;
+}
+function kakenUrl(row) { return 'https://kaken.nii.ac.jp/ja/grant/' + kakenId(row) + '/'; }
+var ELL = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+function headerHtml(tr, closable) {
+  return '<div style="' + ELL + ';background:' + tr.color + ';color:#fff;font-weight:600;' +
+    'margin:-6px -9px 4px -9px;padding:4px 9px;border-radius:4.5px 4.5px 0 0;position:relative">' +
+    esc(tr.label) +
+    (closable ? '<span data-close="1" style="position:absolute;right:0;top:0;padding:4px 12px;' +
+                'font-size:15px;line-height:1.4;cursor:pointer">×</span>' : '') + '</div>';
+}
+
+// ホバー用プレビュー（マウスのみ）
 var tip = document.createElement('div');
+tip.id = 'ka-tip';
 tip.style.cssText = 'position:fixed;display:none;z-index:1000;background:#fff;' +
-  'border:1.5px solid #999;border-radius:6px;padding:6px 9px;' +
-  'font:12px/1.5 -apple-system,sans-serif;color:' + INK + ';width:320px;' +
-  'box-shadow:0 2px 8px rgba(0,0,0,0.15);pointer-events:' + (isTouch ? 'auto' : 'none');
-if (narrow) tip.style.cssText += ';left:8px;right:8px;top:56px;width:auto;font-size:13px';
+  'border:1.5px solid #999;border-radius:6px;padding:6px 9px;pointer-events:none;width:320px;' +
+  'font:12px/1.5 -apple-system,sans-serif;color:' + INK + ';box-shadow:0 2px 8px rgba(0,0,0,0.15)';
 document.body.appendChild(tip);
-var mx = 0, my = 0, hoveredGid = null, lastK = null, lastT = 0, suppressUntil = 0;
-var lastTapGid = null, lastTapAt = 0, lastTapXY = null;
-function place() {  // 画面外にはみ出さないようクランプ（右端・下端付近のタップ対策）
-  if (narrow) return;  // スマホ幅はヘッダー直下に固定
+function placeTip() {  // 画面外にはみ出さないようクランプ
   tip.style.left = Math.max(4, Math.min(mx + 16, window.innerWidth - 336)) + 'px';
   tip.style.top = Math.max(52, Math.min(my + 12, window.innerHeight - 100)) + 'px';
 }
-function hideTip() {
-  hoveredGid = null; lastTapGid = null; lastTapXY = null; tip.style.display = 'none';
-}
-document.addEventListener('mousemove', function (e) {
-  mx = e.clientX; my = e.clientY;
-  if (tip.style.display !== 'none') place();
-});
-function gidOf(p) {
-  if (!p || gidOffset[p.curveNumber] < 0) return null;
-  return gidOffset[p.curveNumber] + p.pointNumber;
-}
 function renderTip(gid, tr) {
   var row = getRow(gid);
-  var ell = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
   var title = row ? esc((row[2] || '（タイトルなし）').slice(0, 48))
                   : '<span style="color:' + MUTED + '">（読み込み中…）</span>';
   var tail = row ? esc(tr.cat + ' / ' + row[0]) : esc(tr.cat);
-  // タッチ: 本物のリンクを置く（スクリプトからの新規タブ起動はiOSで弾かれることがあり、
-  // 再タップの位置判定も指の精度に左右されるため、確実に開ける手段を常に用意する）
-  var action = '';
-  if (isTouch) {
-    action = row
-      ? '<div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
-        '<a data-open="1" href="https://kaken.nii.ac.jp/ja/grant/' + esc(kakenId(row)) + '/"' +
-        ' target="_blank" rel="noopener" style="display:inline-block;padding:5px 14px;border-radius:14px;' +
-        'background:#1c5cab;color:#fff;font-weight:600;text-decoration:none;white-space:nowrap">' +
-        'KAKENページを開く ↗</a>' +
-        '<span style="color:' + MUTED + ';font-size:11px">同じ点の再タップでも開く</span></div>'
-      : '<div style="margin-top:5px;color:' + MUTED + ';font-size:11px">詳細を読み込み中…</div>';
-  }
-  tip.innerHTML =
-    '<div style="' + ell + ';background:' + tr.color + ';color:#fff;font-weight:600;' +
-    'margin:-6px -9px 4px -9px;padding:4px 9px;border-radius:4.5px 4.5px 0 0;position:relative">' +
-    esc(tr.label) +
-    (isTouch ? '<span data-close="1" style="position:absolute;right:0;top:0;padding:4px 12px;' +
-               'font-size:15px;line-height:1.4">×</span>' : '') + '</div>' +
-    '<div style="' + ell + '">' + title + '</div>' +
-    '<div style="' + ell + '">' + tail + '</div>' + action;
+  tip.innerHTML = headerHtml(tr, false) +
+    '<div style="' + ELL + '">' + title + '</div>' +
+    '<div style="' + ELL + '">' + tail + '</div>' +
+    '<div style="color:' + MUTED + ';font-size:11px">クリックで詳細カード</div>';
   tip.style.borderColor = tr.color;
-  tip.style.display = 'block'; place();
-}
-if (isTouch) {
-  tip.addEventListener('click', function (e) {
-    if (e.target.getAttribute('data-close')) { hideTip(); return; }
-    if (e.target.getAttribute('data-open')) {  // リンクの既定動作で開く。再タップ側の二重起動を抑止
-      lastK = kakenId(getRow(hoveredGid)); lastT = Date.now();
-      lastTapGid = null; lastTapXY = null;
-    }
-  });
+  tip.style.display = 'block'; placeTip();
 }
 plot.on('plotly_hover', function (d) {
-  var p = d.points[0];
-  var gid = gidOf(p);
+  if (isTouch) return;  // タッチ端末はタップ→カードのみ（合成マウスイベントによるちらつきを避ける）
+  var gid = gidOf(d.points[0]);
   if (gid === null) return;
   hoveredGid = gid;
-  // タッチではmousemoveが来ないので、イベント座標からツールチップ位置を決める
-  if (d.event && d.event.clientX != null) { mx = d.event.clientX; my = d.event.clientY; }
   var tr = M.traces[traceOf[gid]];
   renderTip(gid, tr);
   if (!getRow(gid)) {  // 未取得シャードはその場で取得し、まだ同じ点なら描き直す
@@ -558,18 +538,109 @@ plot.on('plotly_hover', function (d) {
 });
 plot.on('plotly_unhover', function () { hoveredGid = null; tip.style.display = 'none'; });
 
-// ---- ホバー中の点をクリックで KAKEN ページ ----
-// タッチでは1回目のタップ=ツールチップ表示、同じ点をもう一度タップ=ページを開く
+// 詳細カード（選択中の点）
+var card = document.createElement('div');
+card.id = 'ka-card';
+card.style.cssText = 'position:fixed;display:none;z-index:1001;background:#fff;' +
+  'border:2px solid #999;border-radius:8px;padding:6px 9px;width:320px;box-sizing:border-box;' +
+  'font:12.5px/1.5 -apple-system,sans-serif;color:' + INK + ';box-shadow:0 4px 16px rgba(0,0,0,0.22)';
+if (narrow) card.style.cssText += ';left:8px;right:8px;width:auto;font-size:13px';
+document.body.appendChild(card);
+var selGid = null, selXY = null;
+
+// 強調リング: DOM 要素を点の画面位置に重ねる（Plotly のトレース更新は 20万点の再描画を伴い、
+// gl3d では極端に遅くなるため使わない）。2Dはパン・ズーム後に再投影して追随、3Dは回転で消す
+var ring = document.createElement('div');
+ring.id = 'ka-ring';
+ring.style.cssText = 'position:fixed;display:none;z-index:997;width:24px;height:24px;border-radius:50%;' +
+  'box-sizing:border-box;border:3px solid ' + INK + ';box-shadow:0 0 0 2px #fff,inset 0 0 0 2px #fff;' +
+  'pointer-events:none';
+document.body.appendChild(ring);
+function showRing(x, y) {
+  ring.style.left = (x - 12) + 'px'; ring.style.top = (y - 12) + 'px'; ring.style.display = 'block';
+}
+function hideRing() { ring.style.display = 'none'; }
+
+function renderCard(gid, tr) {
+  var row = getRow(gid);
+  var body =
+    '<div style="font-weight:600;line-height:1.4;margin:2px 0">' +
+    (row ? esc(row[2] || '（タイトルなし）') : '<span style="color:' + MUTED + '">（読み込み中…）</span>') +
+    '</div>' +
+    '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? tr.cat + ' / ' + row[0] : tr.cat) + '</div>' +
+    (row && row[3] ? '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px">' + esc(row[3]) + '</div>' : '');
+  var foot = row
+    ? '<div style="margin-top:6px;padding-top:5px;border-top:1px solid ' + LINE + ';color:#1c5cab;font-weight:600">' +
+      (isTouch ? 'タップ' : 'クリック') + 'でKAKENページを開く ↗</div>'
+    : '<div style="margin-top:6px;color:' + MUTED + ';font-size:11px">詳細を読み込み中…</div>';
+  var inner = headerHtml(tr, true) + body + foot;
+  card.innerHTML = row
+    ? '<a data-open="1" href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener"' +
+      ' style="display:block;color:inherit;text-decoration:none;cursor:pointer">' + inner + '</a>'
+    : inner;
+  card.style.borderColor = tr.color;
+  card.style.display = 'block';
+}
+function placeCard(cx, cy) {  // 点（画面座標）と重ならない位置に置く
+  var W = window.innerWidth, H = window.innerHeight;
+  if (narrow) {  // スマホ幅: 点が下半分なら上端、上半分なら下端（大区分ボタンの上）
+    card.style.top = ''; card.style.bottom = '';
+    if (cy > H / 2) card.style.top = '56px';
+    else card.style.bottom = 'calc(64px + env(safe-area-inset-bottom))';
+    return;
+  }
+  var w = card.offsetWidth, h = card.offsetHeight, gap = 28;
+  var left = cx + gap;                       // 原則は点の右側
+  if (left + w > W - 8) left = cx - gap - w;  // 入らなければ左側
+  if (left < 8) left = 8;
+  card.style.left = left + 'px';
+  card.style.top = Math.max(56, Math.min(cy - h / 2, H - h - 8)) + 'px';
+}
+function selectPoint(gid, cx, cy) {
+  if (!is3d) { var pj = projected(gid); cx = pj[0]; cy = pj[1]; }  // 2Dは点の正確な位置に吸着
+  selGid = gid; selXY = [cx, cy]; selDown = downSeq;
+  var tr = M.traces[traceOf[gid]];
+  tip.style.display = 'none';
+  showRing(cx, cy);
+  renderCard(gid, tr); placeCard(cx, cy);
+  if (!getRow(gid)) {
+    ensureShard(gid >> SHARD_SHIFT).then(function () {
+      if (selGid === gid) { renderCard(gid, tr); placeCard(selXY[0], selXY[1]); }
+    }).catch(function () {});
+  }
+}
+function clearSelection() {
+  if (selGid === null) return;
+  selGid = null; selXY = null; card.style.display = 'none'; hideRing();
+}
+card.addEventListener('click', function (e) {
+  if (e.target.getAttribute('data-close')) { e.preventDefault(); clearSelection(); }
+  // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
+});
+function projected(gid) {  // 2D: データ座標→画面座標
+  var fl = plot._fullLayout, rect = plot.getBoundingClientRect();
+  var xr = fl.xaxis.range, yr = fl.yaxis.range;
+  return [rect.left + fl._size.l + (xs[gid] - xr[0]) / (xr[1] - xr[0]) * fl._size.w,
+          rect.top + fl._size.t + (yr[1] - ys[gid]) / (yr[1] - yr[0]) * fl._size.h];
+}
+
+// ---- クリック/タップ → 選択 ----
 plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
-// 2D: パン・ピンチ直後のタップ/クリックは無視する（relayout を合図に抑止）
-plot.on('plotly_relayout', function () { if (!is3d) suppressUntil = Date.now() + 400; });
-// 3D: gl3d はただのタップ/クリックでも relayout を出すため relayout は使えない。
-// 押下→離す間に実際に動かした（回転した）ときだけ抑止する
+// 2D: パン・ピンチ直後のクリック/タップは無視（relayout を合図に抑止）。選択中はカードを点に追随
+plot.on('plotly_relayout', function () {
+  if (is3d) return;
+  suppressUntil = Date.now() + 400;
+  if (selGid !== null) { selXY = projected(selGid); showRing(selXY[0], selXY[1]); placeCard(selXY[0], selXY[1]); }
+});
+// 3D: gl3d はただのクリック/タップでも relayout を出すため relayout は使えない。
+// 押下→離す間に実際に動かした（回転した）操作かどうかを記録し、その操作由来のクリックは無視する
 var lastTouchXY = null, lastTouchAt = 0;  // 3Dタッチ: plotly_click に座標が乗らないため直前のタッチ位置を使う
+var gestureMoved = false;                 // 直近の押下→離す操作で動いたか（3Dのみ更新）
 if (is3d) {
   var down3 = null;
   function down3End(x, y) {
-    if (down3 && (Math.abs(x - down3[0]) > 10 || Math.abs(y - down3[1]) > 10)) suppressUntil = Date.now() + 400;
+    gestureMoved = !!down3 && (Math.abs(x - down3[0]) > 10 || Math.abs(y - down3[1]) > 10);
+    if (gestureMoved) hideRing();  // 回転すると点の画面位置が変わるのでリングは消す（カードは残す）
     down3 = null;
   }
   plot.addEventListener('mousedown', function (e) { down3 = [e.clientX, e.clientY]; }, true);
@@ -584,67 +655,29 @@ if (is3d) {
     lastTouchXY = [c.clientX, c.clientY]; lastTouchAt = Date.now();
   }, { capture: true, passive: true });
 }
-// 戻り値: 開けたら true。詳細未取得なら false（呼び出し側は「1回目タップ済み」状態を保つ）
-function openKaken(gid) {
-  var row = getRow(gid);
-  if (!row) {
-    // 取得完了後、ユーザ操作の有効期間内（transient activation）ならその場で開く。
-    // 期限切れならツールチップのリンク／再タップに委ねる
-    ensureShard(gid >> SHARD_SHIFT).then(function () {
-      var ua = navigator.userActivation;
-      var still = isTouch ? lastTapGid === gid : hoveredGid === gid;  // まだ同じ点を対象にしているか
-      if (ua && ua.isActive && still && openKaken(gid)) {
-        lastTapGid = null; lastTapXY = null;
-      }
-    }).catch(function () {});
-    return false;
-  }
-  var k = kakenId(row), now = Date.now();
-  if (k === lastK && now - lastT < 600) return true;
-  lastK = k; lastT = now;
-  // window.open は iOS の standalone(PWA) 表示で失敗することがあるためアンカー方式
-  var a = document.createElement('a');
-  a.href = 'https://kaken.nii.ac.jp/ja/grant/' + k + '/';
-  a.target = '_blank'; a.rel = 'noopener';
-  document.body.appendChild(a); a.click(); a.remove();
-  return true;
-}
-// 直前にツールチップを出したタップ位置の近く（指の精度ぶん）を再タップしたか。
-// 点の同一性で判定すると密集地で最近傍点が隣にずれて失敗するため、位置で判定する
-function isRetap(cx, cy, now) {
-  return lastTapGid !== null && now - lastTapAt < 6000 && lastTapXY &&
-    Math.abs(cx - lastTapXY[0]) < 40 && Math.abs(cy - lastTapXY[1]) < 40;
-}
 plot.on('plotly_click', function (d) {
   if (isTouch && !is3d) return;  // 2Dタッチは自前のタップ処理（下記）に任せる
   var gid = gidOf(d.points[0]);
   var now = Date.now();
-  if (gid === null || now < suppressUntil) return;
-  if (isTouch) {  // 3Dタッチ: 1回目=ツールチップ、近くを再タップ=開く
-    var xy = (d.event && d.event.clientX != null) ? [d.event.clientX, d.event.clientY]
-           : (now - lastTouchAt < 1000 ? lastTouchXY : null);  // 古いタッチ位置（マウス併用時）は使わない
-    if (xy && isRetap(xy[0], xy[1], now)) {
-      if (openKaken(lastTapGid)) { lastTapGid = null; lastTapXY = null; }
-      return;
-    }
-    if (xy) { mx = xy[0]; my = xy[1]; }
-    var tr = M.traces[traceOf[gid]];
-    hoveredGid = gid;
-    renderTip(gid, tr);
-    if (!getRow(gid)) {
-      ensureShard(gid >> SHARD_SHIFT).then(function () {
-        if (hoveredGid === gid) renderTip(gid, tr);
-      }).catch(function () {});
-    }
-    lastTapGid = gid; lastTapAt = now; lastTapXY = xy;
-    return;
-  }
-  if (gid !== hoveredGid) return;
-  openKaken(gid);
+  if (gid === null || now < suppressUntil || gestureMoved) return;
+  var xy = (d.event && d.event.clientX != null) ? [d.event.clientX, d.event.clientY]
+         : (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [mx, my];
+  selectPoint(gid, xy[0], xy[1]);
+});
+// 点のない場所のクリック/タップ: 選択解除。「同じ押下（pointerdown）から選択が起きたか」で判定する
+// （選択は touchend / mouseup / 遅れて来る plotly_click のいずれでも起こるため、時刻でなく押下の通し番号で対応づける。
+//   gl3d の pick は少し遅れて click を出すので待ってから判定）
+var downSeq = 0, selDown = -1;
+plot.addEventListener('pointerdown', function () { downSeq++; }, true);
+plot.addEventListener('click', function () {
+  var seq = downSeq;
+  setTimeout(function () {
+    if (selDown !== seq && !gestureMoved && Date.now() >= suppressUntil) clearSelection();
+  }, is3d ? 300 : 60);
 });
 
 // ---- 2Dタッチ端末のタップ処理（Plotlyのタッチ経由ヒットテストは信頼できないため、
-// タップ座標から最近傍の可視点を自前判定。1回目=ツールチップ、同じ点2回目=KAKEN） ----
+// タップ座標から最近傍の可視点を自前判定） ----
 function nearestGid(cx, cy) {
   var fl = plot._fullLayout, rect = plot.getBoundingClientRect();
   var l = fl._size.l, t = fl._size.t, w = fl._size.w, h = fl._size.h;
@@ -664,25 +697,9 @@ function nearestGid(cx, cy) {
 }
 function handleTap(cx, cy) {
   if (Date.now() < suppressUntil) return;
-  var now = Date.now();
-  // 直前にツールチップを出した位置の近くを再タップ → 同じ点への2回目とみなして開く。
-  // 詳細未取得で開けなかった場合は状態を保ち、次のタップで再試行できるようにする
-  if (isRetap(cx, cy, now)) {
-    if (openKaken(lastTapGid)) { lastTapGid = null; lastTapXY = null; }
-    return;
-  }
   var gid = nearestGid(cx, cy);
-  if (gid === null) { hideTip(); return; }  // 空白タップ: ツールチップを閉じる
-  mx = cx; my = cy;
-  var tr = M.traces[traceOf[gid]];
-  hoveredGid = gid;
-  renderTip(gid, tr);
-  if (!getRow(gid)) {
-    ensureShard(gid >> SHARD_SHIFT).then(function () {
-      if (hoveredGid === gid) renderTip(gid, tr);
-    }).catch(function () {});
-  }
-  lastTapGid = gid; lastTapAt = now; lastTapXY = [cx, cy];
+  if (gid === null) { clearSelection(); return; }
+  selectPoint(gid, cx, cy);
 }
 if (isTouch && !is3d) {
   var tapStart = null;
@@ -758,12 +775,15 @@ function runSearch(q) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var h = hits[parseInt(a.getAttribute('data-k'), 10)];
-      if (is3d) return;
+      if (is3d) {  // 3Dは画面位置が取れないので中央基準でカードを出す（リングで場所を示す）
+        selectPoint(h.gid, window.innerWidth / 2, window.innerHeight / 2);
+        return;
+      }
       var span = 1.5;
       Plotly.relayout(plot, {
         'xaxis.range': [xs[h.gid] - span, xs[h.gid] + span],
         'yaxis.range': [ys[h.gid] - span, ys[h.gid] + span],
-      });
+      }).then(function () { var xy = projected(h.gid); selectPoint(h.gid, xy[0], xy[1]); });
     });
   });
 }
@@ -885,6 +905,7 @@ plot.on('plotly_deselect', function () {
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   selPanel.style.display = 'none';
+  clearSelection();
   Plotly.update(plot, { selectedpoints: null }, { selections: [], dragmode: 'pan' });
 });
 
