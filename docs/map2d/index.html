@@ -326,22 +326,21 @@ document.getElementById('ka-help-body').innerHTML = isTouch
     '<div>凡例タップ: 大区分の表示切替</div>'
   : is3d
   ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
-    '<div>点にホバー: 概要 / クリック: 詳細カード</div>' +
-    '<div>カードをクリック: KAKENページを開く</div>' +
+    '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
     '<div>凡例クリック: 大区分の表示切替</div>'
   : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
     '<div>ダブルクリック: 全体表示に戻る</div>' +
-    '<div>点にホバー: 概要 / クリック: 詳細カード</div>' +
-    '<div>カードをクリック: KAKENページを開く</div>' +
+    '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
     '<div>凡例クリック: 大区分の表示切替</div>' +
     '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
     '<div>Esc: 選択解除</div>';
 
 // ---- 点の詳細表示 ----
-// マウス: ホバーで軽いプレビュー（カーソル追従・操作不可）、クリックで「詳細カード」を固定。
-// タッチ: タップで詳細カード。カードは点と重ならない位置に置き、点はリングで強調する。
-// カードのどこをクリック/タップしても KAKEN ページが開く（本物のリンク。スクリプトからの
-// 新規タブ起動は iOS で弾かれることがあるため）。× または点のない場所のクリックで閉じる。
+// PC（マウス）: ホバーでプレビュー（カーソル追従・操作不可）、クリックで即 KAKEN ページを開く。
+//   3つのビュー（2D/3D/球面）で共通。カード・リングは使わない（2026-09-05 ユーザ仕様）
+// タッチ端末: タップで詳細カード。カードは点と重ならない位置に置き、点はリングで強調する。
+//   カードのどこをタップしても KAKEN ページが開く（本物のリンク。スクリプトからの
+//   新規タブ起動は iOS で弾かれることがあるため）。× または点のない場所のタップで閉じる。
 var mx = 0, my = 0, hoveredGid = null, suppressUntil = 0;
 document.addEventListener('mousemove', function (e) {
   mx = e.clientX; my = e.clientY;
@@ -380,7 +379,7 @@ function renderTip(gid, tr) {
   tip.innerHTML = headerHtml(tr, false) +
     '<div style="' + ELL + '">' + title + '</div>' +
     '<div style="' + ELL + '">' + tail + '</div>' +
-    '<div style="color:' + MUTED + ';font-size:11px">クリックで詳細カード</div>';
+    '<div style="color:' + MUTED + ';font-size:11px">クリックでKAKENページを開く</div>';
   tip.style.borderColor = tr.color;
   tip.style.display = 'block'; placeTip();
 }
@@ -476,6 +475,26 @@ function clearSelection() {
   if (selGid === null) return;
   selGid = null; selXY = null; card.style.display = 'none'; hideRing();
 }
+// PC: クリックで即 KAKEN ページ（新規タブ）。DOM click と plotly_click の両方から呼ばれ得るので 600ms で重複抑止
+var lastK = null, lastT = 0;
+function openKaken(gid) {
+  var row = getRow(gid);
+  if (!row) {  // 詳細未取得: 取得後、ユーザ操作の有効期間内（transient activation）なら開く。期限切れなら次のクリックで
+    ensureShard(gid >> SHARD_SHIFT).then(function () {
+      var ua = navigator.userActivation;
+      if (ua && ua.isActive) openKaken(gid);
+    }).catch(function () {});
+    return;
+  }
+  var k = kakenId(row), now = Date.now();
+  if (k === lastK && now - lastT < 600) return;
+  lastK = k; lastT = now;
+  var a = document.createElement('a');
+  a.href = kakenUrl(row); a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+// 点が確定したときの動作: PC は即オープン、タッチはカード
+function actOn(gid, cx, cy) { if (isTouch) selectPoint(gid, cx, cy); else openKaken(gid); }
 card.addEventListener('click', function (e) {
   if (e.target.getAttribute('data-close')) { e.preventDefault(); clearSelection(); }
   // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
@@ -528,7 +547,7 @@ var pendingTap = null;
 function resolveTap(gid) {
   if (!pendingTap) return false;
   var t = pendingTap; clearTimeout(t.timer); pendingTap = null;
-  selectPoint(gid, t.x, t.y);
+  actOn(gid, t.x, t.y);
   return true;
 }
 function cancelTap(clear) {
@@ -542,7 +561,7 @@ plot.addEventListener('click', function (e) {
   if (gestureMoved || now < suppressUntil) return;
   var xy = (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [e.clientX, e.clientY];
   cancelTap(false);
-  if (!isTouch && hoveredGid !== null) { selectPoint(hoveredGid, xy[0], xy[1]); return; }
+  if (!isTouch && hoveredGid !== null) { openKaken(hoveredGid); return; }
   // 2D の plotly_click は DOM click より先に同期で届くので待ちは短くてよい。gl3d は描画フレーム後に届く
   pendingTap = { x: xy[0], y: xy[1], timer: setTimeout(function () { cancelTap(true); }, is3d ? 700 : 60) };
 });
@@ -551,11 +570,9 @@ plot.on('plotly_click', function (d) {
   var gid = gidOf(d.points[0]);
   if (gid === null) { cancelTap(true); return; }  // 球面の下地など点以外 → 空白扱い
   if (Date.now() < suppressUntil || gestureMoved) return;
-  if (!resolveTap(gid) && selGid !== gid) {
-    // 待ちが無い（click より先に届いた等）場合もその点を選択
-    var xy = (isTouch && Date.now() - lastTouchAt < 1000) ? lastTouchXY : [mx, my];
-    selectPoint(gid, xy[0], xy[1]);
-  }
+  if (resolveTap(gid)) return;
+  // 待ちが無い（click より先に届いた等）場合: タッチはその点を選択。PC は直後の DOM click が開くので何もしない
+  if (isTouch && selGid !== gid && Date.now() - lastTouchAt < 1000) selectPoint(gid, lastTouchXY[0], lastTouchXY[1]);
 });
 
 // ---- 2Dタッチ端末のタップ処理（Plotlyのタッチ経由ヒットテストは信頼できないため、
@@ -657,15 +674,17 @@ function runSearch(q) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var h = hits[parseInt(a.getAttribute('data-k'), 10)];
-      if (is3d) {  // 3Dは画面位置が取れないので中央基準でカードを出す（リングで場所を示す）
-        selectPoint(h.gid, window.innerWidth / 2, window.innerHeight / 2);
+      if (is3d) {  // 3Dは画面位置が取れない。タッチは中央基準でカード（リングで場所を示す）、PC は何もしない
+        if (isTouch) selectPoint(h.gid, window.innerWidth / 2, window.innerHeight / 2);
         return;
       }
       var span = 1.5;
       Plotly.relayout(plot, {
         'xaxis.range': [xs[h.gid] - span, xs[h.gid] + span],
         'yaxis.range': [ys[h.gid] - span, ys[h.gid] + span],
-      }).then(function () { var xy = projected(h.gid); selectPoint(h.gid, xy[0], xy[1]); });
+      }).then(function () {  // タッチはズーム後にカード。PC は検索ヒットの輪郭表示が場所を示す
+        if (isTouch) { var xy = projected(h.gid); selectPoint(h.gid, xy[0], xy[1]); }
+      });
     });
   });
 }
