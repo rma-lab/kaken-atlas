@@ -458,7 +458,7 @@ if (isTouch) {
 }
 
 document.getElementById('ka-help-body').innerHTML = isTouch
-  ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小</div>'
+  ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小 / 2本指ドラッグ: 移動</div>'
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
             '<div>ダブルタップ: 全体表示に戻る</div>') +
     '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
@@ -1029,32 +1029,53 @@ if (isTouch && !is3d) {
   }, { capture: true, passive: true });
 }
 
-// ---- 3Dのピンチズーム（タッチ端末のみ。gl3dはピンチが効かない環境があるため、
-// 2本指の間隔に応じてカメラの視点距離をスケール。1本指回転はPlotly標準） ----
+// ---- 3Dの2本指操作（タッチ端末のみ。gl3dはピンチが効かない環境があるため自前実装）:
+// 指の間隔の変化 = 拡大縮小（視点距離をスケール）、2本指の重心の移動 = 並行移動
+// （視点と注視点を画面平面に沿って同じだけ動かす）。両方を同時に扱う。1本指回転はPlotly標準 ----
+function v3(x, y, z) { return { x: x, y: y, z: z }; }
+function vsub(a, b) { return v3(a.x - b.x, a.y - b.y, a.z - b.z); }
+function vadd(a, b) { return v3(a.x + b.x, a.y + b.y, a.z + b.z); }
+function vmul(a, k) { return v3(a.x * k, a.y * k, a.z * k); }
+function vcross(a, b) { return v3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
+function vlen(a) { return Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z); }
+function vnorm(a) { var l = vlen(a) || 1; return vmul(a, 1 / l); }
+function tCenter(t) { return [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]; }
 if (isTouch && is3d) {
   var pinch3 = null, raf3 = false;
   plot.addEventListener('touchstart', function (e) {
     if (e.touches.length !== 2) return;
     e.stopPropagation();
     var cam = (plot._fullLayout.scene && plot._fullLayout.scene.camera) || {};
-    var eye = cam.eye || { x: 1.25, y: 1.25, z: 1.25 };
-    var ctr = cam.center || { x: 0, y: 0, z: 0 };
-    pinch3 = { d0: tDist(e.touches), eye: { x: eye.x, y: eye.y, z: eye.z }, ctr: ctr };
+    var eye = cam.eye || v3(1.25, 1.25, 1.25);
+    var ctr = cam.center || v3(0, 0, 0);
+    var up = cam.up || v3(0, 0, 1);
+    // カメラ基底: 視線 f、画面右 r、画面上 u
+    var f = vnorm(vsub(ctr, eye));
+    var r = vnorm(vcross(f, up));
+    var u = vcross(r, f);
+    var c0 = tCenter(e.touches);
+    pinch3 = { d0: tDist(e.touches), cx: c0[0], cy: c0[1],
+               eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), r: r, u: u,
+               // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
+               k: 2 * vlen(vsub(eye, ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
   }, { capture: true, passive: true });
   plot.addEventListener('touchmove', function (e) {
     if (!pinch3 || e.touches.length !== 2) return;
     e.preventDefault(); e.stopPropagation();
+    var s = Math.max(0.05, pinch3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
+    var c = tCenter(e.touches), mx = c[0] - pinch3.cx, my = c[1] - pinch3.cy;
     if (raf3) return;
     raf3 = true;
-    var s = Math.max(0.05, pinch3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
     requestAnimationFrame(function () {
       raf3 = false;
       if (!pinch3) return;
-      Plotly.relayout(plot, { 'scene.camera.eye': {
-        x: pinch3.ctr.x + (pinch3.eye.x - pinch3.ctr.x) * s,
-        y: pinch3.ctr.y + (pinch3.eye.y - pinch3.ctr.y) * s,
-        z: pinch3.ctr.z + (pinch3.eye.z - pinch3.ctr.z) * s,
-      } });
+      var p = pinch3;
+      // 指を右へ動かす=場面が右へ=カメラは左へ（-r）。画面yは下向きなので下へ動かす=カメラは上へ（+u）
+      var T = vadd(vmul(p.r, -mx * p.k), vmul(p.u, my * p.k));
+      Plotly.relayout(plot, {
+        'scene.camera.eye': vadd(vadd(p.ctr, vmul(vsub(p.eye, p.ctr), s)), T),
+        'scene.camera.center': vadd(p.ctr, T),
+      });
     });
   }, { capture: true, passive: false });
   plot.addEventListener('touchend', function (e) {
