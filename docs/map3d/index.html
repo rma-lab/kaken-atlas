@@ -202,7 +202,7 @@ async function main() {
       xaxis: { visible: false }, yaxis: { visible: false }, zaxis: { visible: false },
       aspectmode: 'data', bgcolor: SURFACE, dragmode: 'orbit',
     };
-    if (isGlobe) {  // 球全体が収まる距離から見る。北極(z)を上に
+    if (isGlobe) {  // 球全体が収まる距離から見る。回転は自由（軸は固定しない）
       layout.scene.camera = { eye: { x: 1.9, y: 1.4, z: 0.9 }, center: { x: 0, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } };
       layout.scene.aspectmode = 'cube';
     }
@@ -213,7 +213,18 @@ async function main() {
     layout.dragmode = 'pan';
   }
   await Plotly.newPlot(plot, data, layout,
-    { scrollZoom: true, displaylogo: false, doubleClick: 'reset', responsive: true });
+    { scrollZoom: true, displaylogo: false, doubleClick: 'reset', responsive: true,
+      modeBarButtonsToRemove: isGlobe ? ['pan3d'] : [] });
+  if (isGlobe) {  // 注視点が動いたら（右ドラッグの移動など）中心へ戻す。視点も同じだけ戻して見え方を保つ
+    plot.on('plotly_relayout', function (ev) {
+      var cam = plot._fullLayout.scene && plot._fullLayout.scene.camera;
+      if (!cam || !cam.center) return;
+      var c = cam.center;
+      if (Math.abs(c.x) < 1e-6 && Math.abs(c.y) < 1e-6 && Math.abs(c.z) < 1e-6) return;
+      Plotly.relayout(plot, { 'scene.camera.center': { x: 0, y: 0, z: 0 },
+        'scene.camera.eye': { x: cam.eye.x - c.x, y: cam.eye.y - c.y, z: cam.eye.z - c.z } });
+    });
+  }
 
   // 狭い画面（スマホ）: 凡例は常時表示せずドロワー（setupUI で生成）に委ね、地図を全面に
   if (narrow) {
@@ -327,7 +338,7 @@ if (isGlobe) {  // 球面はトレースを大区分×組で束ねるため種�
   document.getElementById('ka-filter-wrap').style.display = 'none';
 }
 document.getElementById('ka-help-body').innerHTML = isTouch
-  ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小 / 2本指ドラッグ: 移動</div>'
+  ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小' + (isGlobe ? '' : ' / 2本指ドラッグ: 移動') + '</div>'
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
             '<div>ダブルタップ: 全体表示に戻る</div>') +
     '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
@@ -410,11 +421,21 @@ function nearestGid3d(cx, cy, tol) {
   }
   var m = mul(cp.projection, mul(cp.view, cp.model));
   var vis = M.traces.map(function (t, ti) { return t.k === 'd' && traceVisible(ti); });
+  // 球面: 球に隠れる裏側の点を除外する。視点 E（スケール後座標）は view=[R|t] から E = -R^T t。
+  // 単位球上の点 P（スケール後）が見えるのは接平面条件 dot(P, E) > dot(P, P) のとき
+  var E = null;
+  if (isGlobe) {
+    var v = cp.view;
+    E = [-(v[0] * v[12] + v[1] * v[13] + v[2] * v[14]),
+         -(v[4] * v[12] + v[5] * v[13] + v[6] * v[14]),
+         -(v[8] * v[12] + v[9] * v[13] + v[10] * v[14])];
+  }
   var hw = rect.width / 2, hh = rect.height / 2, ox = rect.left + hw, oy = rect.top + hh;
   var best = null, bd = tol * tol, bz = Infinity;
   for (var g = 0; g < M.n; g++) {
     if (!vis[traceOf[g]]) continue;
     var x = xs[g] * ds[0], y = ys[g] * ds[1], z = zs[g] * ds[2];
+    if (E && x * E[0] + y * E[1] + z * E[2] <= x * x + y * y + z * z) continue;  // 球の裏側
     var w = m[3] * x + m[7] * y + m[11] * z + m[15];
     if (w <= 0) continue;
     var sx = ox + (m[0] * x + m[4] * y + m[8] * z + m[12]) / w * hw;
@@ -443,10 +464,10 @@ function hoverNone() { hoveredGid = null; tip.style.display = 'none'; }
 // （スマホは合成マウスイベントが来ない環境があり、mx/my が古いままのことがある）
 function pointerXY() {
   if (pendingTap) return [pendingTap.x, pendingTap.y];
-  if (isTouch) return (Date.now() - lastTouchAt < 1500) ? lastTouchXY : null;
   return [mx, my];
 }
 plot.on('plotly_hover', function (d) {
+  if (isTouch) return;  // タッチはタップの自前判定のみ
   var gid = gidOf(d.points[0]);
   if (gid === null) {  // 球面の下地など点以外: 3D は補完判定で最寄りの点を探し、なければ外れた扱い
     var xy = is3d ? pointerXY() : null;
@@ -466,6 +487,7 @@ plot.on('plotly_hover', function (d) {
   }
 });
 plot.on('plotly_unhover', function () {
+  if (isTouch) return;
   // 3D の空白判定も補完（小さい点の隙間にカーソルが落ちたとき）。カーソルがプロット外なら外れ
   if (is3d) {
     var xy = pointerXY(), r = plot.getBoundingClientRect();
@@ -604,14 +626,23 @@ if (is3d) {
   }
   plot.addEventListener('mousedown', function (e) { down3 = [e.clientX, e.clientY]; }, true);
   plot.addEventListener('mouseup', function (e) { down3End(e.clientX, e.clientY); }, true);
+  var down3At = 0;
   plot.addEventListener('touchstart', function (e) {
     down3 = (e.touches.length === 1) ? [e.touches[0].clientX, e.touches[0].clientY] : null;
+    down3At = Date.now();
   }, { capture: true, passive: true });
   plot.addEventListener('touchend', function (e) {
     if (e.touches.length || !e.changedTouches.length) return;
     var c = e.changedTouches[0];
+    var wasTap = !!down3 && Date.now() - down3At < 500;
     down3End(c.clientX, c.clientY);
     lastTouchXY = [c.clientX, c.clientY]; lastTouchAt = Date.now();
+    // タッチ端末の 3D/球面: タップは Plotly の判定を使わず、タップ位置から自前で最寄りの点を決める
+    // （合成マウスイベントや判定バッファ、描画フレーム待ちに依存しないので実機で安定する）
+    if (wasTap && !gestureMoved && Date.now() >= suppressUntil) {
+      var g = nearestGid3d(c.clientX, c.clientY, 18);
+      if (g === null) clearSelection(); else selectPoint(g, c.clientX, c.clientY);
+    }
   }, { capture: true, passive: true });
 }
 // 選択のトリガ（2Dタッチ以外）は DOM の click（押下→離すで動いていない操作）:
@@ -633,7 +664,7 @@ function cancelTap(clear) {
   if (clear) clearSelection();
 }
 plot.addEventListener('click', function (e) {
-  if (isTouch && !is3d) return;  // 2Dタッチは自前のタップ処理（下記）
+  if (isTouch) return;  // タッチは 2D/3D とも自前のタップ処理
   var now = Date.now();
   if (gestureMoved || now < suppressUntil) return;
   var xy = (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [e.clientX, e.clientY];
@@ -643,7 +674,7 @@ plot.addEventListener('click', function (e) {
   pendingTap = { x: xy[0], y: xy[1], timer: setTimeout(function () { cancelTap(true); }, is3d ? 700 : 60) };
 });
 plot.on('plotly_click', function (d) {
-  if (isTouch && !is3d) return;
+  if (isTouch) return;
   var gid = gidOf(d.points[0]);
   if (gid === null) {  // 球面の下地など点以外: タップ位置の最寄りの点で補完し、なければ空白扱い
     if (pendingTap) {
@@ -653,9 +684,7 @@ plot.on('plotly_click', function (d) {
     cancelTap(true); return;
   }
   if (Date.now() < suppressUntil || gestureMoved) return;
-  if (resolveTap(gid)) return;
-  // 待ちが無い（click より先に届いた等）場合: タッチはその点を選択。PC は直後の DOM click が開くので何もしない
-  if (isTouch && selGid !== gid && Date.now() - lastTouchAt < 1000) selectPoint(gid, lastTouchXY[0], lastTouchXY[1]);
+  resolveTap(gid);  // 待ちが無い（click より先に届いた等）場合は、直後の DOM click が開くので何もしない
 });
 
 // ---- 2Dタッチ端末のタップ処理（Plotlyのタッチ経由ヒットテストは信頼できないため、
@@ -1055,7 +1084,8 @@ if (isTouch && is3d) {
       if (!pinch3) return;
       var p = pinch3;
       // 指を右へ動かす=場面が右へ=カメラは左へ（-r）。画面yは下向きなので下へ動かす=カメラは上へ（+u）
-      var T = vadd(vmul(p.r, -mx * p.k), vmul(p.u, my * p.k));
+      // 球面は並行移動なし（球の中心＝画面の中心を固定し、ピンチは中心を基準に拡大縮小のみ）
+      var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(p.r, -mx * p.k), vmul(p.u, my * p.k));
       Plotly.relayout(plot, {
         'scene.camera.eye': vadd(vadd(p.ctr, vmul(vsub(p.eye, p.ctr), s)), T),
         'scene.camera.center': vadd(p.ctr, T),
