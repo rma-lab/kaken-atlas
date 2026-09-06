@@ -17,6 +17,7 @@ README より一段細かい、パイプラインの設計と決定事項の記�
 - [10. 静的図と時系列 KDE](#10-静的図と時系列-kde)
 - [11. 既知の制約](#11-既知の制約)
 - [12. 今後（R9 以降）の設計メモ](#12-今後r9-以降の設計メモ)
+- [参考文献](#参考文献)
 
 ---
 
@@ -309,3 +310,45 @@ GoatCounter（`rma-lab.goatcounter.com`）で閲覧数のみ。Cookie なし。
 
 **クラスタ命名**：c-TF-IDF の特徴語＋代表課題タイトルから LLM で日本語ラベルを生成し人が検品する。
 プレゼンテーション層であって分析層ではない（ラベルが変わっても分析結果は不変）。
+
+## 参考文献
+
+設計の根拠として実際に参照したもの。思想面で影響を受けたものには一言添える。
+
+**先行研究・思想**
+
+- 持橋大地. Researcher2Vec: ニューラル線形モデルによる自然言語処理研究者の可視化と推薦. 言語処理学会第27回年次大会 (NLP2021), 2021.
+  http://chasen.org/~daiti-m/paper/nlp2021researcher2vec.pdf
+  — 研究者を「論文の内容そのもの」から実数ベクトルで表し、可視化・検索・推薦を一つの空間で行うという構図は本プロジェクトと同じ。
+  研究者ベクトル＝文書ベクトルの平均、言葉による検索、「高次元ベクトルは自分自身にしか似ず全体構造が見えない」ため
+  次元を落として可視化する、という各論点は R9・R10 の設計に直接効く。脚注に JSPS 学術情報分析センターでの
+  科研費約 11 万件へのトピックモデル適用（審査委員候補推薦）の実運用が記されており、科研費テキスト解析の先行実績。
+- 日本学術振興会 学術情報分析センター. 平成 30 年度活動報告, 2019. https://www.jsps.go.jp/j-csia/data/h30/JSPS-CSIA_REPORT_2018_4.pdf
+- M. Katsurai, I. Ohmukai, H. Takeda. Topic Representation of Researchers' Interests in a Large-Scale Academic Database and Its Application to Author Disambiguation. IEICE Trans. Inf. & Syst., E99-D(4), 2016. — CiNii 約 10 万研究者・300 万論文へのトピックモデル。
+- O. Levy, Y. Goldberg. Neural Word Embedding as Implicit Matrix Factorization. NeurIPS 2014. — Researcher2Vec の理論的基礎。
+
+**埋め込み**
+
+- H. Tsukagoshi, R. Sasano. Ruri: Japanese General Text Embeddings. arXiv:2409.07737, 2024. モデル: https://huggingface.co/cl-nagoya/ruri-v3-310m
+- SB Intuitions. JMTEB: Japanese Massive Text Embedding Benchmark. https://github.com/sbintuitions/JMTEB — モデル選定に用いたベンチマーク。
+- K. Ethayarajh. How Contextual are Contextualized Word Representations? EMNLP 2019. — Transformer 埋め込みの異方性（本ノート §6 の「類似度の絶対値は解釈しない」の背景）。
+
+**次元削減・クラスタリング・妥当性**
+
+- L. McInnes, J. Healy, J. Melville. UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction. arXiv:1802.03426, 2018.
+  球面埋め込みは同ライブラリのドキュメント "Embedding to non-Euclidean spaces" に従う。
+- R. J. G. B. Campello, D. Moulavi, J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. PAKDD 2013. — HDBSCAN。
+- L. McInnes, J. Healy, S. Astels. hdbscan: Hierarchical density based clustering. J. Open Source Software, 2(11), 2017.
+- D. Moulavi, P. A. Jaskowiak, R. J. G. B. Campello, A. Zimek, J. Sander. Density-Based Clustering Validation. SDM 2014. — DBCV。
+- M. Grootendorst. BERTopic: Neural topic modeling with a class-based TF-IDF procedure. arXiv:2203.05794, 2022. — 埋め込み→UMAP→HDBSCAN→c-TF-IDF という R9 パイプラインの標準形。
+
+**配色**
+
+- B. Ottosson. A perceptual color space for image processing (Oklab), 2020. https://bottosson.github.io/posts/oklab/ — 色相環の等間隔配置に OKLCH を用いた根拠。
+- M. Held, R. M. Karp. A Dynamic Programming Approach to Sequencing Problems. J. SIAM, 10(1), 1962. — 11 大区分の最短巡回路。
+- G. M. Machado, M. M. Oliveira, L. A. F. Fernandes. A Physiologically-based Model for Simulation of Color Vision Deficiency. IEEE TVCG, 15(6), 2009. — 色覚シミュレーション。
+
+**データ**
+
+- 国立情報学研究所. KAKEN 科学研究費助成事業データベース. https://kaken.nii.ac.jp/ — API 仕様 https://bitbucket.org/niijp/kaken_definition、
+  マスタ https://bitbucket.org/niijp/grants_masterxml_kaken、利用規程 https://support.nii.ac.jp/kaken/about/terms
