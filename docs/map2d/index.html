@@ -1058,7 +1058,10 @@ if (isTouch && is3d) {
   plot.addEventListener('touchstart', function (e) {
     if (e.touches.length !== 2) return;
     e.stopPropagation();
-    var cam = (plot._fullLayout.scene && plot._fullLayout.scene.camera) || {};
+    // 実際のカメラを読む（レイアウト上の camera は1本指回転の後に更新されないことがあり、
+    // それを基準にすると拡大縮小のたびに初期の向きへ戻ってしまう）
+    var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
+    var cam = (sc && sc.getCamera) ? sc.getCamera() : ((plot._fullLayout.scene && plot._fullLayout.scene.camera) || {});
     var eye = cam.eye || v3(1.25, 1.25, 1.25);
     var ctr = cam.center || v3(0, 0, 0);
     var up = cam.up || v3(0, 0, 1);
@@ -1068,7 +1071,7 @@ if (isTouch && is3d) {
     var u = vcross(r, f);
     var c0 = tCenter(e.touches);
     pinch3 = { d0: tDist(e.touches), cx: c0[0], cy: c0[1],
-               eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), r: r, u: u,
+               eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), up: v3(up.x, up.y, up.z), r: r, u: u,
                // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
                k: 2 * vlen(vsub(eye, ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
   }, { capture: true, passive: true });
@@ -1086,9 +1089,10 @@ if (isTouch && is3d) {
       // 指を右へ動かす=場面が右へ=カメラは左へ（-r）。画面yは下向きなので下へ動かす=カメラは上へ（+u）
       // 球面は並行移動なし（球の中心＝画面の中心を固定し、ピンチは中心を基準に拡大縮小のみ）
       var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(p.r, -mx * p.k), vmul(p.u, my * p.k));
-      Plotly.relayout(plot, {
+      Plotly.relayout(plot, {  // up も渡して回転後の向き（ロール）を保つ
         'scene.camera.eye': vadd(vadd(p.ctr, vmul(vsub(p.eye, p.ctr), s)), T),
         'scene.camera.center': vadd(p.ctr, T),
+        'scene.camera.up': p.up,
       });
     });
   }, { capture: true, passive: false });
