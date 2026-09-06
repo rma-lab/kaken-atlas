@@ -839,7 +839,7 @@ if (is3d) {
   var down3 = null;
   function down3End(x, y) {
     gestureMoved = !!down3 && (Math.abs(x - down3[0]) > 10 || Math.abs(y - down3[1]) > 10);
-    if (gestureMoved) hideRing();  // 回転すると点の画面位置が変わるのでリングは消す（カードは残す）
+    if (gestureMoved) clearSelection();  // 回転したら選択（リング・カード）は閉じる
     down3 = null;
   }
   plot.addEventListener('mousedown', function (e) { down3 = [e.clientX, e.clientY]; }, true);
@@ -904,6 +904,21 @@ plot.on('plotly_click', function (d) {
   if (Date.now() < suppressUntil || gestureMoved) return;
   resolveTap(gid);  // 待ちが無い（click より先に届いた等）場合は、直後の DOM click が開くので何もしない
 });
+
+// ---- タッチ端末共通: 地図を動かし始めたら（指が10px以上動く／2本指になる）選択カードとリングを閉じる ----
+// カードは「その点を読む」ための一時的な表示で、回転・パン・ピンチ中は場所との対応も崩れるため
+if (isTouch) {
+  var moveStart = null;
+  plot.addEventListener('touchstart', function (e) {
+    moveStart = (e.touches.length === 1) ? [e.touches[0].clientX, e.touches[0].clientY] : null;
+    if (e.touches.length >= 2) clearSelection();
+  }, { capture: true, passive: true });
+  plot.addEventListener('touchmove', function (e) {
+    if (selGid === null) return;
+    if (e.touches.length >= 2) { clearSelection(); return; }
+    if (moveStart && (Math.abs(e.touches[0].clientX - moveStart[0]) > 10 || Math.abs(e.touches[0].clientY - moveStart[1]) > 10)) clearSelection();
+  }, { capture: true, passive: true });
+}
 
 // ---- 2Dタッチ端末のタップ処理（Plotlyのタッチ経由ヒットテストは信頼できないため、
 // タップ座標から最近傍の可視点を自前判定） ----
