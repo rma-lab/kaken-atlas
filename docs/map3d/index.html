@@ -279,9 +279,27 @@ bar.id = 'ka-bar';
 bar.style.cssText = 'position:fixed;top:0;left:0;right:0;height:48px;z-index:998;' +
   'display:flex;align-items:center;gap:14px;padding:0 18px;background:#fcfcfb;' +
   'border-bottom:1px solid ' + LINE + ';font:13px -apple-system,sans-serif;color:' + INK;
+// 左端＝サイトメニュー（羅針盤アイコン。PC はタイトルも含めてホバー、スマホはアイコンのみタップ）:
+// トップページへ戻る＋他ビューへの直接移動。ウェブアプリ（standalone）モードには戻るボタンがないため必須
+var curView = isGlobe ? 'globe' : (is3d ? 'map3d' : 'map2d');
+var siteMenu = [['../', 'トップページ', ''], ['../map2d/', '2D 地図', 'map2d'],
+                ['../map3d/', '3D 地図', 'map3d'], ['../globe/', '球面地図', 'globe']].map(function (v, i) {
+  var item = v[2] === curView
+    ? '<div style="padding:6px 16px;color:' + MUTED + ';white-space:nowrap">' + v[1] + '<span style="font-size:11px">（表示中）</span></div>'
+    : '<a href="' + v[0] + '" style="display:block;padding:6px 16px;color:' + INK + ';text-decoration:none;white-space:nowrap">' + v[1] + '</a>';
+  return item + (i === 0 ? '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>' : '');
+}).join('');
 bar.innerHTML =
-  '<div id="ka-title" style="white-space:nowrap"><b style="font-size:14.5px">' + M.title + '</b>' +
-  ' <span class="ka-sub" style="color:' + MUTED + ';font-size:12px">' + M.sub + '</span></div>' +
+  '<div id="ka-home-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
+  '  <span id="ka-home-btn" style="display:flex;align-items:center;gap:8px;cursor:default;white-space:nowrap">' +
+  '    <img src="../icon-192.png" width="24" height="24" alt="メニュー" style="display:block;border-radius:6px">' +
+  '    <span id="ka-title"><b style="font-size:14.5px">' + M.title + '</b>' +
+  '     <span class="ka-sub" style="color:' + MUTED + ';font-size:12px">' + M.sub + '</span>' +
+  '     <span style="color:' + SUB + ';font-size:11px"> ▾</span></span>' +
+  '  </span>' +
+  '  <div id="ka-home-body" style="display:none;position:absolute;top:100%;left:0;min-width:160px;padding:6px 0;' + PANEL + '">' +
+  siteMenu + '</div>' +
+  '</div>' +
   '<div style="position:relative;flex:0 1 300px;min-width:170px">' +
   '  <input id="ka-q" type="search" placeholder="詳細データ読み込み中…" disabled' +
   '   style="width:100%;box-sizing:border-box;padding:6px 12px;border:1px solid #cfcec7;' +
@@ -308,7 +326,8 @@ if (allLoaded) finishPrefetch();  // 先読みがヘッダー生成より先に�
 
 // メニュー開閉。マウス=ホバー（斜め移動で一瞬外に出ても閉じない350ms猶予）、
 // タッチ=ボタンタップでトグル・外側タップで閉じる
-var menus = [['ka-filter-wrap', 'ka-body', 'ka-filter-btn'],
+var menus = [['ka-home-wrap', 'ka-home-body', 'ka-home-btn'],
+             ['ka-filter-wrap', 'ka-body', 'ka-filter-btn'],
              ['ka-help-wrap', 'ka-help-body', 'ka-help-btn']];
 menus.forEach(function (m) {
   var wrap = document.getElementById(m[0]);
