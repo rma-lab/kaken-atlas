@@ -17,6 +17,8 @@ JSPS 科研費 基盤研究(C) [26K15524](https://kaken.nii.ac.jp/ja/grant/KAKEN
 点クリックでKAKEN課題ページへのジャンプができる（スマホ・タブレットはタップ→カード）。実体はこのリポジトリの
 `docs/` を GitHub Pages で配信したもの（`scripts/build_web_map.py` で生成）。
 
+開発者向けの詳しい設計と決定事項は [doc/method.md](doc/method.md)（技術ノート）を参照。
+
 ## 研究計画（年次）
 
 | 年度 | テーマ | 状況 |
