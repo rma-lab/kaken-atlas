@@ -13,15 +13,15 @@ JSPS 科研費 基盤研究(C) [26K15524](https://kaken.nii.ac.jp/ja/grant/KAKEN
 **https://rma-lab.github.io/kaken-atlas/**
 
 2019–2025年度開始の採択課題 206,078件を意味空間上に配置したインタラクティブ地図
-（2D/3D）。タイトル・キーワード検索、種目フィルタ、なげなわ選択による集計、
-点クリックでKAKEN課題ページへのジャンプができる。実体はこのリポジトリの
+（2D / 3D / 球面＝地球儀）。タイトル・キーワード検索、種目フィルタ、なげなわ選択による集計、
+点クリックでKAKEN課題ページへのジャンプができる（スマホ・タブレットはタップ→カード）。実体はこのリポジトリの
 `docs/` を GitHub Pages で配信したもの（`scripts/build_web_map.py` で生成）。
 
 ## 研究計画（年次）
 
 | 年度 | テーマ | 状況 |
 |------|--------|------|
-| **R8 (2026)** | データ基盤構築・埋め込み空間生成 | 取得238,997件 → コーパス206,078件 → 768次元埋め込み → UMAP 2D/3D地図・年度別KDE時系列（**完了**） |
+| **R8 (2026)** | データ基盤構築・埋め込み空間生成 | 取得238,997件 → コーパス206,078件 → 768次元埋め込み → UMAP 2D/3D/球面地図・年度別KDE時系列（**完了**） |
 | **R9 (2027)** | 潜在構造の発見・新指標開発 | UMAP→HDBSCAN クラスタリング → 既存306小区分との乖離分析 → 3指標開発 |
 | **R10 (2028)** | 実証実験・システム実証 | 全国URAによる評価実験 → Webアプリ → 論文投稿 |
 
@@ -33,7 +33,7 @@ uv run python -m kaken_atlas.fetch       # KAKEN opensearch API から取得（�
 uv run python -m kaken_atlas.parse       # XML → data/interim/awards.parquet
 uv run python -m kaken_atlas.corpus      # 埋め込み対象コーパス → data/processed/corpus.parquet
 uv run python -m kaken_atlas.embed       # Ruri v3 で768次元埋め込み（GPU推奨、A40で約30分）
-uv run python -m kaken_atlas.reduce      # UMAP 2D（--n-components 3 で3D）
+uv run python -m kaken_atlas.reduce      # UMAP 2D（--n-components 3 で3D、--sphere --min-dist 0.0 --spread 0.3 で球面）
 uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet  # 地図サイト生成
 ```
 
@@ -72,4 +72,43 @@ kaken-atlas/
 
 ## ライセンス
 
-MIT
+このリポジトリは「プログラム」「科研費データに由来する成果物」「第三者の部品」で条件が異なります。
+
+### プログラム（`src/`, `scripts/`, `tests/`, 地図サイトの HTML/JS）
+
+[MIT License](LICENSE)（Copyright (c) 2026 Takayuki Ogi）。自由に利用・改変・再配布できます。
+著作権表示とライセンス文を残してください。
+
+### 科研費データに由来する成果物（`docs/` の地図データ、`data/reference/` の審査区分表、図表）
+
+`docs/map2d/`・`docs/map3d/`・`docs/globe/` に含まれる課題番号・タイトル・キーワード・座標データは、
+KAKEN科研費データベースのデータを編集・加工したものです。KAKEN の
+[利用規程](https://support.nii.ac.jp/kaken/about/terms)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)
+に準拠）に従って利用してください。要点は次のとおりです。
+
+- 出典を明記する。指定文言: **「KAKEN：科学研究費助成事業データベース（国立情報学研究所）」**
+- 編集・加工したものを利用する場合は、その旨を明記する（本リポジトリの成果物は
+  「KAKEN のデータを KAKEN-ATLAS が編集・加工したもの」です）
+- 編集・加工した情報を、国立情報学研究所が作成したかのような態様で公表・利用しない
+
+地図サイトや図表を引用・転載する場合の記載例:
+
+> 出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを
+> KAKEN-ATLAS（科研費 26K15524）が編集・加工
+
+### 第三者の部品
+
+| 部品 | 用途 | ライセンス |
+|------|------|-----------|
+| [Ruri v3 310m](https://huggingface.co/cl-nagoya/ruri-v3-310m)（名古屋大学 笹野研究室） | 日本語テキストの埋め込み | Apache-2.0 |
+| [Plotly.js](https://plotly.com/javascript/)（CDN 読み込み） | 地図サイトの描画 | MIT |
+| [umap-learn](https://github.com/lmcinnes/umap) | 次元削減 | BSD-3-Clause |
+| その他の Python 依存パッケージ | `uv.lock` 参照 | 各パッケージのライセンス |
+
+埋め込みベクトルそのものは公開していません。Ruri v3 を用いて生成した派生物の扱いは同モデルの
+ライセンス（Apache-2.0）に従います。
+
+### 引用
+
+研究等で本プロジェクトの成果を利用する場合は、リポジトリ URL と科研費課題番号
+（基盤研究(C) 26K15524）を記載してください。
