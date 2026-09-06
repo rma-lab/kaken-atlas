@@ -54,7 +54,7 @@ CATEGORY_ORDER = [
 ]
 
 FOOTER = (
-    "データ: KAKEN科研費データベース（国立情報学研究所）より取得 | "
+    "出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工 | "
     "2019–2025年度開始の採択課題 206,078件（採択時概要あり・不採択除く） | "
     "埋め込み: cl-nagoya/ruri-v3-310m | UMAP (cosine, n_neighbors=15, seed=42) | "
     "作成: KAKEN-ATLAS (26K15524)"

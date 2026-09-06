@@ -36,41 +36,60 @@ SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使�
 PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 
-def build_order(df: pl.DataFrame) -> tuple[pl.DataFrame, list[dict]]:
+def build_order(df: pl.DataFrame, parts: int = 1) -> tuple[pl.DataFrame, list[dict]]:
     """plot_map_interactive.py と同じ描画順に並べ、トレース表を作る。
 
     点は「大区分（下層→上層）×種目（件数降順）」でトレースごとに連続配置。
     グローバル添字＝この並びの行番号がシャード分割の単位になる。
+
+    parts > 1 のときは各点を乱数で parts 個の組に分け、「組0の全トレース → 組1の全トレース → …」の
+    順に並べる（球面ビュー用）。半透明の点は描画順が後のトレースほど重なりの上に来て色が偏るが、
+    組を多くして組ごとに大区分の順序を回転させると、ある画素の最上層の点はほぼランダムな1点になり、
+    偏りが平均化される（組数は画素あたりの重なり数より多くする。8組で2万点×… 651→約1,300トレース）。
     """
     draw_order = ["区分なし", "複数", *DAI_COLORS.keys()]
     legend_order = [*DAI_COLORS.keys(), "複数", "区分なし"]
-    parts: list[pl.DataFrame] = []
+    if parts > 1:  # 再現性のため seed 固定
+        rng = np.random.default_rng(7)
+        df = df.with_columns(pl.Series("_part", rng.integers(0, parts, df.height)))
+    else:
+        df = df.with_columns(pl.lit(0).alias("_part"))
+    parts_list: list[pl.DataFrame] = []
     traces: list[dict] = []
     offset = 0
-    for dai in draw_order:
+    for dai in draw_order:  # 凡例アンカーは大区分ごとに1本（描画順の先頭側に置く）
         dsub = df.filter(pl.col("dai") == dai)
         if dsub.height == 0:
             continue
         color = DAI_COLORS.get(dai, "#b9b8b0")
         label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
-        visible = dai != "区分なし"
         traces.append(dict(
             k="a", dai=dai, label=label, color=color, n=dsub.height,
-            rank=legend_order.index(dai) + 1, vis=visible,
+            rank=legend_order.index(dai) + 1, vis=dai != "区分なし",
         ))
-        # len 同数の種目間の順序を固定するため category 名でタイブレーク（出力の再現性）
-        cat_counts = dsub.group_by("category").len().sort(
-            ["len", "category"], descending=[True, False]
-        )
-        for cat in cat_counts["category"]:
-            sub = dsub.filter(pl.col("category") == cat)
-            traces.append(dict(
-                k="d", dai=dai, label=label, color=color, cat=cat,
-                off=offset, n=sub.height, vis=visible,
-            ))
-            parts.append(sub)
-            offset += sub.height
-    return pl.concat(parts), traces
+    for part in range(parts):
+        # 組ごとに大区分の順序を回転させ、「常に最後に描かれる大区分」を作らない
+        order = draw_order[part % len(draw_order):] + draw_order[:part % len(draw_order)] if parts > 1 else draw_order
+        for dai in order:
+            dsub = df.filter((pl.col("dai") == dai) & (pl.col("_part") == part))
+            if dsub.height == 0:
+                continue
+            color = DAI_COLORS.get(dai, "#b9b8b0")
+            label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
+            visible = dai != "区分なし"
+            # len 同数の種目間の順序を固定するため category 名でタイブレーク（出力の再現性）
+            cat_counts = dsub.group_by("category").len().sort(
+                ["len", "category"], descending=[True, False]
+            )
+            for cat in cat_counts["category"]:
+                sub = dsub.filter(pl.col("category") == cat)
+                traces.append(dict(
+                    k="d", dai=dai, label=label, color=color, cat=cat,
+                    off=offset, n=sub.height, vis=visible,
+                ))
+                parts_list.append(sub)
+                offset += sub.height
+    return pl.concat(parts_list).drop("_part"), traces
 
 
 def globe_params(path: Path) -> str:
@@ -109,12 +128,12 @@ def main() -> None:
     )
     assert bad.height == 0, f"kaken_id を分解できない行が {bad.height} 件"
 
-    big, traces = build_order(df)
+    big, traces = build_order(df, parts=8 if is_globe else 1)
     n = big.height
     dims = ["c0", "c1"] + (["c2"] if is_3d else [])
     if is_globe:
-        # 全点が同じ半径だと、重なりの勝者が描画順（最後の大区分）で決まって色が偏る。
-        # 半径に微小な乱数を与え、奥行きテストで「一番外側の点」が見えるようにする（再現性のため seed 固定）
+        # 半径に微小な乱数を与える（不透明描画では奥行きで勝者が決まり色の偏りを防ぐ。
+        # 半透明描画では効かないため、build_order の交互描画で偏りを平均化する。再現性のため seed 固定）
         rng = np.random.default_rng(42)
         r = 1.0 + np.clip(rng.normal(0.0, 0.004, n), -0.01, 0.01)
         big = big.with_columns([(pl.col(c) * pl.Series(r)).alias(c) for c in dims])
@@ -341,7 +360,7 @@ async function main() {
       name: t.label + ' ' + fmt(t.n), meta: t.cat, legendgroup: t.dai,
       showlegend: false, hoverinfo: 'none',
       visible: t.vis ? true : 'legendonly',
-      marker: is3d ? { size: isGlobe ? 1.6 : 1.3, color: t.color, opacity: isGlobe ? 1 : 0.55 }
+      marker: is3d ? { size: isGlobe ? 1.4 : 1.3, color: t.color, opacity: isGlobe ? 0.75 : 0.55 }
                    : { size: 2.2, color: t.color, opacity: 0.5 },
       type: is3d ? 'scatter3d' : 'scattergl',
     };

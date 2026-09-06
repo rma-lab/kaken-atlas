@@ -83,7 +83,7 @@ def plot_facets(df: pl.DataFrame, out: Path) -> None:
     )
     fig.text(
         0.01, 0.005,
-        "データ: KAKEN科研費データベース（国立情報学研究所）より取得 | 2019–2025年度開始の採択課題 206,078件"
+        "出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを編集・加工 | 2019–2025年度開始の採択課題 206,078件"
         "（採択時概要あり・不採択除く）| 埋め込み: cl-nagoya/ruri-v3-310m | UMAP (cosine, n_neighbors=15, seed=42)"
         " | 大区分の説明は便宜的な通称 | 作成: KAKEN-ATLAS (26K15524)",
         color=MUTED, fontsize=8,
@@ -110,7 +110,7 @@ def plot_combined(df: pl.DataFrame, out: Path) -> None:
     ax.set_title("学術地図 × 公式大区分（一覧版。厳密な読み取りは区分別パネル図を参照）",
                  color=INK, fontsize=13, pad=12)
     ax.annotate(
-        "データ: KAKEN科研費データベース（国立情報学研究所）より取得 | 2019–2025年度開始の採択課題 206,078件"
+        "出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを編集・加工 | 2019–2025年度開始の採択課題 206,078件"
         "（採択時概要あり・不採択除く）\n埋め込み: cl-nagoya/ruri-v3-310m（768次元）| UMAP (cosine,"
         " n_neighbors=15, seed=42) | 色相=意味的隣接順 | 大区分の説明は便宜的な通称 | 作成: KAKEN-ATLAS (26K15524)",
         xy=(0, -0.03), xycoords="axes fraction", color=MUTED, fontsize=7.5,
