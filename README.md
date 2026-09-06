@@ -8,7 +8,7 @@ JSPS 科研費 基盤研究(C) [26K15524](https://kaken.nii.ac.jp/ja/grant/KAKEN
 既存の306小区分に依存しない学術研究の潜在構造を解明する。さらに埋め込み空間での
 位置から **新規性・架橋性・成長性** の3指標を開発し、引用を待たずに研究価値を評価する。
 
-## 🗺️ 学術地図（公開中）
+## <img src="docs/icon-512.png" width="26" alt=""> 学術地図（公開中）
 
 **https://rma-lab.github.io/kaken-atlas/**
 
