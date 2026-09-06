@@ -36,7 +36,7 @@ SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使�
 PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 
-def build_order(df: pl.DataFrame, parts: int = 1) -> tuple[pl.DataFrame, list[dict]]:
+def build_order(df: pl.DataFrame, parts: int = 1, merge_categories: bool = False) -> tuple[pl.DataFrame, list[dict]]:
     """plot_map_interactive.py と同じ描画順に並べ、トレース表を作る。
 
     点は「大区分（下層→上層）×種目（件数降順）」でトレースごとに連続配置。
@@ -45,7 +45,12 @@ def build_order(df: pl.DataFrame, parts: int = 1) -> tuple[pl.DataFrame, list[di
     parts > 1 のときは各点を乱数で parts 個の組に分け、「組0の全トレース → 組1の全トレース → …」の
     順に並べる（球面ビュー用）。半透明の点は描画順が後のトレースほど重なりの上に来て色が偏るが、
     組を多くして組ごとに大区分の順序を回転させると、ある画素の最上層の点はほぼランダムな1点になり、
-    偏りが平均化される（組数は画素あたりの重なり数より多くする。8組で2万点×… 651→約1,300トレース）。
+    偏りが平均化される（組数は画素あたりの重なり数より多くする）。
+
+    merge_categories=True のときは種目ごとに分けず「大区分×組」で1トレースにする（球面ビュー用）。
+    Plotly の 3D はホバー/クリックの判定用バッファがオブジェクト番号を 8 ビットで持ち、
+    **255 個を超えるトレースは判定できなくなる**ため、球面は 13大区分×16組=208 本に抑える。
+    種目は点ごとの情報（シャードの行）として持たせ、種目フィルタは球面では使わない。
     """
     draw_order = ["区分なし", "複数", *DAI_COLORS.keys()]
     legend_order = [*DAI_COLORS.keys(), "複数", "区分なし"]
@@ -81,6 +86,16 @@ def build_order(df: pl.DataFrame, parts: int = 1) -> tuple[pl.DataFrame, list[di
             cat_counts = dsub.group_by("category").len().sort(
                 ["len", "category"], descending=[True, False]
             )
+            if merge_categories:  # 種目順に並べたうえで1トレースに
+                subs = [dsub.filter(pl.col("category") == cat) for cat in cat_counts["category"]]
+                sub = pl.concat(subs)
+                traces.append(dict(
+                    k="d", dai=dai, label=label, color=color, cat=None,
+                    off=offset, n=sub.height, vis=visible,
+                ))
+                parts_list.append(sub)
+                offset += sub.height
+                continue
             for cat in cat_counts["category"]:
                 sub = dsub.filter(pl.col("category") == cat)
                 traces.append(dict(
@@ -128,7 +143,9 @@ def main() -> None:
     )
     assert bad.height == 0, f"kaken_id を分解できない行が {bad.height} 件"
 
-    big, traces = build_order(df, parts=8 if is_globe else 1)
+    big, traces = build_order(df, parts=16 if is_globe else 1, merge_categories=is_globe)
+    n_point_traces = sum(1 for t in traces if t["k"] == "d")
+    assert len(traces) + 2 <= 255, f"トレース数 {len(traces)} が Plotly 3D の判定上限(255)を超える"
     n = big.height
     dims = ["c0", "c1"] + (["c2"] if is_3d else [])
     if is_globe:
@@ -153,11 +170,14 @@ def main() -> None:
     (out_dir / "points.bin").write_bytes(points_bin)
 
     ktype_idx = {t: i for i, t in enumerate(ktypes)}
-    rows = list(zip(
+    cats = sorted(big["category"].unique().to_list())
+    cat_idx = {c: i for i, c in enumerate(cats)}
+    rows = list(zip(  # [課題番号, 種別idx, タイトル, キーワード, 種目idx]
         big["award_number"],
         (ktype_idx[t] for t in big["ktype"]),
         big["title"],
         ("、".join(kw) if kw is not None else "" for kw in big["keywords"]),
+        (cat_idx[c] for c in big["category"]),
         strict=False,
     ))
     n_shards = (n + SHARD_SIZE - 1) // SHARD_SIZE
@@ -171,7 +191,7 @@ def main() -> None:
 
     manifest = dict(
         n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
-        pointsBytes=len(points_bin), quant=quant, ktypes=ktypes,
+        pointsBytes=len(points_bin), quant=quant, ktypes=ktypes, cats=cats,
         traces=traces, catOrder=CATEGORY_ORDER,
         footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
@@ -188,7 +208,7 @@ def main() -> None:
 
     total = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
     print(f"出力: {out_dir}/ 合計 {total / 1e6:.1f} MB "
-          f"(points.bin {len(points_bin) / 1e6:.1f} MB, シャード {n_shards} 個, "
+          f"(points.bin {len(points_bin) / 1e6:.1f} MB, シャード {n_shards} 個, トレース {len(traces)} 本, "
           f"index.html {(out_dir / 'index.html').stat().st_size / 1e3:.0f} KB)")
 
 
@@ -290,6 +310,11 @@ function getRow(gid) {
   return d ? d[gid & (M.shardSize - 1)] : null;
 }
 function kakenId(row) { return 'KAKENHI-' + M.ktypes[row[1]] + '-' + row[0]; }
+// 種目名: 詳細行があれば行から（球面は大区分×組でトレースを束ねるため）、なければトレースの種目
+function catOf(gid, row) {
+  if (row && row.length > 4 && M.cats) return M.cats[row[4]];
+  return M.traces[traceOf[gid]].cat || '';
+}
 
 // ==== フェーズ1: points.bin をプログレス付きで取得 ====
 var bar1 = document.getElementById('ka-bar1');
@@ -516,6 +541,9 @@ if (isTouch) {
   });
 }
 
+if (isGlobe) {  // 球面はトレースを大区分×組で束ねるため種目単位の表示切替ができない
+  document.getElementById('ka-filter-wrap').style.display = 'none';
+}
 document.getElementById('ka-help-body').innerHTML = isTouch
   ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小 / 2本指ドラッグ: 移動</div>'
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
@@ -573,7 +601,7 @@ function renderTip(gid, tr) {
   var row = getRow(gid);
   var title = row ? esc((row[2] || '（タイトルなし）').slice(0, 48))
                   : '<span style="color:' + MUTED + '">（読み込み中…）</span>';
-  var tail = row ? esc(tr.cat + ' / ' + row[0]) : esc(tr.cat);
+  var tail = row ? esc(catOf(gid, row) + ' / ' + row[0]) : esc(catOf(gid, null));
   tip.innerHTML = headerHtml(tr, false) +
     '<div style="' + ELL + '">' + title + '</div>' +
     '<div style="' + ELL + '">' + tail + '</div>' +
@@ -582,10 +610,58 @@ function renderTip(gid, tr) {
   tip.style.display = 'block'; placeTip();
 }
 
+// 3D の補完判定: Plotly の 3D は画素ぴったりの判定しかせず、小さい半透明の点では「点の上」でも
+// 下地や空白と判定されることが多い。カメラ行列で全点を画面に投影し、カーソル最寄りの点（許容 tol px、
+// 同点なら手前）を返す。20万点の投影は数ミリ秒
+function nearestGid3d(cx, cy, tol) {
+  var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
+  if (!sc || !sc.glplot || !sc.glplot.cameraParams) return null;
+  var cp = sc.glplot.cameraParams, ds = sc.dataScale || [1, 1, 1];
+  var canvas = plot.querySelector('canvas'), rect = canvas.getBoundingClientRect();
+  function mul(a, b) {  // 4x4 列優先 a*b
+    var o = new Float64Array(16);
+    for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) {
+      var v = 0; for (var k = 0; k < 4; k++) v += a[k * 4 + i] * b[j * 4 + k];
+      o[j * 4 + i] = v;
+    }
+    return o;
+  }
+  var m = mul(cp.projection, mul(cp.view, cp.model));
+  var vis = M.traces.map(function (t, ti) { return t.k === 'd' && traceVisible(ti); });
+  var hw = rect.width / 2, hh = rect.height / 2, ox = rect.left + hw, oy = rect.top + hh;
+  var best = null, bd = tol * tol, bz = Infinity;
+  for (var g = 0; g < M.n; g++) {
+    if (!vis[traceOf[g]]) continue;
+    var x = xs[g] * ds[0], y = ys[g] * ds[1], z = zs[g] * ds[2];
+    var w = m[3] * x + m[7] * y + m[11] * z + m[15];
+    if (w <= 0) continue;
+    var sx = ox + (m[0] * x + m[4] * y + m[8] * z + m[12]) / w * hw;
+    var sy = oy - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * hh;
+    var dx = sx - cx, dy = sy - cy, d2 = dx * dx + dy * dy;
+    if (d2 > bd) continue;
+    var nz = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;  // 小さいほど手前
+    if (best === null || nz < bz - 1e-4 || (Math.abs(nz - bz) <= 1e-4 && d2 < bd)) { best = g; bd = Math.max(d2, 0); bz = nz; }
+  }
+  return best;
+}
+function hoverGid(gid) {  // 点にホバーした（Plotly 判定 or 補完判定）
+  hoveredGid = gid;
+  if (resolveTap(gid)) return;
+  if (isTouch || selGid !== null) return;
+  var tr = M.traces[traceOf[gid]];
+  renderTip(gid, tr);
+  if (!getRow(gid)) {
+    ensureShard(gid >> SHARD_SHIFT).then(function () {
+      if (hoveredGid === gid && selGid === null) renderTip(gid, tr);
+    }).catch(function () {});
+  }
+}
+function hoverNone() { hoveredGid = null; tip.style.display = 'none'; }
 plot.on('plotly_hover', function (d) {
   var gid = gidOf(d.points[0]);
-  if (gid === null) {  // 球面の下地など点以外に乗った: 点から外れた扱い（gl3d は unhover を出さない）
-    hoveredGid = null; tip.style.display = 'none';
+  if (gid === null) {  // 球面の下地など点以外: 3D は補完判定で最寄りの点を探し、なければ外れた扱い
+    var g = is3d ? nearestGid3d(mx, my, isTouch ? 14 : 8) : null;
+    if (g !== null) hoverGid(g); else hoverNone();
     return;
   }
   hoveredGid = gid;
@@ -599,7 +675,17 @@ plot.on('plotly_hover', function (d) {
     }).catch(function () {});
   }
 });
-plot.on('plotly_unhover', function () { hoveredGid = null; tip.style.display = 'none'; });
+plot.on('plotly_unhover', function () {
+  // 3D の空白判定も補完（小さい点の隙間にカーソルが落ちたとき）。カーソルがプロット外なら外れ
+  if (is3d && mx >= 0) {
+    var r = plot.getBoundingClientRect();
+    if (mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
+      var g = nearestGid3d(mx, my, 8);
+      if (g !== null) { hoverGid(g); return; }
+    }
+  }
+  hoverNone();
+});
 
 // 詳細カード（選択中の点）
 var card = document.createElement('div');
@@ -633,7 +719,7 @@ function renderCard(gid, tr) {
     'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' +
     (row ? esc(row[2] || '（タイトルなし）') : '<span style="color:' + MUTED + '">（読み込み中…）</span>') +
     '</div>' +
-    '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? tr.cat + ' / ' + row[0] : tr.cat) + '</div>' +
+    '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? catOf(gid, row) + ' / ' + row[0] : catOf(gid, null)) + '</div>' +
     '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px;min-height:1.5em">' + esc(row ? row[3] : '') + '</div>';
   var inner = headerHtml(tr, true) + body;
   card.innerHTML = row
@@ -769,7 +855,13 @@ plot.addEventListener('click', function (e) {
 plot.on('plotly_click', function (d) {
   if (isTouch && !is3d) return;
   var gid = gidOf(d.points[0]);
-  if (gid === null) { cancelTap(true); return; }  // 球面の下地など点以外 → 空白扱い
+  if (gid === null) {  // 球面の下地など点以外: タップ位置の最寄りの点で補完し、なければ空白扱い
+    if (pendingTap) {
+      var g = nearestGid3d(pendingTap.x, pendingTap.y, isTouch ? 14 : 8);
+      if (g !== null) { resolveTap(g); return; }
+    }
+    cancelTap(true); return;
+  }
   if (Date.now() < suppressUntil || gestureMoved) return;
   if (resolveTap(gid)) return;
   // 待ちが無い（click より先に届いた等）場合: タッチはその点を選択。PC は直後の DOM click が開くので何もしない
@@ -841,9 +933,9 @@ function runSearch(q) {
     var row = getRow(gid);
     if (!row) continue;
     var tr = M.traces[ti];
-    var hay = (row[2] + '、' + row[3] + '、' + row[0] + '、' + tr.cat).toLowerCase();
+    var hay = (row[2] + '、' + row[3] + '、' + row[0] + '、' + catOf(gid, row)).toLowerCase();
     if (hay.indexOf(q) < 0) continue;
-    hits.push({ gid: gid, row: row, tr: tr });
+    hits.push({ gid: gid, row: row, tr: tr, cat: catOf(gid, row) });
   }
   if (!hits.length) {
     qResults.innerHTML = '<span style="color:' + MUTED + '">該当なし</span>';
@@ -866,7 +958,7 @@ function runSearch(q) {
     html += '<a href="#" class="ka-hit" data-k="' + k + '" style="display:block;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1c5cab;' +
       'text-decoration:none;padding:1px 0">' + esc((h.row[2] || '').slice(0, 48)) +
-      ' <span style="color:' + MUTED + '">' + esc(h.tr.cat + ' / ' + h.row[0]) +
+      ' <span style="color:' + MUTED + '">' + esc(h.cat + ' / ' + h.row[0]) +
       '</span></a>';
   });
   qResults.innerHTML = html;
