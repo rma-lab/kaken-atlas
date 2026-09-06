@@ -290,8 +290,11 @@ bar.innerHTML =
   '   max-height:55vh;overflow-y:auto;padding:8px 12px;' + PANEL + '"></div>' +
   '</div>' +
   '<div style="flex:1"></div>' +
+  '<div id="ka-dai-wrap" style="display:none;align-self:stretch;align-items:center">' +
+  '  <span id="ka-dai-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap;font-size:12px">大区分 ▾</span>' +
+  '</div>' +
   '<div id="ka-filter-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
-  '  <span id="ka-filter-btn" style="cursor:default;color:' + SUB + '">種目フィルタ ▾</span>' +
+  '  <span id="ka-filter-btn" style="cursor:default;color:' + SUB + '">' + (narrow ? '種目 ▾' : '種目フィルタ ▾') + '</span>' +
   '  <div id="ka-body" style="display:none;position:absolute;top:100%;right:0;' +
   '   max-height:70vh;overflow-y:auto;padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
   '</div>' +
@@ -342,15 +345,15 @@ document.getElementById('ka-help-body').innerHTML = isTouch
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
             '<div>ダブルタップ: 全体表示に戻る</div>') +
     '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
-    '<div>凡例タップ: 大区分の表示切替</div>'
+    '<div>「大区分」: 表示切替・「のみ」でその区分だけ・すべて表示/非表示</div>'
   : is3d
   ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
     '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
-    '<div>凡例クリック: 大区分の表示切替</div>'
+    '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>'
   : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
     '<div>ダブルクリック: 全体表示に戻る</div>' +
     '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
-    '<div>凡例クリック: 大区分の表示切替</div>' +
+    '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
     '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
     '<div>Esc: 選択解除</div>';
 
@@ -944,23 +947,23 @@ if (narrow) {
   var daiOn = {};
   anchors.forEach(function (t) { daiOn[t.dai] = t.vis; });
 
-  function setDai(dai, on) {
+  // 表示状態 daiOn をまとめて反映（1回の restyle。3D では restyle ごとに再アップロードが走るため）
+  function applyDai() {
     var idx = [], vis = [];
     plot.data.forEach(function (t, i) {
-      if (t.legendgroup !== dai) return;
+      if (!t.legendgroup || !(t.legendgroup in daiOn)) return;
+      var on = daiOn[t.legendgroup];
       if (on) { if (t.visible === 'legendonly') { idx.push(i); vis.push(true); } }
       else if (t.visible !== false) { idx.push(i); vis.push('legendonly'); }
     });
     if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
+    drawer.querySelectorAll('.ka-dai-item').forEach(function (el) {
+      el.style.opacity = daiOn[anchors[parseInt(el.getAttribute('data-i'), 10)].dai] ? '' : '0.35';
+    });
   }
 
-  var daiBtn = document.createElement('div');
-  daiBtn.id = 'ka-dai-btn';
-  daiBtn.textContent = '大区分 ▴';
-  daiBtn.style.cssText = 'position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));' +
-    'left:50%;transform:translateX(-50%);z-index:999;padding:7px 20px;border-radius:18px;' +
-    'color:#1c5cab;font-weight:600;' + PANEL;
-  document.body.appendChild(daiBtn);
+  var daiBtn = document.getElementById('ka-dai-btn');
+  document.getElementById('ka-dai-wrap').style.display = 'flex';
 
   var backdrop = document.createElement('div');
   backdrop.id = 'ka-dai-backdrop';
@@ -974,22 +977,27 @@ if (narrow) {
     'background:#fcfcfb;border-top:1px solid ' + LINE + ';border-radius:16px 16px 0 0;' +
     'box-shadow:0 -6px 24px rgba(0,0,0,0.18);transform:translateY(105%);' +
     'transition:transform .28s cubic-bezier(.2,.8,.25,1);' +
-    'padding:10px 16px calc(16px + env(safe-area-inset-bottom));' +
+    'padding:10px 16px calc(16px + env(safe-area-inset-bottom));max-height:72vh;overflow-y:auto;' +
     'font:12.5px/1.6 -apple-system,sans-serif;color:' + INK;
+  var BTN = 'padding:4px 10px;border:1px solid ' + LINE + ';border-radius:12px;background:#fff;color:#1c5cab;font-size:11.5px';
   drawer.innerHTML =
     '<div style="width:36px;height:4px;border-radius:2px;background:#d5d4cc;margin:0 auto 10px"></div>' +
-    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">' +
     '<b style="font-size:14px">大区分</b>' +
-    '<span style="color:' + MUTED + ';font-size:11.5px">タップで表示切替</span></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">' +
+    '<span style="color:' + MUTED + ';font-size:11px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">タップ: 表示切替</span>' +
+    '<span id="ka-dai-all" style="' + BTN + '">すべて表示</span>' +
+    '<span id="ka-dai-none" style="' + BTN + '">すべて非表示</span></div>' +
+    '<div style="display:grid;grid-template-columns:1fr;gap:5px">' +
     anchors.map(function (t, i) {
       return '<div class="ka-dai-item" data-i="' + i + '" style="display:flex;align-items:center;' +
-        'min-width:0;gap:7px;border:1px solid ' + LINE + ';border-radius:9px;padding:7px 9px;' +
+        'min-width:0;gap:8px;border:1px solid ' + LINE + ';border-radius:9px;padding:5px 6px 5px 10px;' +
         'background:#fff;transition:opacity .15s;' + (t.vis ? '' : 'opacity:0.35') + '">' +
         '<span style="flex:none;width:11px;height:11px;border-radius:50%;background:' + t.color + '"></span>' +
         '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
         esc(t.label) + '</span>' +
-        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(t.n) + '</span></div>';
+        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(t.n) + '</span>' +
+        '<span class="ka-dai-only" data-i="' + i + '" style="flex:none;padding:2px 7px;border-radius:9px;' +
+        'background:#eef2f8;color:#1c5cab;font-size:11px">のみ</span></div>';
     }).join('') + '</div>';
   document.body.appendChild(drawer);
 
@@ -998,17 +1006,29 @@ if (narrow) {
     drawer.dataset.open = on ? '1' : '';
     backdrop.style.opacity = on ? '1' : '0';
     backdrop.style.visibility = on ? 'visible' : 'hidden';
-    daiBtn.style.display = on ? 'none' : '';
   }
-  daiBtn.addEventListener('click', function () { openDrawer(true); });
+  daiBtn.addEventListener('click', function () { clearSelection(); openDrawer(true); });
   backdrop.addEventListener('click', function () { openDrawer(false); });
   drawer.querySelectorAll('.ka-dai-item').forEach(function (el) {
     el.addEventListener('click', function () {
       var t = anchors[parseInt(el.getAttribute('data-i'), 10)];
       daiOn[t.dai] = !daiOn[t.dai];
-      el.style.opacity = daiOn[t.dai] ? '' : '0.35';
-      setDai(t.dai, daiOn[t.dai]);
+      applyDai();
     });
+  });
+  drawer.querySelectorAll('.ka-dai-only').forEach(function (el) {  // その大区分だけ表示
+    el.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var t = anchors[parseInt(el.getAttribute('data-i'), 10)];
+      anchors.forEach(function (a) { daiOn[a.dai] = a.dai === t.dai; });
+      applyDai();
+    });
+  });
+  document.getElementById('ka-dai-all').addEventListener('click', function () {
+    anchors.forEach(function (a) { daiOn[a.dai] = true; }); applyDai();
+  });
+  document.getElementById('ka-dai-none').addEventListener('click', function () {
+    anchors.forEach(function (a) { daiOn[a.dai] = false; }); applyDai();
   });
 }
 
