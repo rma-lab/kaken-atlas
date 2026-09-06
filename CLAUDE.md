@@ -66,6 +66,8 @@
   差分・偏差の配色は**赤=増加/青=減少**で統一。横長図は左=地図・右=説明/脚注の分離レイアウト。
 - インタラクティブ：`scripts/plot_map_interactive.py <座標parquet>` → 自己完結HTML（約135MB）。
   検索・種目フィルタ・なげなわ集計・KAKENリンク等はスクリプト内 POST_SCRIPT（JS）に実装。
+- 公開サイトの入口 `docs/index.html` は手書き（明背景・点群ヒーロー `docs/hero.jpg`＝`scripts/make_hero.py`）。
+  アイコン（favicon/PWA/apple-touch）は `scripts/make_icon.py`（明背景の羅針盤・大区分色相環。2026-09-06 決定）。
 - `reports/` は **git 管理外**（実験ノート扱い。公開物として文脈を整えるまでローカル）。
 - UI 変更時は**ヘッドレスChromeで検証**（puppeteer-core、ハーネスは /tmp/ptest に作る流儀。
   小さい座標サブセットでテストHTMLを作り、マウス操作を再現して回帰確認してから渡す）。

@@ -2,52 +2,75 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>科研費 学術地図 — KAKEN-ATLAS</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+<meta name="description" content="科研費の採択課題 206,078件を研究概要の意味の近さで並べた学術地図。2D・3D・球面の3つのビュー。">
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fcfcfb">
 <script data-goatcounter="https://rma-lab.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <style>
-  body { margin:0; background:#fcfcfb; color:#0b0b0b;
-    font:15px/1.8 -apple-system,"Hiragino Sans",sans-serif;
-    display:flex; min-height:100vh; align-items:center; justify-content:center; }
-  main { max-width:560px; padding:32px 24px; }
-  h1 { font-size:22px; margin:0 0 4px; }
-  .sub { color:#898781; font-size:13px; margin-bottom:24px; }
-  a.card { display:block; border:1px solid #e1e0d9; border-radius:10px;
-    padding:14px 18px; margin:10px 0; text-decoration:none; color:#0b0b0b;
-    background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.05); }
-  a.card:hover { border-color:#1c5cab; }
-  a.card b { color:#1c5cab; }
-  .note { color:#52514e; font-size:12.5px; margin-top:24px; }
-  .foot { color:#898781; font-size:11px; margin-top:16px; border-top:1px solid #e1e0d9;
-    padding-top:10px; }
+  :root { --ink:#0b0b0b; --mute:#6f6e69; --bg:#fcfcfb; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .hero { position:fixed; inset:0; background:var(--bg) url(hero.jpg) center/cover no-repeat; }
+  .hero::after { content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(252,252,251,.7) 0%, rgba(252,252,251,.1) 35%,
+                               rgba(252,252,251,.2) 60%, rgba(252,252,251,.95) 100%); }
+  main { position:relative; min-height:100%; display:flex; flex-direction:column;
+    padding:36px 48px 28px; padding-bottom:max(28px, env(safe-area-inset-bottom)); }
+  header { display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; letter-spacing:.2em; color:var(--mute); }
+  header b { color:var(--ink); font-weight:500; letter-spacing:.14em; }
+  h1 { font-size:clamp(28px,3.6vw,44px); font-weight:600; letter-spacing:.06em; margin:22px 0 6px; }
+  .lead { color:var(--mute); font-size:13.5px; margin:0; letter-spacing:.02em; line-height:1.7; }
+  .lead b { color:var(--ink); font-weight:500; }
+  nav { margin-top:auto; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  nav a { text-decoration:none; color:var(--ink); padding:22px 22px 18px; border-radius:14px;
+    background:rgba(255,255,255,.55); border:1px solid rgba(0,0,0,.12);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    transition:background .2s, border-color .2s; }
+  nav a:hover { background:rgba(255,255,255,.85); border-color:rgba(0,0,0,.3); }
+  nav .en { font-size:11px; letter-spacing:.24em; color:var(--mute); }
+  nav .t { font-size:26px; font-weight:600; margin:6px 0 4px; letter-spacing:.04em; }
+  nav .d { font-size:12.5px; color:var(--mute); }
+  footer { margin-top:26px; font-size:10.5px; color:#8a8984; line-height:1.7; }
+  footer a { color:inherit; }
+  @media (max-width:640px) {
+    main { padding:22px 20px 18px; padding-bottom:max(18px, env(safe-area-inset-bottom)); }
+    .hero { background-size:175% auto; background-position:50% 28%; }
+    header { font-size:11px; }
+    h1 { font-size:30px; margin-top:34px; }
+    nav { grid-template-columns:1fr; gap:10px; }
+    nav a { padding:16px 18px 14px; }
+    nav .t { font-size:22px; margin:2px 0 2px; }
+  }
 </style>
 </head>
 <body>
+<div class="hero" aria-hidden="true"></div>
 <main>
+  <header><b>KAKEN-ATLAS</b><span>2019–2025 ・ 206,078 AWARDS</span></header>
   <h1>科研費 学術地図</h1>
-  <div class="sub">KAKEN-ATLAS — 2019–2025年度開始の採択課題 206,078件の意味空間マップ</div>
-  <a class="card" href="map2d/"><b>2D 地図を開く</b><br>
-    <span style="font-size:13px">検索・種目フィルタ・なげなわ集計・KAKENリンク。まずはこちら</span></a>
-  <a class="card" href="map3d/"><b>3D 地図を開く</b><br>
-    <span style="font-size:13px">自由回転で眺める探索用ビュー</span></a>
-  <a class="card" href="globe/"><b>球面地図（地球儀）を開く</b><br>
-    <span style="font-size:13px">球面に埋め込んだ端のない地図。地球儀のように回して眺める</span></a>
-  <div class="note">
-    点の読み込みは数秒で完了します。開いた直後はタイトル等の詳細データを背景で
-    読み込んでおり（右下に進捗表示）、完了すると検索が使えます。
-  </div>
-  <div class="foot">
-    出典: <a href="https://kaken.nii.ac.jp/">KAKEN：科学研究費助成事業データベース</a>（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工（<a href="https://support.nii.ac.jp/kaken/about/terms">KAKEN 利用規程</a>） |
-    埋め込み: <a href="https://huggingface.co/cl-nagoya/ruri-v3-310m">Ruri v3 310m</a> | UMAP (cosine, n_neighbors=15, seed=42) |
-    作成: KAKEN-ATLAS（科研費 基盤研究(C) <a href="https://kaken.nii.ac.jp/ja/grant/KAKENHI-PROJECT-26K15524/">26K15524</a>） |
-    <a href="https://github.com/rma-lab/kaken-atlas">ソースコード（GitHub）</a>
-  </div>
+  <p class="lead">研究概要の意味の近さで並べた <b>206,078件</b> の採択課題。審査区分に依らない学術の現在地。</p>
+  <nav>
+    <a href="map2d/"><div class="en">2D MAP</div><div class="t">2D 地図</div><div class="d">検索・絞り込み・なげなわ集計</div></a>
+    <a href="map3d/"><div class="en">3D MAP</div><div class="t">3D 地図</div><div class="d">自由回転で眺める</div></a>
+    <a href="globe/"><div class="en">GLOBE</div><div class="t">球面地図</div><div class="d">端のない地図を地球儀のように回す</div></a>
+  </nav>
+  <footer>
+    出典: <a href="https://kaken.nii.ac.jp/">KAKEN：科学研究費助成事業データベース</a>（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工（<a href="https://support.nii.ac.jp/kaken/about/terms">KAKEN 利用規程</a>）
+    ／ 埋め込み: <a href="https://huggingface.co/cl-nagoya/ruri-v3-310m">Ruri v3 310m</a> ／ UMAP (cosine, n_neighbors=15, seed=42)
+    ／ 作成: KAKEN-ATLAS（科研費 基盤研究(C) <a href="https://kaken.nii.ac.jp/ja/grant/KAKENHI-PROJECT-26K15524/">26K15524</a>）
+    ／ <a href="https://github.com/rma-lab/kaken-atlas">ソースコード（GitHub）</a>
+  </footer>
 </main>
 </body>
 </html>
