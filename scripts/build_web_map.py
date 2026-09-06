@@ -1260,63 +1260,92 @@ if (isTouch && !is3d) {
   }, { capture: true, passive: true });
 }
 
-// ---- 3Dの2本指操作（タッチ端末のみ。gl3dはピンチが効かない環境があるため自前実装）:
-// 指の間隔の変化 = 拡大縮小（視点距離をスケール）、2本指の重心の移動 = 並行移動
-// （視点と注視点を画面平面に沿って同じだけ動かす）。両方を同時に扱う。1本指回転はPlotly標準 ----
+// ---- 3D/球面のタッチ操作（自前のカメラ制御）----
+// Plotly の 3D はタッチの回転終了時に内部状態からカメラを書き戻すことがあり、こちらの relayout と
+// 競合して「ピンチで初期の向きに戻る」「離すと前の位置に戻る」が起きた。タッチ端末では Plotly に
+// タッチイベントを一切渡さず（capture で stopPropagation）、1本指=回転、2本指=拡大縮小（+3Dは移動）を
+// すべて自前のカメラ状態から計算して relayout で渡す。
 function v3(x, y, z) { return { x: x, y: y, z: z }; }
 function vsub(a, b) { return v3(a.x - b.x, a.y - b.y, a.z - b.z); }
 function vadd(a, b) { return v3(a.x + b.x, a.y + b.y, a.z + b.z); }
 function vmul(a, k) { return v3(a.x * k, a.y * k, a.z * k); }
+function vdot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 function vcross(a, b) { return v3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
-function vlen(a) { return Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z); }
+function vlen(a) { return Math.sqrt(vdot(a, a)); }
 function vnorm(a) { var l = vlen(a) || 1; return vmul(a, 1 / l); }
+function vrot(v, axis, ang) {  // ロドリゲスの回転公式（axis は単位ベクトル）
+  var c = Math.cos(ang), sn = Math.sin(ang);
+  return vadd(vadd(vmul(v, c), vmul(vcross(axis, v), sn)), vmul(axis, vdot(axis, v) * (1 - c)));
+}
 function tCenter(t) { return [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]; }
 if (isTouch && is3d) {
-  var pinch3 = null, raf3 = false;
-  plot.addEventListener('touchstart', function (e) {
-    if (e.touches.length !== 2) return;
-    e.stopPropagation();
-    // 実際のカメラを読む（レイアウト上の camera は1本指回転の後に更新されないことがあり、
-    // それを基準にすると拡大縮小のたびに初期の向きへ戻ってしまう）
+  var g3 = null, raf3 = false, pendingCam = null;
+  function liveCam() {  // 実際のカメラ（レイアウト上の値は更新が遅れることがある）
     var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
-    var cam = (sc && sc.getCamera) ? sc.getCamera() : ((plot._fullLayout.scene && plot._fullLayout.scene.camera) || {});
-    var eye = cam.eye || v3(1.25, 1.25, 1.25);
-    var ctr = cam.center || v3(0, 0, 0);
-    var up = cam.up || v3(0, 0, 1);
-    // カメラ基底: 視線 f、画面右 r、画面上 u
-    var f = vnorm(vsub(ctr, eye));
-    var r = vnorm(vcross(f, up));
-    var u = vcross(r, f);
-    var c0 = tCenter(e.touches);
-    pinch3 = { d0: tDist(e.touches), cx: c0[0], cy: c0[1],
-               eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), up: v3(up.x, up.y, up.z), r: r, u: u,
-               // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
-               k: 2 * vlen(vsub(eye, ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchmove', function (e) {
-    if (!pinch3 || e.touches.length !== 2) return;
-    e.preventDefault(); e.stopPropagation();
-    var s = Math.max(0.05, pinch3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
-    var c = tCenter(e.touches), mx = c[0] - pinch3.cx, my = c[1] - pinch3.cy;
+    var c = (sc && sc.getCamera) ? sc.getCamera() : (plot._fullLayout.scene.camera || {});
+    var eye = c.eye || v3(1.25, 1.25, 1.25), ctr = c.center || v3(0, 0, 0), up = c.up || v3(0, 0, 1);
+    return { eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), up: v3(up.x, up.y, up.z) };
+  }
+  function basis(c) {  // 視線 f、画面右 r、画面上 u
+    var f = vnorm(vsub(c.ctr, c.eye));
+    var r = vnorm(vcross(f, c.up));
+    return { f: f, r: r, u: vcross(r, f) };
+  }
+  function applyCam(c) {
+    pendingCam = c;
     if (raf3) return;
     raf3 = true;
     requestAnimationFrame(function () {
       raf3 = false;
-      if (!pinch3) return;
-      var p = pinch3;
-      // 指を右へ動かす=場面が右へ=カメラは左へ（-r）。画面yは下向きなので下へ動かす=カメラは上へ（+u）
-      // 球面は並行移動なし（球の中心＝画面の中心を固定し、ピンチは中心を基準に拡大縮小のみ）
-      var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(p.r, -mx * p.k), vmul(p.u, my * p.k));
-      Plotly.relayout(plot, {  // up も渡して回転後の向き（ロール）を保つ
-        'scene.camera.eye': vadd(vadd(p.ctr, vmul(vsub(p.eye, p.ctr), s)), T),
-        'scene.camera.center': vadd(p.ctr, T),
-        'scene.camera.up': p.up,
-      });
+      if (!pendingCam) return;
+      var pc = pendingCam; pendingCam = null;
+      Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up });
     });
+  }
+  function startGesture(touches) {
+    var c = liveCam(), bs = basis(c);
+    if (touches.length === 1) {
+      g3 = { mode: 'rot', x: touches[0].clientX, y: touches[0].clientY, cam: c, bs: bs,
+             k: Math.PI / Math.max(plot._fullLayout._size.w, 1) };  // 画面幅ぶんのドラッグで半回転（180°）
+    } else if (touches.length === 2) {
+      var c0 = tCenter(touches);
+      g3 = { mode: 'two', d0: tDist(touches), cx: c0[0], cy: c0[1], cam: c, bs: bs,
+             // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
+             k: 2 * vlen(vsub(c.eye, c.ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
+    } else g3 = null;
+  }
+  plot.addEventListener('touchstart', function (e) {
+    e.stopPropagation();
+    startGesture(e.touches);
+  }, { capture: true, passive: true });
+  plot.addEventListener('touchmove', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    // 指の本数がジェスチャ開始時と違えば（2本→1本など）現在の指で始め直す
+    if (!g3 || (g3.mode === 'rot') !== (e.touches.length === 1)) startGesture(e.touches);
+    if (!g3) return;
+    var c = g3.cam, bs = g3.bs;
+    if (g3.mode === 'rot' && e.touches.length === 1) {
+      // 指の動きに場面が付いてくる向き: 右へ動かす→場面が右へ→カメラは上方向軸まわりに逆回転。
+      // 自由回転（固定軸なし）: 回転軸はジェスチャ開始時のカメラの上・右ベクトル
+      var dx = e.touches[0].clientX - g3.x, dy = e.touches[0].clientY - g3.y;
+      var f = vsub(c.eye, c.ctr);
+      var f1 = vrot(f, bs.u, -dx * g3.k), up1 = c.up;
+      f1 = vrot(f1, bs.r, -dy * g3.k); up1 = vrot(up1, bs.r, -dy * g3.k);
+      applyCam({ eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 });
+    } else if (g3.mode === 'two' && e.touches.length === 2) {
+      var s = Math.max(0.05, g3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
+      var cc = tCenter(e.touches), mx = cc[0] - g3.cx, my = cc[1] - g3.cy;
+      // 球面は並行移動なし（球の中心を固定し、拡大縮小のみ）。3D は重心の移動で視点・注視点を平行移動
+      var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(bs.r, -mx * g3.k), vmul(bs.u, my * g3.k));
+      applyCam({ eye: vadd(vadd(c.ctr, vmul(vsub(c.eye, c.ctr), s)), T), ctr: vadd(c.ctr, T), up: c.up });
+    }
   }, { capture: true, passive: false });
   plot.addEventListener('touchend', function (e) {
-    if (e.touches.length < 2) pinch3 = null;
+    e.stopPropagation();
+    if (e.touches.length > 0) startGesture(e.touches);  // 2本→1本: 残った指で回転を続ける
+    else g3 = null;
   }, { capture: true, passive: true });
+  plot.addEventListener('touchcancel', function () { g3 = null; }, { capture: true, passive: true });
 }
 
 }  // setupUI
