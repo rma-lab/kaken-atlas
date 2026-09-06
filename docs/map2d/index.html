@@ -439,10 +439,18 @@ function hoverGid(gid) {  // 点にホバーした（Plotly 判定 or 補完判�
   }
 }
 function hoverNone() { hoveredGid = null; tip.style.display = 'none'; }
+// 補完判定に使う位置: 待ち中のタップがあればその位置、タッチ端末は直前のタップ位置、PC はカーソル位置
+// （スマホは合成マウスイベントが来ない環境があり、mx/my が古いままのことがある）
+function pointerXY() {
+  if (pendingTap) return [pendingTap.x, pendingTap.y];
+  if (isTouch) return (Date.now() - lastTouchAt < 1500) ? lastTouchXY : null;
+  return [mx, my];
+}
 plot.on('plotly_hover', function (d) {
   var gid = gidOf(d.points[0]);
   if (gid === null) {  // 球面の下地など点以外: 3D は補完判定で最寄りの点を探し、なければ外れた扱い
-    var g = is3d ? nearestGid3d(mx, my, isTouch ? 14 : 8) : null;
+    var xy = is3d ? pointerXY() : null;
+    var g = xy ? nearestGid3d(xy[0], xy[1], isTouch ? 14 : 8) : null;
     if (g !== null) hoverGid(g); else hoverNone();
     return;
   }
@@ -459,10 +467,10 @@ plot.on('plotly_hover', function (d) {
 });
 plot.on('plotly_unhover', function () {
   // 3D の空白判定も補完（小さい点の隙間にカーソルが落ちたとき）。カーソルがプロット外なら外れ
-  if (is3d && mx >= 0) {
-    var r = plot.getBoundingClientRect();
-    if (mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
-      var g = nearestGid3d(mx, my, 8);
+  if (is3d) {
+    var xy = pointerXY(), r = plot.getBoundingClientRect();
+    if (xy && xy[0] >= r.left && xy[0] <= r.right && xy[1] >= r.top && xy[1] <= r.bottom) {
+      var g = nearestGid3d(xy[0], xy[1], isTouch ? 14 : 8);
       if (g !== null) { hoverGid(g); return; }
     }
   }
