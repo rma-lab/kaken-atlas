@@ -1097,10 +1097,10 @@ function vrot(v, axis, ang) {  // ロドリゲスの回転公式（axis は単�
 function tCenter(t) { return [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]; }
 if (isTouch && is3d) {
   var g3 = null, raf3 = false, pendingCam = null, lastCam = null;
-  // 慣性（球面のみ）: 1本指回転の直近の指速度を離した後も減衰させながら回し続ける。
-  // 次のタッチ開始で止める。速度は touchend 直前 ~120ms の touchmove から求める
+  // 慣性（3D・球面）: 1本指回転の直近の指速度を離した後も減衰させながら回し続ける。
+  // 次のタッチ開始で止める。速度は touchend 直前 ~150ms の touchmove から求める
   // （指を止めてから離した場合は速度ゼロ→慣性なし）。
-  var INERTIA = isGlobe, inert = null, samples = [];
+  var INERTIA = true, inert = null, samples = [];
   function sampleTouch(t, x, y) {
     samples.push({ t: t, x: x, y: y });
     // 直近 ~150ms、ただし描画が重くイベントが間引かれても速度が取れるよう最低3点は残す
