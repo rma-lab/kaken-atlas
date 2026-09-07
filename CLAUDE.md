@@ -69,6 +69,7 @@
   検索・種目フィルタ・なげなわ集計・KAKENリンク等はスクリプト内 POST_SCRIPT（JS）に実装。
 - 公開サイトの入口 `docs/index.html` は手書き（明背景・点群ヒーロー `docs/hero.jpg`＝`scripts/make_hero.py`）。
   アイコン（favicon/PWA/apple-touch）は `scripts/make_icon.py`（明背景の羅針盤・大区分色相環。2026-09-06 決定）。
+  SNS プレビュー画像 `docs/ogp.png`（1200×630）は `scripts/make_ogp.py`。og/twitter メタは入口と地図テンプレの両方にある。
 - `reports/` は **git 管理外**（実験ノート扱い。公開物として文脈を整えるまでローカル）。
 - UI 変更時は**ヘッドレスChromeで検証**（puppeteer-core、ハーネスは /tmp/ptest に作る流儀。
   小さい座標サブセットでテストHTMLを作り、マウス操作を再現して回帰確認してから渡す）。

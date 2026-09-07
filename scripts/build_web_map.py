@@ -200,6 +200,9 @@ def main() -> None:
     html = (
         TEMPLATE
         .replace("__TITLE__", manifest["title"])
+        .replace("__OG_DESC__", f"科研費の採択課題 {n:,}件（2019–2025年度）を研究概要の意味の近さで並べた"
+                                + ("球面地図（地球儀）。" if is_globe else ("3D 地図。" if is_3d else "2D 地図。検索・絞り込み・なげなわ集計。")))
+        .replace("__OG_PATH__", out_dir.name)
         .replace("__PLOTLY_CDN__", PLOTLY_CDN)
         .replace("__MANIFEST__", json.dumps(manifest, ensure_ascii=False,
                                             separators=(",", ":")))
@@ -222,6 +225,17 @@ TEMPLATE = r"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__TITLE__ — KAKEN-ATLAS</title>
+<meta name="description" content="__OG_DESC__">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KAKEN-ATLAS">
+<meta property="og:title" content="__TITLE__ — KAKEN-ATLAS">
+<meta property="og:description" content="__OG_DESC__">
+<meta property="og:url" content="https://rma-lab.github.io/kaken-atlas/__OG_PATH__/">
+<meta property="og:image" content="https://rma-lab.github.io/kaken-atlas/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="../favicon.png">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
