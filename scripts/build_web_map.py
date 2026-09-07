@@ -619,6 +619,24 @@ document.addEventListener('mousemove', function (e) {
   mx = e.clientX; my = e.clientY;
   if (tip.style.display !== 'none') placeTip();
 });
+// PC: 地図を動かし始めたら（ドラッグ／ホイール）プレビューを消し、操作が終わるまで再表示しない
+// （2026-09-07 ユーザ仕様。3D は回転中に hover が飛ばず古い吹き出しが残っていた）
+var tipMuteUntil = 0, dragFrom = null;
+if (!isTouch) {
+  plot.addEventListener('mousedown', function (e) { dragFrom = [e.clientX, e.clientY]; }, true);
+  document.addEventListener('mousemove', function (e) {
+    if (!dragFrom) return;
+    if (Math.abs(e.clientX - dragFrom[0]) > 3 || Math.abs(e.clientY - dragFrom[1]) > 3) {
+      tipMuteUntil = Infinity; hoverNone();
+    }
+  });
+  document.addEventListener('mouseup', function () {
+    if (tipMuteUntil === Infinity) tipMuteUntil = Date.now() + 250;
+    dragFrom = null;
+  });
+  plot.addEventListener('wheel', function () { tipMuteUntil = Date.now() + 350; hoverNone(); },
+                        { capture: true, passive: true });
+}
 function gidOf(p) {
   if (!p || !(gidOffset[p.curveNumber] >= 0)) return null;  // 強調リング等の補助トレースは対象外
   return gidOffset[p.curveNumber] + p.pointNumber;
@@ -645,6 +663,7 @@ function placeTip() {  // 画面外にはみ出さないようクランプ
   tip.style.top = Math.max(52, Math.min(my + 12, window.innerHeight - 100)) + 'px';
 }
 function renderTip(gid, tr) {
+  if (Date.now() < tipMuteUntil) return;  // 地図の操作中は出さない
   var row = getRow(gid);
   var title = row ? esc((row[2] || '（タイトルなし）').slice(0, 48))
                   : '<span style="color:' + MUTED + '">（読み込み中…）</span>';
