@@ -1,0 +1,33 @@
+# KAKEN-ATLAS — 科研費 学術地図
+
+> 科研費（KAKENHI）の採択課題 206,078 件（2019–2025 年度開始）を、研究概要の意味の近さで一枚に並べたインタラクティブ学術地図。
+> An interactive "science map" of 206,078 Japanese KAKENHI grant projects (FY2019–2025), laid out by semantic similarity of their abstracts.
+
+サイト: https://rma-lab.github.io/kaken-atlas/
+ソースコード・README: https://github.com/rma-lab/kaken-atlas
+技術ノート（方法と決定事項）: https://github.com/rma-lab/kaken-atlas/blob/master/doc/method.md
+
+## 何が見られるか / What it shows
+- 各点が 1 つの科研費採択課題。点をクリック（タッチ端末はタップ→カード）で KAKEN の課題ページへ。
+- 色は公式の大区分（A〜K）。配置は研究概要のテキストの意味だけで決めており、区分は使っていない。
+- 3 つのビュー: 2D 地図（検索・種目フィルタ・なげなわ集計）、3D 地図、球面地図（端のない地球儀）。
+- Each dot is one funded project; colour = official broad review section (A–K); position is derived only from abstract text.
+
+## 方法 / Method
+- データ: KAKEN opensearch API（国立情報学研究所）から 2018 年度以降を取得。埋め込み対象は 2019–2025 年度開始・採択時概要あり・不採択除く。
+- 埋め込み: cl-nagoya/ruri-v3-310m（768 次元、L2 正規化）。テキスト = タイトル + キーワード + 採択時研究概要。
+- 次元削減: UMAP（cosine, n_neighbors=15, min_dist=0.1, seed=42）。球面版は output_metric=haversine, min_dist=0.0, spread=0.3。
+- 配色: 大区分重心の意味的隣接を色相の隣接に写した 11 色（意味順色相環）。
+- 読み方の注意: UMAP が保つのは局所近傍関係のみ。クラスタ間の距離・面積・空白（海）は解釈しない。
+- Embedding: Ruri v3 310m; reduction: UMAP (cosine); sphere via haversine output metric. Only local neighbourhoods are preserved — do not interpret long distances, areas or empty regions.
+
+## 出典・ライセンス / Attribution
+- データ出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工（利用規程: https://support.nii.ac.jp/kaken/about/terms）。
+- プログラム: MIT License。地図データ: KAKEN 利用規程（CC BY 4.0 準拠）に従う。
+- 研究プロジェクト: KAKEN-ATLAS（JSPS 科研費 基盤研究(C) 26K15524, FY2026–2028）。目的は既存の 306 小区分に依らない学術構造の解明と、新規性・架橋性・成長性の 3 指標の開発。
+
+## ページ / Pages
+- https://rma-lab.github.io/kaken-atlas/ : 入口
+- https://rma-lab.github.io/kaken-atlas/map2d/ : 2D 地図
+- https://rma-lab.github.io/kaken-atlas/map3d/ : 3D 地図
+- https://rma-lab.github.io/kaken-atlas/globe/ : 球面地図

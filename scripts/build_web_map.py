@@ -236,6 +236,13 @@ TEMPLATE = r"""<!doctype html>
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://rma-lab.github.io/kaken-atlas/__OG_PATH__/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","name":"__TITLE__ — KAKEN-ATLAS",
+ "url":"https://rma-lab.github.io/kaken-atlas/__OG_PATH__/","description":"__OG_DESC__","inLanguage":"ja",
+ "isPartOf":{"@id":"https://rma-lab.github.io/kaken-atlas/#website"},
+ "about":{"@id":"https://rma-lab.github.io/kaken-atlas/#dataset"}}
+</script>
 <link rel="icon" type="image/png" href="../favicon.png">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -271,6 +278,9 @@ TEMPLATE = r"""<!doctype html>
 </style>
 </head>
 <body>
+<noscript><p style="margin:16px;font:14px/1.7 -apple-system,sans-serif">__TITLE__（KAKEN-ATLAS）: __OG_DESC__ この地図の表示には JavaScript が必要です。
+概要は <a href="../">トップページ</a>、方法は <a href="https://github.com/rma-lab/kaken-atlas/blob/master/doc/method.md">技術ノート</a> を参照。
+出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工。</p></noscript>
 <div id="ka-loading">
   <div><b style="font-size:16px">__TITLE__</b></div>
   <div id="ka-load-msg">マップ（点）を読み込み中…</div>

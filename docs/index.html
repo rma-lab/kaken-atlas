@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>科研費 学術地図 — KAKEN-ATLAS</title>
-<meta name="description" content="科研費の採択課題 206,078件を研究概要の意味の近さで並べた学術地図。2D・3D・球面の3つのビュー。">
+<meta name="description" content="科研費の採択課題 206,078件（2019–2025年度）を研究概要の意味の近さで並べた学術地図。2D・3D・球面の3つのビュー。KAKEN-ATLAS: an interactive map of 206,078 Japanese KAKENHI grant projects (FY2019–2025), laid out by semantic similarity of their abstracts.">
+<link rel="canonical" href="https://rma-lab.github.io/kaken-atlas/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KAKEN-ATLAS">
 <meta property="og:title" content="科研費 学術地図 — KAKEN-ATLAS">
@@ -15,6 +16,66 @@
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://rma-lab.github.io/kaken-atlas/#website",
+      "url": "https://rma-lab.github.io/kaken-atlas/",
+      "name": "科研費 学術地図 — KAKEN-ATLAS",
+      "alternateName": "KAKEN-ATLAS",
+      "description": "科研費の採択課題 206,078件（2019–2025年度開始）を研究概要の意味の近さで並べたインタラクティブ学術地図。An interactive map of 206,078 Japanese KAKENHI grant projects (FY2019–2025) laid out by semantic similarity of their abstracts.",
+      "inLanguage": "ja",
+      "publisher": { "@id": "https://rma-lab.github.io/kaken-atlas/#org" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://rma-lab.github.io/kaken-atlas/#org",
+      "name": "KAKEN-ATLAS",
+      "url": "https://github.com/rma-lab/kaken-atlas"
+    },
+    {
+      "@type": "WebApplication",
+      "name": "科研費 学術地図",
+      "url": "https://rma-lab.github.io/kaken-atlas/",
+      "applicationCategory": "DataVisualization",
+      "operatingSystem": "Any (web browser)",
+      "browserRequirements": "WebGL",
+      "isAccessibleForFree": true,
+      "inLanguage": "ja",
+      "author": { "@id": "https://rma-lab.github.io/kaken-atlas/#org" },
+      "hasPart": [
+        { "@type": "WebPage", "name": "2D 地図", "url": "https://rma-lab.github.io/kaken-atlas/map2d/" },
+        { "@type": "WebPage", "name": "3D 地図", "url": "https://rma-lab.github.io/kaken-atlas/map3d/" },
+        { "@type": "WebPage", "name": "球面地図", "url": "https://rma-lab.github.io/kaken-atlas/globe/" }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "@id": "https://rma-lab.github.io/kaken-atlas/#dataset",
+      "name": "KAKEN-ATLAS 学術地図データ（科研費採択課題の意味空間座標）",
+      "alternateName": "KAKEN-ATLAS map data",
+      "description": "科研費の採択課題 206,078件（2019–2025年度開始、採択時概要あり、不採択除く）の課題番号・タイトル・キーワード・種目・大区分と、研究概要の埋め込み（Ruri v3 310m、768次元）を UMAP で2次元・3次元・球面に配置した座標。KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工したもの。Coordinates of 206,078 KAKENHI projects (FY2019–2025) embedded with Ruri v3 and reduced by UMAP (2D, 3D, spherical), with titles, keywords, grant categories and review sections; derived from the KAKEN database (National Institute of Informatics).",
+      "url": "https://rma-lab.github.io/kaken-atlas/",
+      "sameAs": "https://github.com/rma-lab/kaken-atlas",
+      "creator": { "@id": "https://rma-lab.github.io/kaken-atlas/#org" },
+      "isBasedOn": { "@type": "Dataset", "name": "KAKEN：科学研究費助成事業データベース", "url": "https://kaken.nii.ac.jp/", "publisher": { "@type": "Organization", "name": "国立情報学研究所" } },
+      "license": "https://support.nii.ac.jp/kaken/about/terms",
+      "inLanguage": "ja",
+      "temporalCoverage": "2019-04-01/2026-03-31",
+      "spatialCoverage": "Japan",
+      "keywords": ["科研費", "KAKENHI", "学術地図", "science map", "embedding", "UMAP", "research landscape", "研究IR"],
+      "variableMeasured": ["UMAP coordinates (2D, 3D, sphere)", "grant category", "review section (大区分)"],
+      "distribution": [
+        { "@type": "DataDownload", "encodingFormat": "application/octet-stream", "contentUrl": "https://rma-lab.github.io/kaken-atlas/map2d/points.bin", "description": "2D 座標（int16 量子化）" },
+        { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://rma-lab.github.io/kaken-atlas/map2d/shards/000.json", "description": "課題メタデータ（2,048件×101片の先頭）" }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">

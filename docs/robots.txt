@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rma-lab.github.io/kaken-atlas/sitemap.xml
