@@ -74,6 +74,12 @@
 - UI 変更時は**ヘッドレスChromeで検証**（puppeteer-core、ハーネスは /tmp/ptest に作る流儀。
   小さい座標サブセットでテストHTMLを作り、マウス操作を再現して回帰確認してから渡す）。
 
+## バージョン管理（公開サイト）
+- `CHANGELOG.md` に変更を記録し、区切りで **git タグ `vX.Y` ＋ GitHub Release** を切る（2026-09-08 開始、現行 v1.0）。
+  Y＝機能追加・UI 変更、X＝地図データ（埋め込み・座標）の更新など根本的な変更。サイト上にバージョン表示は不要（ユーザ方針）。
+- 手順: CHANGELOG の Unreleased を版見出しに → commit → `git tag -a vX.Y -m ...` → `git push --tags` →
+  `gh release create vX.Y --notes-file <CHANGELOG の該当節>`。
+
 ## 発表資料
 - Marp 原稿 `reports/slides/*.md` → `npx -y @marp-team/marp-cli <md> --pdf --allow-local-files` で PDF 化。
 
