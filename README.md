@@ -83,7 +83,7 @@ kaken-atlas/
 
 ### 科研費データに由来する成果物（`docs/` の地図データ、`data/reference/` の審査区分表、図表）
 
-`docs/map2d/`・`docs/map3d/`・`docs/globe/` に含まれる課題番号・タイトル・キーワード・座標データは、
+`docs/map2d/`・`docs/map3d/`・`docs/globe/`・`docs/shards/` に含まれる課題番号・タイトル・キーワード・座標データは、
 KAKEN科研費データベースのデータを編集・加工したものです。KAKEN の
 [利用規程](https://support.nii.ac.jp/kaken/about/terms)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)
 に準拠）に従って利用してください。要点は次のとおりです。

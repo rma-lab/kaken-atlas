@@ -3,8 +3,8 @@
 reports/figures/map_*_interactive.html（自己完結・約128MB）の外部データ版。
 二段階読み込みで初期表示を数秒にする:
 
-  フェーズ1  points.bin … 量子化座標(int16)。プログレスバー付きで取得→描画
-  フェーズ2  shards/NNN.json … タイトル・キーワード等（SHARD_SIZE件/片）。
+  フェーズ1  points.bin … 量子化座標(int16)＋gid→uid 対応表(uint32)。プログレスバー付きで取得→描画
+  フェーズ2  ../shards/NNN.json … タイトル・キーワード等（SHARD_SIZE件/片、課題番号順＝uid 順、3 ビュー共有）。
              描画後に背景先読み（完了で検索が有効化）。未取得片への
              ホバーはその片だけ即時取得して穴埋めする。
 
@@ -16,7 +16,7 @@ plot_map_interactive.py と同一仕様。kaken_id は「KAKENHI-<種別>-<課�
     uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet
     uv run python scripts/build_web_map.py data/processed/umap3d_nn15_md0.1.parquet
     uv run python scripts/build_web_map.py <parquet> <出力先>   # 比較実験用（既定は docs/ 以下）
-出力: docs/map2d/ または docs/map3d/（index.html + points.bin + shards/）
+出力: docs/map2d/ または docs/map3d/（index.html + points.bin）と docs/shards/（3 ビュー共有・どのビューを生成しても同一内容）
 """
 
 from __future__ import annotations
@@ -164,29 +164,37 @@ def main() -> None:
         lo, hi = float(v.min()), float(v.max())
         qarrs.append(np.round((v - lo) / (hi - lo) * 65535 - 32768).astype("<i2"))
         quant.append(dict(lo=lo, hi=hi))
-    points_bin = b"".join(a.tobytes() for a in qarrs)
+    # 詳細データ（シャード）は描画順でなく **課題番号順（uid）** で 1 セットだけ持ち、3 ビューで共有する
+    # （docs/shards/）。各ビューは gid（描画順）→ uid の対応表（uint32）を points.bin の末尾に同梱する。
+    # 同じ URL になるのでブラウザキャッシュがビュー間で効き、切り替え時に再読み込みしない（2026-09-09）。
+    uid_of = {a: i for i, a in enumerate(sorted(big["award_number"].to_list()))}
+    uids = np.array([uid_of[a] for a in big["award_number"]], dtype="<u4")
+    points_bin = b"".join(a.tobytes() for a in qarrs) + uids.tobytes()
 
     out_dir = Path("docs/globe" if is_globe else f"docs/map{'3d' if is_3d else '2d'}")
     if len(sys.argv) > 2:  # 比較実験用に出力先を変えられる（例: reports/globe_compare/sp0.45）
         out_dir = Path(sys.argv[2])
-    (out_dir / "shards").mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "points.bin").write_bytes(points_bin)
 
     ktype_idx = {t: i for i, t in enumerate(ktypes)}
     cats = sorted(big["category"].unique().to_list())
     cat_idx = {c: i for i, c in enumerate(cats)}
+    master = big.sort("award_number")  # uid 順
     rows = list(zip(  # [課題番号, 種別idx, タイトル, キーワード, 種目idx]
-        big["award_number"],
-        (ktype_idx[t] for t in big["ktype"]),
-        big["title"],
-        ("、".join(kw) if kw is not None else "" for kw in big["keywords"]),
-        (cat_idx[c] for c in big["category"]),
+        master["award_number"],
+        (ktype_idx[t] for t in master["ktype"]),
+        master["title"],
+        ("、".join(kw) if kw is not None else "" for kw in master["keywords"]),
+        (cat_idx[c] for c in master["category"]),
         strict=False,
     ))
     n_shards = (n + SHARD_SIZE - 1) // SHARD_SIZE
+    shard_dir = out_dir.parent / "shards"  # docs/shards（3 ビュー共有。内容はビューに依らず同一）
+    shard_dir.mkdir(parents=True, exist_ok=True)
     for s in range(n_shards):
         chunk = rows[s * SHARD_SIZE:(s + 1) * SHARD_SIZE]
-        (out_dir / "shards" / f"{s:03d}.json").write_text(
+        (shard_dir / f"{s:03d}.json").write_text(
             json.dumps([list(r) for r in chunk], ensure_ascii=False,
                        separators=(",", ":")),
             encoding="utf-8",
@@ -214,7 +222,7 @@ def main() -> None:
 
     total = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
     print(f"出力: {out_dir}/ 合計 {total / 1e6:.1f} MB "
-          f"(points.bin {len(points_bin) / 1e6:.1f} MB, シャード {n_shards} 個, トレース {len(traces)} 本, "
+          f"(points.bin {len(points_bin) / 1e6:.1f} MB, 共有シャード {n_shards} 個 → {shard_dir}/, トレース {len(traces)} 本, "
           f"index.html {(out_dir / 'index.html').stat().st_size / 1e3:.0f} KB)")
 
 
@@ -329,7 +337,7 @@ function pad3(s) { return String(s).padStart(3, '0'); }
 function ensureShard(s) {
   if (det[s]) return Promise.resolve(det[s]);
   if (detPending[s]) return detPending[s];
-  detPending[s] = fetch('shards/' + pad3(s) + '.json')
+  detPending[s] = fetch('../shards/' + pad3(s) + '.json')
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(function (rows) {
       det[s] = rows; detPending[s] = null; detLoaded++;
@@ -339,9 +347,11 @@ function ensureShard(s) {
     .catch(function (e) { detPending[s] = null; throw e; });
   return detPending[s];
 }
+var uidOf = null;  // gid（描画順）→ uid（課題番号順）。points.bin の末尾から読む
+function shardOf(gid) { return uidOf[gid] >> SHARD_SHIFT; }
 function getRow(gid) {
-  var d = det[gid >> SHARD_SHIFT];
-  return d ? d[gid & (M.shardSize - 1)] : null;
+  var u = uidOf[gid], d = det[u >> SHARD_SHIFT];
+  return d ? d[u & (M.shardSize - 1)] : null;
 }
 function kakenId(row) { return 'KAKENHI-' + M.ktypes[row[1]] + '-' + row[0]; }
 // 種目名: 詳細行があれば行から（球面は大区分×組でトレースを束ねるため）、なければトレースの種目
@@ -392,6 +402,8 @@ async function main() {
     return out;
   }
   xs = deq(0); ys = deq(1); if (is3d) zs = deq(2);
+  // 末尾: gid → uid（課題番号順の通し番号。共有シャードの行を引く）
+  uidOf = new Uint32Array(buf, (is3d ? 3 : 2) * N * 2, N);
 
   // gid → トレース番号（検索の表示判定用）と、トレース番号 → 先頭gid
   traceOf = new Uint16Array(N);
@@ -779,7 +791,7 @@ function hoverGid(gid) {  // 点にホバーした（Plotly 判定 or 補完判�
   var tr = M.traces[traceOf[gid]];
   renderTip(gid, tr);
   if (!getRow(gid)) {
-    ensureShard(gid >> SHARD_SHIFT).then(function () {
+    ensureShard(shardOf(gid)).then(function () {
       if (hoveredGid === gid && selGid === null) renderTip(gid, tr);
     }).catch(function () {});
   }
@@ -806,7 +818,7 @@ plot.on('plotly_hover', function (d) {
   var tr = M.traces[traceOf[gid]];
   renderTip(gid, tr);
   if (!getRow(gid)) {  // 未取得シャードはその場で取得し、まだ同じ点なら描き直す
-    ensureShard(gid >> SHARD_SHIFT).then(function () {
+    ensureShard(shardOf(gid)).then(function () {
       if (hoveredGid === gid && selGid === null) renderTip(gid, tr);
     }).catch(function () {});
   }
@@ -902,7 +914,7 @@ function selectPoint(gid, cx, cy) {
   showRing(cx, cy);
   renderCard(gid, tr); placeCard(cx, cy);
   if (!getRow(gid)) {
-    ensureShard(gid >> SHARD_SHIFT).then(function () {
+    ensureShard(shardOf(gid)).then(function () {
       if (selGid === gid) { renderCard(gid, tr); placeCard(selXY[0], selXY[1]); }
     }).catch(function () {});
   }
@@ -916,7 +928,7 @@ var lastK = null, lastT = 0;
 function openKaken(gid) {
   var row = getRow(gid);
   if (!row) {  // 詳細未取得: 取得後、ユーザ操作の有効期間内（transient activation）なら開く。期限切れなら次のクリックで
-    ensureShard(gid >> SHARD_SHIFT).then(function () {
+    ensureShard(shardOf(gid)).then(function () {
       var ua = navigator.userActivation;
       if (ua && ua.isActive) openKaken(gid);
     }).catch(function () {});
