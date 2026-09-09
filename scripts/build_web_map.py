@@ -1059,6 +1059,29 @@ function selectPoint(gid, cx, cy) {
     }).catch(function () {});
   }
 }
+// 地図を動かしたら選択点の位置を置き直す（リングは追随。PC のカードは点に付いて動く、スマホのカードは下端／上端に固定。
+// 球面の裏側・カメラ後方なら隠す）。2026-09-09 ユーザ「動かしても黒円は消えない、追随する。カードも消えない」
+var followRaf = false, followTimer = null;
+function placeSelection() {
+  if (selGid === null) return;
+  var xy = is3d ? project3d(selGid) : projected(selGid);
+  if (!xy) { hideRing(); return; }
+  selXY = xy; showRing(xy[0], xy[1]);
+  if (!narrow) placeCard(xy[0], xy[1]);
+}
+function updateSelectionPos() {
+  if (selGid === null) return;
+  if (!followRaf) {
+    followRaf = true;
+    requestAnimationFrame(function () { followRaf = false; placeSelection(); });
+  }
+  // gl3d はカメラ行列の更新が描画ループ側で遅れることがある（遅い端末ほど）ので、少し後に何度か合わせ直す
+  if (is3d) {
+    clearTimeout(followTimer);
+    followTimer = setTimeout(function () { placeSelection(); followTimer = setTimeout(function () { placeSelection();
+      followTimer = setTimeout(placeSelection, 400); }, 200); }, 80);
+  }
+}
 function clearSelection() {
   if (selGid === null) return;
   selGid = null; selXY = null; card.style.display = 'none'; hideRing();
@@ -1103,6 +1126,7 @@ card.addEventListener('click', function (e) {
   }
   // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
 });
+plot._projected = function (g) { return projected(g); };  // 検証用
 function projected(gid) {  // 2D: データ座標→画面座標
   var fl = plot._fullLayout, rect = plot.getBoundingClientRect();
   var xr = fl.xaxis.range, yr = fl.yaxis.range;
@@ -1114,10 +1138,11 @@ function projected(gid) {  // 2D: データ座標→画面座標
 plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
 // 2D: パン・ピンチ直後のクリック/タップは無視（relayout を合図に抑止）。選択中はカードを点に追随
 plot.on('plotly_relayout', function () {
+  updateSelectionPos();
   if (is3d) return;
   suppressUntil = Date.now() + 400;
-  if (selGid !== null) { selXY = projected(selGid); showRing(selXY[0], selXY[1]); placeCard(selXY[0], selXY[1]); }
 });
+plot.on('plotly_relayouting', function () { updateSelectionPos(); });  // 2D のドラッグ中（範囲が確定する前）
 // 3D: gl3d はただのクリック/タップでも relayout を出すため relayout は使えない。
 // 押下→離す間に実際に動かした（回転した）操作かどうかを記録し、その操作由来のクリックは無視する
 var lastTouchXY = null, lastTouchAt = 0;  // 3Dタッチ: plotly_click に座標が乗らないため直前のタッチ位置を使う
@@ -1126,7 +1151,7 @@ if (is3d) {
   var down3 = null;
   function down3End(x, y) {
     gestureMoved = !!down3 && (Math.abs(x - down3[0]) > 10 || Math.abs(y - down3[1]) > 10);
-    if (gestureMoved) clearSelection();  // 回転したら選択（リング・カード）は閉じる
+    // 回転しても選択は保つ（リングが追随する。2026-09-09）
     down3 = null;
   }
   plot.addEventListener('mousedown', function (e) { down3 = [e.clientX, e.clientY]; }, true);
@@ -1192,20 +1217,8 @@ plot.on('plotly_click', function (d) {
   resolveTap(gid);  // 待ちが無い（click より先に届いた等）場合は、直後の DOM click が開くので何もしない
 });
 
-// ---- タッチ端末共通: 地図を動かし始めたら（指が10px以上動く／2本指になる）選択カードとリングを閉じる ----
-// カードは「その点を読む」ための一時的な表示で、回転・パン・ピンチ中は場所との対応も崩れるため
-if (isTouch) {
-  var moveStart = null;
-  plot.addEventListener('touchstart', function (e) {
-    moveStart = (e.touches.length === 1) ? [e.touches[0].clientX, e.touches[0].clientY] : null;
-    if (e.touches.length >= 2) clearSelection();
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchmove', function (e) {
-    if (selGid === null) return;
-    if (e.touches.length >= 2) { clearSelection(); return; }
-    if (moveStart && (Math.abs(e.touches[0].clientX - moveStart[0]) > 10 || Math.abs(e.touches[0].clientY - moveStart[1]) > 10)) clearSelection();
-  }, { capture: true, passive: true });
-}
+// ---- タッチ端末: 地図を動かしても選択は閉じない ----
+// （2026-09-09 変更）タッチで地図を動かしても選択は保ち、リングが追随する。解除は空白のタップと × のみ
 
 // ---- 2Dタッチ端末のタップ処理（Plotlyのタッチ経由ヒットテストは信頼できないため、
 // タップ座標から最近傍の可視点を自前判定） ----
@@ -1725,7 +1738,8 @@ if (isTouch && is3d) {
       raf3 = false;
       if (!pendingCam) return;
       var pc = pendingCam; pendingCam = null;
-      Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up });
+      Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
+        .then(updateSelectionPos);
     });
   }
   // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
