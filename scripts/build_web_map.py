@@ -589,7 +589,9 @@ function updatePhase2() {
   document.getElementById('ka-p2-msg').textContent =
     '詳細データを読み込み中… ' + detLoaded + '/' + M.nShards;
 }
+var prefetchStartedAt = Date.now();
 function startPrefetch() {
+  prefetchStartedAt = Date.now();
   var p2 = document.getElementById('ka-phase2');
   p2.style.display = 'block';
   updatePhase2();
@@ -610,9 +612,11 @@ function finishPrefetch() {
   var q = document.getElementById('ka-q');
   if (q) { q.disabled = false; q.placeholder = narrow ? 'タイトル・番号で検索' : 'タイトル・キーワード・課題番号を検索'; }
   var p2 = document.getElementById('ka-phase2');
+  // 端末に保存済み（Service Worker）で一瞬で終わった場合は完了表示を出さない。通常は 2 秒で消す
+  if (Date.now() - prefetchStartedAt < 1500) { p2.style.display = 'none'; return; }
   document.getElementById('ka-bar2-wrap').style.display = 'none';
   document.getElementById('ka-p2-msg').textContent = '✓ 全データ読み込み完了';
-  setTimeout(function () { p2.style.display = 'none'; }, 4000);
+  setTimeout(function () { p2.style.display = 'none'; }, 2000);
 }
 
 // ==== UI一式（plot_map_interactive.py の POST_SCRIPT を移植） ====
