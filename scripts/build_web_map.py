@@ -969,6 +969,15 @@ function showRing(x, y) {
 }
 function hideRing() { ring.style.display = 'none'; }
 
+// カード下段のアイコンボタン（文字ボタンは場所を取るのでアイコンに。2026-09-09 ユーザ判断。title で補足）
+var ICON_BTN = 'display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border:1px solid ' + LINE +
+  ';border-radius:8px;background:#fff;color:#1c5cab;cursor:pointer;user-select:none;-webkit-user-select:none';
+var ICON_LINK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+  '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+var ICON_SHARE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+  '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
+var ICON_CHECK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+  '<path d="M20 6L9 17l-5-5"/></svg>';
 function renderCard(gid, tr) {
   var row = getRow(gid);
   // タイトルは2行分の高さで固定（1行でもカードの高さが変わらない。3行以上は省略記号）
@@ -980,13 +989,11 @@ function renderCard(gid, tr) {
     '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? catOf(gid, row) + ' / ' + row[0] : catOf(gid, null)) + '</div>' +
     '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px;min-height:1.5em">' + esc(row ? row[3] : '') + '</div>';
   var inner = headerHtml(tr, true) + body;
-  var BTN2 = 'display:inline-block;padding:2px 9px;border:1px solid ' + LINE + ';border-radius:10px;background:#fff;' +
-    'color:#1c5cab;font-size:11px;cursor:pointer;user-select:none;-webkit-user-select:none';
   var foot = row
-    ? '<div style="display:flex;gap:6px;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid ' + LINE + '">' +
+    ? '<div style="display:flex;gap:4px;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid ' + LINE + '">' +
       '<span style="' + ELL + ';flex:1;color:' + MUTED + ';font-size:11px">クリックで KAKEN ページ</span>' +
-      '<span data-copy="1" style="' + BTN2 + '">リンクをコピー</span>' +
-      (navigator.share ? '<span data-share="1" style="' + BTN2 + '">共有</span>' : '') + '</div>'
+      '<span data-copy="1" title="リンクをコピー" aria-label="リンクをコピー" style="' + ICON_BTN + '">' + ICON_LINK + '</span>' +
+      (navigator.share ? '<span data-share="1" title="共有" aria-label="共有" style="' + ICON_BTN + '">' + ICON_SHARE + '</span>' : '') + '</div>'
     : '';
   card.innerHTML = row
     ? '<a data-open="1" href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener"' +
@@ -1087,9 +1094,10 @@ card.addEventListener('click', function (e) {
       navigator.share({ title: row[2] || row[0], url: url }).catch(function () {});
       return;
     }
-    copyText(url).then(function () {
-      var orig = t.textContent; t.textContent = 'コピーしました'; setTimeout(function () { t.textContent = orig; }, 1500);
-    }).catch(function () { t.textContent = 'コピーできませんでした'; });
+    copyText(url).then(function () {  // 1.5 秒だけチェック印に
+      t.innerHTML = ICON_CHECK; t.title = 'コピーしました';
+      setTimeout(function () { t.innerHTML = ICON_LINK; t.title = 'リンクをコピー'; }, 1500);
+    }).catch(function () { t.title = 'コピーできませんでした'; });
     return;
   }
   // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
