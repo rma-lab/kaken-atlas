@@ -991,7 +991,8 @@ function renderCard(gid, tr) {
   var inner = headerHtml(tr, true) + body;
   var foot = row
     ? '<div style="display:flex;gap:4px;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid ' + LINE + '">' +
-      '<span style="' + ELL + ';flex:1;color:' + MUTED + ';font-size:11px">クリックで KAKEN ページ</span>' +
+      '<a href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener" style="' + ELL + ';flex:1;color:#1c5cab;' +
+      'font-size:11.5px;text-decoration:none">KAKEN <span style="font-size:10px">↗</span></a>' +
       '<span data-copy="1" title="リンクをコピー" aria-label="リンクをコピー" style="' + ICON_BTN + '">' + ICON_LINK + '</span>' +
       (navigator.share ? '<span data-share="1" title="共有" aria-label="共有" style="' + ICON_BTN + '">' + ICON_SHARE + '</span>' : '') + '</div>'
     : '';
