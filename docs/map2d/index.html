@@ -358,8 +358,8 @@ if (allLoaded) finishPrefetch();  // 先読みがヘッダー生成より先に�
 // メニュー開閉。マウス=ホバー（斜め移動で一瞬外に出ても閉じない350ms猶予）、
 // タッチ=ボタンタップでトグル・外側タップで閉じる
 var menus = [['ka-home-wrap', 'ka-home-body', 'ka-home-btn'],
-             ['ka-filter-wrap', 'ka-body', 'ka-filter-btn'],
              ['ka-help-wrap', 'ka-help-body', 'ka-help-btn']];
+if (!narrow) menus.splice(1, 0, ['ka-filter-wrap', 'ka-body', 'ka-filter-btn']);  // 狭幅の種目はボトムシート
 menus.forEach(function (m) {
   var wrap = document.getElementById(m[0]);
   var body = document.getElementById(m[1]);
@@ -1087,13 +1087,75 @@ document.addEventListener('keydown', function (e) {
   Plotly.update(plot, { selectedpoints: null }, { selections: [], dragmode: 'pan' });
 });
 
-// ---- 大区分シート（スマホ幅のみ。Plotly凡例の代替: 下部ボタン→ボトムシート） ----
+// ---- ボトムシート（スマホ幅のみ）: 大区分と種目で同じ部品を使う ----
+// 行＝（色の丸）名前・件数・「のみ」。行タップで表示切替（状態は濃淡）。上部に「すべて表示／すべて非表示」。
+// 大区分は Plotly 凡例の代替、種目は PC のチェックボックス一覧の代替（同じ操作は同じ形にする。2026-09-09）
+var sheetBackdrop = null, openSheetEl = null;
+function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], isOn(i), toggle(i), only(i), all(on)}
+  if (!sheetBackdrop) {
+    sheetBackdrop = document.createElement('div');
+    sheetBackdrop.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(20,20,15,0.3);' +
+      'opacity:0;visibility:hidden;transition:opacity .25s';
+    document.body.appendChild(sheetBackdrop);
+    sheetBackdrop.addEventListener('click', function () { if (openSheetEl) openSheetEl.close(); });
+  }
+  var sheet = document.createElement('div');
+  sheet.id = cfg.id;
+  sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:1001;' +
+    'background:#fcfcfb;border-top:1px solid ' + LINE + ';border-radius:16px 16px 0 0;' +
+    'box-shadow:0 -6px 24px rgba(0,0,0,0.18);transform:translateY(105%);' +
+    'transition:transform .28s cubic-bezier(.2,.8,.25,1);' +
+    'padding:10px 16px calc(16px + env(safe-area-inset-bottom));max-height:72vh;overflow-y:auto;' +
+    'font:12.5px/1.6 -apple-system,sans-serif;color:' + INK;
+  var BTN = 'padding:4px 10px;border:1px solid ' + LINE + ';border-radius:12px;background:#fff;color:#1c5cab;font-size:11.5px';
+  sheet.innerHTML =
+    '<div style="width:36px;height:4px;border-radius:2px;background:#d5d4cc;margin:0 auto 10px"></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">' +
+    '<b style="font-size:14px">' + cfg.title + '</b>' +
+    '<span style="color:' + MUTED + ';font-size:11px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + cfg.hint + '</span>' +
+    '<span class="ka-sheet-all" style="' + BTN + '">すべて表示</span>' +
+    '<span class="ka-sheet-none" style="' + BTN + '">すべて非表示</span></div>' +
+    '<div style="display:grid;grid-template-columns:1fr;gap:5px">' +
+    cfg.items.map(function (it, i) {
+      return '<div class="ka-sheet-item" data-i="' + i + '" style="display:flex;align-items:center;' +
+        'min-width:0;gap:8px;border:1px solid ' + LINE + ';border-radius:9px;padding:5px 6px 5px 10px;' +
+        'background:#fff;transition:opacity .15s">' +
+        (it.color ? '<span style="flex:none;width:11px;height:11px;border-radius:50%;background:' + it.color + '"></span>' : '') +
+        '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.label) + '</span>' +
+        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(it.n) + '</span>' +
+        '<span class="ka-sheet-only" data-i="' + i + '" style="flex:none;padding:2px 7px;border-radius:9px;' +
+        'background:#eef2f8;color:#1c5cab;font-size:11px">のみ</span></div>';
+    }).join('') + '</div>';
+  document.body.appendChild(sheet);
+  var rows = sheet.querySelectorAll('.ka-sheet-item');
+  function refresh() {
+    rows.forEach(function (el) { el.style.opacity = cfg.isOn(parseInt(el.getAttribute('data-i'), 10)) ? '' : '0.35'; });
+  }
+  var api = {
+    open: function () { clearSelection(); sheet.style.transform = 'translateY(0)'; sheetBackdrop.style.opacity = '1';
+                        sheetBackdrop.style.visibility = 'visible'; openSheetEl = api; },
+    close: function () { sheet.style.transform = 'translateY(105%)'; sheetBackdrop.style.opacity = '0';
+                         sheetBackdrop.style.visibility = 'hidden'; openSheetEl = null; },
+    refresh: refresh,
+  };
+  rows.forEach(function (el) {
+    el.addEventListener('click', function () { cfg.toggle(parseInt(el.getAttribute('data-i'), 10)); refresh(); });
+  });
+  sheet.querySelectorAll('.ka-sheet-only').forEach(function (el) {
+    el.addEventListener('click', function (e) { e.stopPropagation(); cfg.only(parseInt(el.getAttribute('data-i'), 10)); refresh(); });
+  });
+  sheet.querySelector('.ka-sheet-all').addEventListener('click', function () { cfg.all(true); refresh(); });
+  sheet.querySelector('.ka-sheet-none').addEventListener('click', function () { cfg.all(false); refresh(); });
+  refresh();
+  return api;
+}
+
 if (narrow) {
+  // 大区分シート
   var anchors = M.traces.filter(function (t) { return t.k === 'a'; })
     .sort(function (a, b) { return a.rank - b.rank; });  // 凡例順（A〜K→複数→区分なし）
   var daiOn = {};
   anchors.forEach(function (t) { daiOn[t.dai] = t.vis; });
-
   // 表示状態 daiOn をまとめて反映（1回の restyle。3D では restyle ごとに再アップロードが走るため）
   function applyDai() {
     var idx = [], vis = [];
@@ -1104,79 +1166,44 @@ if (narrow) {
       else if (t.visible !== false) { idx.push(i); vis.push('legendonly'); }
     });
     if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
-    drawer.querySelectorAll('.ka-dai-item').forEach(function (el) {
-      el.style.opacity = daiOn[anchors[parseInt(el.getAttribute('data-i'), 10)].dai] ? '' : '0.35';
-    });
   }
-
-  var daiBtn = document.getElementById('ka-dai-btn');
   document.getElementById('ka-dai-wrap').style.display = 'flex';
+  var daiSheet = buildSheet({
+    id: 'ka-dai-drawer', title: '大区分', hint: 'タップ: 表示切替',
+    items: anchors.map(function (t) { return { label: t.label, color: t.color, n: t.n }; }),
+    isOn: function (i) { return !!daiOn[anchors[i].dai]; },
+    toggle: function (i) { daiOn[anchors[i].dai] = !daiOn[anchors[i].dai]; applyDai(); },
+    only: function (i) { anchors.forEach(function (a) { daiOn[a.dai] = a.dai === anchors[i].dai; }); applyDai(); },
+    all: function (on) { anchors.forEach(function (a) { daiOn[a.dai] = on; }); applyDai(); },
+  });
+  document.getElementById('ka-dai-btn').addEventListener('click', daiSheet.open);
 
-  var backdrop = document.createElement('div');
-  backdrop.id = 'ka-dai-backdrop';
-  backdrop.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(20,20,15,0.3);' +
-    'opacity:0;visibility:hidden;transition:opacity .25s';
-  document.body.appendChild(backdrop);
-
-  var drawer = document.createElement('div');
-  drawer.id = 'ka-dai-drawer';
-  drawer.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:1001;' +
-    'background:#fcfcfb;border-top:1px solid ' + LINE + ';border-radius:16px 16px 0 0;' +
-    'box-shadow:0 -6px 24px rgba(0,0,0,0.18);transform:translateY(105%);' +
-    'transition:transform .28s cubic-bezier(.2,.8,.25,1);' +
-    'padding:10px 16px calc(16px + env(safe-area-inset-bottom));max-height:72vh;overflow-y:auto;' +
-    'font:12.5px/1.6 -apple-system,sans-serif;color:' + INK;
-  var BTN = 'padding:4px 10px;border:1px solid ' + LINE + ';border-radius:12px;background:#fff;color:#1c5cab;font-size:11.5px';
-  drawer.innerHTML =
-    '<div style="width:36px;height:4px;border-radius:2px;background:#d5d4cc;margin:0 auto 10px"></div>' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">' +
-    '<b style="font-size:14px">大区分</b>' +
-    '<span style="color:' + MUTED + ';font-size:11px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">タップ: 表示切替</span>' +
-    '<span id="ka-dai-all" style="' + BTN + '">すべて表示</span>' +
-    '<span id="ka-dai-none" style="' + BTN + '">すべて非表示</span></div>' +
-    '<div style="display:grid;grid-template-columns:1fr;gap:5px">' +
-    anchors.map(function (t, i) {
-      return '<div class="ka-dai-item" data-i="' + i + '" style="display:flex;align-items:center;' +
-        'min-width:0;gap:8px;border:1px solid ' + LINE + ';border-radius:9px;padding:5px 6px 5px 10px;' +
-        'background:#fff;transition:opacity .15s;' + (t.vis ? '' : 'opacity:0.35') + '">' +
-        '<span style="flex:none;width:11px;height:11px;border-radius:50%;background:' + t.color + '"></span>' +
-        '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
-        esc(t.label) + '</span>' +
-        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(t.n) + '</span>' +
-        '<span class="ka-dai-only" data-i="' + i + '" style="flex:none;padding:2px 7px;border-radius:9px;' +
-        'background:#eef2f8;color:#1c5cab;font-size:11px">のみ</span></div>';
-    }).join('') + '</div>';
-  document.body.appendChild(drawer);
-
-  function openDrawer(on) {
-    drawer.style.transform = on ? 'translateY(0)' : 'translateY(105%)';
-    drawer.dataset.open = on ? '1' : '';
-    backdrop.style.opacity = on ? '1' : '0';
-    backdrop.style.visibility = on ? 'visible' : 'hidden';
+  // 種目シート（球面は種目フィルタなし）
+  if (!isGlobe) {
+    var catOn = {};
+    cats.forEach(function (c) { catOn[c] = true; });
+    function applyCats() {  // 全種目の表示状態を 1 回の restyle で反映（大区分の非表示 legendonly は尊重）
+      var idx = [], vis = [];
+      plot.data.forEach(function (t, i) {
+        if (!(t.meta in catOn)) return;
+        if (!catOn[t.meta]) { idx.push(i); vis.push(false); return; }
+        var v = (t.legendgroup in daiOn) ? (daiOn[t.legendgroup] ? true : 'legendonly') : true;
+        idx.push(i); vis.push(v);
+      });
+      if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
+      boxes.forEach(function (cb, i) { cb.checked = !!catOn[cats[i]]; });  // PC 用一覧とも同期
+    }
+    var catSheet = buildSheet({
+      id: 'ka-cat-drawer', title: '種目', hint: 'タップ: 表示切替',
+      items: cats.map(function (c) { return { label: c, n: counts[c] }; }),
+      isOn: function (i) { return !!catOn[cats[i]]; },
+      toggle: function (i) { catOn[cats[i]] = !catOn[cats[i]]; applyCats(); },
+      only: function (i) { cats.forEach(function (c) { catOn[c] = c === cats[i]; }); applyCats(); },
+      all: function (on) { cats.forEach(function (c) { catOn[c] = on; }); applyCats(); },
+    });
+    document.getElementById('ka-filter-btn').addEventListener('click', catSheet.open);
+    document.getElementById('ka-body').style.display = 'none';
   }
-  daiBtn.addEventListener('click', function () { clearSelection(); openDrawer(true); });
-  backdrop.addEventListener('click', function () { openDrawer(false); });
-  drawer.querySelectorAll('.ka-dai-item').forEach(function (el) {
-    el.addEventListener('click', function () {
-      var t = anchors[parseInt(el.getAttribute('data-i'), 10)];
-      daiOn[t.dai] = !daiOn[t.dai];
-      applyDai();
-    });
-  });
-  drawer.querySelectorAll('.ka-dai-only').forEach(function (el) {  // その大区分だけ表示
-    el.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var t = anchors[parseInt(el.getAttribute('data-i'), 10)];
-      anchors.forEach(function (a) { daiOn[a.dai] = a.dai === t.dai; });
-      applyDai();
-    });
-  });
-  document.getElementById('ka-dai-all').addEventListener('click', function () {
-    anchors.forEach(function (a) { daiOn[a.dai] = true; }); applyDai();
-  });
-  document.getElementById('ka-dai-none').addEventListener('click', function () {
-    anchors.forEach(function (a) { daiOn[a.dai] = false; }); applyDai();
-  });
 }
 
 // ---- 2本指ピンチズーム（2D・タッチ端末のみ。Plotly 2Dカルテシアンは
