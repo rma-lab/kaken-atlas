@@ -696,7 +696,7 @@ function renderTip(gid, tr) {
 // 3D の補完判定: Plotly の 3D は画素ぴったりの判定しかせず、小さい半透明の点では「点の上」でも
 // 下地や空白と判定されることが多い。カメラ行列で全点を画面に投影し、カーソル最寄りの点（許容 tol px、
 // 同点なら手前）を返す。20万点の投影は数ミリ秒
-function nearestGid3d(cx, cy, tol) {
+function proj3dSetup() {  // 現在のカメラの「データ座標→画面座標」行列と、球面の可視判定用の視点
   var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
   if (!sc || !sc.glplot || !sc.glplot.cameraParams) return null;
   var cp = sc.glplot.cameraParams, ds = sc.dataScale || [1, 1, 1];
@@ -710,9 +710,6 @@ function nearestGid3d(cx, cy, tol) {
     return o;
   }
   var m = mul(cp.projection, mul(cp.view, cp.model));
-  var vis = M.traces.map(function (t, ti) { return t.k === 'd' && traceVisible(ti); });
-  // 球面: 球に隠れる裏側の点を除外する。視点 E（スケール後座標）は view=[R|t] から E = -R^T t。
-  // 単位球上の点 P（スケール後）が見えるのは接平面条件 dot(P, E) > dot(P, P) のとき
   var E = null;
   if (isGlobe) {
     var v = cp.view;
@@ -720,7 +717,24 @@ function nearestGid3d(cx, cy, tol) {
          -(v[4] * v[12] + v[5] * v[13] + v[6] * v[14]),
          -(v[8] * v[12] + v[9] * v[13] + v[10] * v[14])];
   }
-  var hw = rect.width / 2, hh = rect.height / 2, ox = rect.left + hw, oy = rect.top + hh;
+  return { m: m, ds: ds, E: E, hw: rect.width / 2, hh: rect.height / 2, ox: rect.left + rect.width / 2, oy: rect.top + rect.height / 2 };
+}
+plot._project3d = function (g) { return project3d(g); };  // 検証用
+function project3d(g, P) {  // 1点の画面座標 [x, y]（裏側・カメラ後方なら null）
+  P = P || proj3dSetup(); if (!P) return null;
+  var m = P.m, x = xs[g] * P.ds[0], y = ys[g] * P.ds[1], z = zs[g] * P.ds[2];
+  if (P.E && x * P.E[0] + y * P.E[1] + z * P.E[2] <= x * x + y * y + z * z) return null;
+  var w = m[3] * x + m[7] * y + m[11] * z + m[15];
+  if (w <= 0) return null;
+  return [P.ox + (m[0] * x + m[4] * y + m[8] * z + m[12]) / w * P.hw,
+          P.oy - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * P.hh];
+}
+function nearestGid3d(cx, cy, tol) {
+  var P = proj3dSetup(); if (!P) return null;
+  var m = P.m, ds = P.ds, E = P.E;
+  var vis = M.traces.map(function (t, ti) { return t.k === 'd' && traceVisible(ti); });
+  // 球面: 球に隠れる裏側の点を除外する（接平面条件 dot(P, E) > dot(P, P)。E は proj3dSetup で計算）
+  var hw = P.hw, hh = P.hh, ox = P.ox, oy = P.oy;
   var best = null, bd = tol * tol, bz = Infinity;
   for (var g = 0; g < M.n; g++) {
     if (!vis[traceOf[g]]) continue;
@@ -1046,6 +1060,42 @@ function traceVisible(ti) {
   var v = plot.data[ti].visible;
   return v === undefined || v === true;
 }
+// 3D/球面: カメラをその点に向けてから（球面は点が正面に来る向き、3D は注視点を点に移して寄る）、
+// 描画後に点の画面座標を求めてタッチはリング＋カード。PC はカメラ移動のみ
+function focusPoint3d(gid) {
+  plot._lastFocus = gid;  // 検証用
+  var cam = plot._fullLayout.scene.camera || {};
+  var eye = cam.eye || { x: 1.25, y: 1.25, z: 1.25 }, ctr = cam.center || { x: 0, y: 0, z: 0 }, up = cam.up || { x: 0, y: 0, z: 1 };
+  // Plotly のカメラ座標（eye/center）は、データ座標 × dataScale にシーンの model 行列（アスペクト比の拡縮＋箱の中心への
+  // 平行移動）を掛けた空間で表される。model を掛け忘れると 3D（箱が原点対称でない）で注視点がずれる
+  var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
+  var sx = xs[gid] * ds[0], sy = ys[gid] * ds[1], sz = zs[gid] * ds[2];
+  var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
+  var px = sx, py = sy, pz = sz, upd;
+  if (mm) {
+    px = mm[0] * sx + mm[4] * sy + mm[8] * sz + mm[12];
+    py = mm[1] * sx + mm[5] * sy + mm[9] * sz + mm[13];
+    pz = mm[2] * sx + mm[6] * sy + mm[10] * sz + mm[14];
+  }
+  if (isGlobe) {
+    var n = Math.hypot(px, py, pz) || 1, d = Math.hypot(eye.x, eye.y, eye.z);
+    var ux = px / n, uy = py / n, uz = pz / n;
+    var upv = Math.abs(uz) > 0.9 ? { x: 0, y: 1, z: 0 } : { x: 0, y: 0, z: 1 };  // 極付近では上向きを差し替え
+    upd = { 'scene.camera.eye': { x: ux * d, y: uy * d, z: uz * d }, 'scene.camera.center': { x: 0, y: 0, z: 0 }, 'scene.camera.up': upv };
+  } else {
+    var dx = eye.x - ctr.x, dy = eye.y - ctr.y, dz = eye.z - ctr.z, len = Math.hypot(dx, dy, dz) || 1;
+    var dist = Math.max(0.5, Math.min(len, 0.9));  // 近づきすぎない範囲で寄る
+    upd = { 'scene.camera.center': { x: px, y: py, z: pz },
+            'scene.camera.eye': { x: px + dx / len * dist, y: py + dy / len * dist, z: pz + dz / len * dist }, 'scene.camera.up': up };
+  }
+  Plotly.relayout(plot, upd).then(function () {
+    if (!isTouch) return;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      var xy = project3d(gid) || [window.innerWidth / 2, window.innerHeight / 2];
+      selectPoint(gid, xy[0], xy[1]);
+    }); });
+  });
+}
 function runSearch(q) {
   clearHighlight();
   q = q.trim().toLowerCase();
@@ -1091,10 +1141,8 @@ function runSearch(q) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var h = hits[parseInt(a.getAttribute('data-k'), 10)];
-      if (is3d) {  // 3Dは画面位置が取れない。タッチは中央基準でカード（リングで場所を示す）、PC は何もしない
-        if (isTouch) selectPoint(h.gid, window.innerWidth / 2, window.innerHeight / 2);
-        return;
-      }
+      if (isTouch) qResults.style.display = 'none';  // スマホは結果窓が地図を覆うので閉じる（強調は残す）
+      if (is3d) { focusPoint3d(h.gid); return; }
       var span = 1.5;
       Plotly.relayout(plot, {
         'xaxis.range': [xs[h.gid] - span, xs[h.gid] + span],
