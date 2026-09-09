@@ -15,6 +15,7 @@ plot_map_interactive.py と同一仕様。kaken_id は「KAKENHI-<種別>-<課�
 使い方:
     uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet
     uv run python scripts/build_web_map.py data/processed/umap3d_nn15_md0.1.parquet
+    uv run python scripts/build_web_map.py <parquet> <出力先>   # 比較実験用（既定は docs/ 以下）
 出力: docs/map2d/ または docs/map3d/（index.html + points.bin + shards/）
 """
 
@@ -166,6 +167,8 @@ def main() -> None:
     points_bin = b"".join(a.tobytes() for a in qarrs)
 
     out_dir = Path("docs/globe" if is_globe else f"docs/map{'3d' if is_3d else '2d'}")
+    if len(sys.argv) > 2:  # 比較実験用に出力先を変えられる（例: reports/globe_compare/sp0.45）
+        out_dir = Path(sys.argv[2])
     (out_dir / "shards").mkdir(parents=True, exist_ok=True)
     (out_dir / "points.bin").write_bytes(points_bin)
 
@@ -254,6 +257,7 @@ TEMPLATE = r"""<!doctype html>
 <style>
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); touch-action:none; }
+  #ka-q::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
   @media (max-width:640px) {
     #ka-bar { gap:8px !important; padding:0 10px !important; }
     #ka-title { display:none !important; }  /* タイトルはタブ・入口ページにある */
@@ -542,10 +546,13 @@ bar.innerHTML =
   '  <div id="ka-home-body" style="display:none;position:absolute;top:100%;left:0;min-width:160px;padding:6px 0;' + PANEL + '">' +
   siteMenu + '</div>' +
   '</div>' +
-  '<div style="position:relative;flex:0 1 300px;min-width:170px">' +
+  '<div id="ka-q-wrap" style="position:relative;flex:0 1 300px;min-width:170px">' +
   '  <input id="ka-q" type="search" placeholder="詳細データ読み込み中…" disabled' +
-  '   style="width:100%;box-sizing:border-box;padding:6px 12px;border:1px solid #cfcec7;' +
+  '   style="width:100%;box-sizing:border-box;padding:6px 30px 6px 12px;border:1px solid #cfcec7;' +
   '   border-radius:15px;background:#fff;font:12.5px -apple-system,sans-serif;outline:none">' +
+  '  <span id="ka-q-clear" title="検索をクリア" style="display:none;position:absolute;right:6px;top:50%;' +
+  '   transform:translateY(-50%);width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;' +
+  '   background:#d8d7d0;color:#fff;font-size:14px;cursor:pointer;user-select:none">×</span>' +
   '  <div id="ka-results" style="display:none;position:absolute;top:36px;left:0;width:380px;' +
   '   max-height:55vh;overflow-y:auto;padding:8px 12px;' + PANEL + '"></div>' +
   '</div>' +
@@ -1033,7 +1040,7 @@ var hlIndex = null, qTimer = null;
 
 function clearHighlight() {
   if (hlIndex !== null) { Plotly.deleteTraces(plot, hlIndex); hlIndex = null; }
-  qResults.style.display = 'none';
+  qResults.style.display = 'none'; qResults.innerHTML = '';
 }
 function traceVisible(ti) {
   var v = plot.data[ti].visible;
@@ -1098,12 +1105,27 @@ function runSearch(q) {
     });
   });
 }
+// 入力欄右端の × : 検索語・強調・結果窓をすべて消す。結果窓の外をクリック/タップ: 結果窓だけ閉じる
+// （地図上の強調は残す）。入力欄に戻れば結果窓を再表示する（2026-09-09 ユーザ仕様）
+var qClear = document.getElementById('ka-q-clear');
+function updateClearBtn() { qClear.style.display = qInput.value ? 'block' : 'none'; }
+function resetSearch() { qInput.value = ''; clearHighlight(); updateClearBtn(); }
+qClear.addEventListener('click', function (e) { e.preventDefault(); resetSearch(); if (!isTouch) qInput.focus(); });
+document.addEventListener('pointerdown', function (e) {
+  if (qResults.style.display === 'none') return;
+  var wrap = document.getElementById('ka-q-wrap');
+  if (!wrap.contains(e.target)) qResults.style.display = 'none';
+}, true);
+qInput.addEventListener('focus', function () {
+  if (qInput.value.trim().length >= 2 && qResults.innerHTML) qResults.style.display = 'block';
+});
 qInput.addEventListener('input', function () {
+  updateClearBtn();
   if (qTimer) clearTimeout(qTimer);
   qTimer = setTimeout(function () { runSearch(qInput.value); }, 300);
 });
 qInput.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') { qInput.value = ''; clearHighlight(); qInput.blur(); e.stopPropagation(); }
+  if (e.key === 'Escape') { resetSearch(); qInput.blur(); e.stopPropagation(); }
 });
 
 // ---- 種目フィルタ ----
