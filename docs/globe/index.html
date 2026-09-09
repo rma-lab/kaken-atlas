@@ -1307,7 +1307,7 @@ if (isTouch && is3d) {
     if (sp < 0.05) return;
     if (sp > 2) { vx *= 2 / sp; vy *= 2 / sp; }
     // 指速度の半分から始める（全速だと最大 1 周近く回ってしまう。上限 2px/ms で約 0.6 周、1px/ms で約 1/3 周）
-    var k = 0.5 * Math.PI / Math.max(plot._fullLayout._size.w, 1);
+    var k = 0.5 * lastRotK;  // 慣性も直前の回転ゲインに合わせる
     inert = { wx: vx * k, wy: vy * k, t: performance.now(), cam: lastCam || liveCam() };
     requestAnimationFrame(stepInertia);
   }
@@ -1334,6 +1334,24 @@ if (isTouch && is3d) {
       Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up });
     });
   }
+  // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
+  // 「視点から面までの距離」に比例して弱める（拡大時に指の動き以上に球が回ってしまう問題。2026-09-09 ユーザ指摘）
+  var initCam0 = liveCam(), initDist = vlen(vsub(initCam0.eye, initCam0.ctr));  // 読み込み時の視距離を基準
+  var rotK0 = null, lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1);
+  function surfaceR() {  // 球面: 球の半径（カメラ座標系）。3D: 0（注視点までの距離で代用）
+    if (!isGlobe) return 0;
+    var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
+    var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
+    var x = ds[0], y = 0, z = 0;
+    return mm ? Math.hypot(mm[0] * x, mm[1] * x, mm[2] * x) : x;
+  }
+  function rotGain(c) {
+    var R = surfaceR(), d = vlen(vsub(c.eye, c.ctr)) - R;
+    if (rotK0 === null) rotK0 = Math.max(initDist - R, 1e-3);  // 基準＝読み込み時の視距離（面までの距離）
+    var ratio = Math.min(1.5, Math.max(0.02, d / rotK0));
+    lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1) * ratio;
+    return lastRotK;
+  }
   function startGesture(touches) {
     samples = [];
     // 慣性で回転中は relayout が追いつかず liveCam が古いことがあるので、自前の最新カメラを使う
@@ -1341,7 +1359,7 @@ if (isTouch && is3d) {
     inert = null;
     if (touches.length === 1) {
       g3 = { mode: 'rot', x: touches[0].clientX, y: touches[0].clientY, cam: c, bs: bs,
-             k: Math.PI / Math.max(plot._fullLayout._size.w, 1) };  // 画面幅ぶんのドラッグで半回転（180°）
+             k: rotGain(c) };  // 既定の視距離で画面幅のドラッグ＝半回転、拡大時はその分弱める
     } else if (touches.length === 2) {
       var c0 = tCenter(touches);
       g3 = { mode: 'two', d0: tDist(touches), cx: c0[0], cy: c0[1], cam: c, bs: bs,
