@@ -305,7 +305,7 @@ function finishPrefetch() {
   if (q) { q.disabled = false; q.placeholder = narrow ? 'タイトル・番号で検索' : 'タイトル・キーワード・課題番号を検索'; }
   var p2 = document.getElementById('ka-phase2');
   document.getElementById('ka-bar2-wrap').style.display = 'none';
-  document.getElementById('ka-p2-msg').textContent = '✓ 全データ読み込み完了（検索が使えます）';
+  document.getElementById('ka-p2-msg').textContent = '✓ 全データ読み込み完了';
   setTimeout(function () { p2.style.display = 'none'; }, 4000);
 }
 
