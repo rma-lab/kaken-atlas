@@ -34,6 +34,8 @@
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); touch-action:none; }
   #ka-q::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
+  /* iOS Safari は 16px 未満の入力欄にフォーカスすると画面を自動拡大する（その後の操作にも残る）→ タッチ端末では 16px */
+  @media (pointer: coarse) { #ka-q { font-size:16px !important; } }
   @media (max-width:640px) {
     #ka-bar { gap:8px !important; padding:0 10px !important; }
     #ka-title { display:none !important; }  /* タイトルはタブ・入口ページにある */
@@ -495,6 +497,7 @@ function proj3dSetup() {  // 現在のカメラの「データ座標→画面座
   }
   return { m: m, ds: ds, E: E, hw: rect.width / 2, hh: rect.height / 2, ox: rect.left + rect.width / 2, oy: rect.top + rect.height / 2 };
 }
+plot._project3d = function (g) { return project3d(g); };  // 検証用
 function project3d(g, P) {  // 1点の画面座標 [x, y]（裏側・カメラ後方なら null）
   P = P || proj3dSetup(); if (!P) return null;
   var m = P.m, x = xs[g] * P.ds[0], y = ys[g] * P.ds[1], z = zs[g] * P.ds[2];
@@ -838,9 +841,20 @@ function traceVisible(ti) {
 // 3D/球面: カメラをその点に向けてから（球面は点が正面に来る向き、3D は注視点を点に移して寄る）、
 // 描画後に点の画面座標を求めてタッチはリング＋カード。PC はカメラ移動のみ
 function focusPoint3d(gid) {
+  plot._lastFocus = gid;  // 検証用
   var cam = plot._fullLayout.scene.camera || {};
   var eye = cam.eye || { x: 1.25, y: 1.25, z: 1.25 }, ctr = cam.center || { x: 0, y: 0, z: 0 }, up = cam.up || { x: 0, y: 0, z: 1 };
-  var px = xs[gid], py = ys[gid], pz = zs[gid], upd;
+  // Plotly のカメラ座標（eye/center）は、データ座標 × dataScale にシーンの model 行列（アスペクト比の拡縮＋箱の中心への
+  // 平行移動）を掛けた空間で表される。model を掛け忘れると 3D（箱が原点対称でない）で注視点がずれる
+  var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
+  var sx = xs[gid] * ds[0], sy = ys[gid] * ds[1], sz = zs[gid] * ds[2];
+  var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
+  var px = sx, py = sy, pz = sz, upd;
+  if (mm) {
+    px = mm[0] * sx + mm[4] * sy + mm[8] * sz + mm[12];
+    py = mm[1] * sx + mm[5] * sy + mm[9] * sz + mm[13];
+    pz = mm[2] * sx + mm[6] * sy + mm[10] * sz + mm[14];
+  }
   if (isGlobe) {
     var n = Math.hypot(px, py, pz) || 1, d = Math.hypot(eye.x, eye.y, eye.z);
     var ux = px / n, uy = py / n, uz = pz / n;

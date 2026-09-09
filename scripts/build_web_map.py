@@ -258,6 +258,8 @@ TEMPLATE = r"""<!doctype html>
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); touch-action:none; }
   #ka-q::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
+  /* iOS Safari は 16px 未満の入力欄にフォーカスすると画面を自動拡大する（その後の操作にも残る）→ タッチ端末では 16px */
+  @media (pointer: coarse) { #ka-q { font-size:16px !important; } }
   @media (max-width:640px) {
     #ka-bar { gap:8px !important; padding:0 10px !important; }
     #ka-title { display:none !important; }  /* タイトルはタブ・入口ページにある */
