@@ -294,7 +294,7 @@ async function main() {
   if (awardParam) {
     findGidByAward(awardParam).then(function (gid) {
       if (gid === null || gid === undefined) return;
-      setTimeout(function () { focusPoint(gid); }, is3d ? 600 : 200);  // 初期描画が落ち着いてから
+      setTimeout(function () { focusPoint(gid); }, is3d ? 700 : 400);  // 初期描画が落ち着いてから、全体図の上でリングを見せてから飛ぶ
     });
   }
 }
@@ -337,6 +337,9 @@ function finishPrefetch() {
 
 // ==== UI一式（plot_map_interactive.py の POST_SCRIPT を移植） ====
 function setupUI() {
+// 読み込み時の範囲／カメラを「全体」として記録（カードの 全体⇄周辺 切替で戻る先）
+if (!is3d) homeRange = { x: plot._fullLayout.xaxis.range.slice(), y: plot._fullLayout.yaxis.range.slice() };
+else homeCam = liveCamera();
 
 // ---- ヘッダーバー ----
 var bar = document.createElement('div');
@@ -661,6 +664,27 @@ function showRing(x, y) {
 }
 function hideRing() { ring.style.display = 'none'; }
 
+// 全体 ⇄ 周辺（カードのボタン）。読み込み時の範囲／カメラを「全体」とする
+var homeRange, homeCam;  // 初期化子を付けない（setupUI 冒頭で代入した値を var の巻き上げで上書きしないため）
+function isNearView() {
+  if (is3d) {
+    var c = liveCamera(); var d = Math.hypot(c.eye.x - c.ctr.x, c.eye.y - c.ctr.y, c.eye.z - c.ctr.z);
+    var d0 = homeCam ? Math.hypot(homeCam.eye.x - homeCam.ctr.x, homeCam.eye.y - homeCam.ctr.y, homeCam.eye.z - homeCam.ctr.z) : d;
+    return isGlobe ? false : d < d0 * 0.7;  // 球面は距離を変えないので常に「全体」扱い（ボタンは「この点を正面に」）
+  }
+  var xr = plot._fullLayout.xaxis.range; return (xr[1] - xr[0]) < (homeRange ? (homeRange.x[1] - homeRange.x[0]) * 0.5 : 1e9);
+}
+plot._dbgView = function () { return { homeRange: homeRange, homeCam: homeCam, near: isNearView(), sel: selGid, xr: plot._fullLayout.xaxis && plot._fullLayout.xaxis.range }; };  // 検証用
+function toggleView() {
+  if (selGid === null) return;
+  if (is3d) {
+    if (isGlobe || !isNearView()) { focusPoint3d(selGid); return; }
+    if (homeCam) animateCamera({ 'scene.camera.eye': homeCam.eye, 'scene.camera.center': homeCam.ctr, 'scene.camera.up': homeCam.up }, 1200);
+    return;
+  }
+  if (isNearView()) { if (homeRange) animateRange(homeRange.x, homeRange.y, 1200); }
+  else animateRange([xs[selGid] - NEAR_SPAN, xs[selGid] + NEAR_SPAN], [ys[selGid] - NEAR_SPAN, ys[selGid] + NEAR_SPAN], 1200);
+}
 // カード下段のアイコンボタン（文字ボタンは場所を取るのでアイコンに。2026-09-09 ユーザ判断。title で補足）
 var ICON_BTN = 'display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border:1px solid ' + LINE +
   ';border-radius:8px;background:#fff;color:#1c5cab;cursor:pointer;user-select:none;-webkit-user-select:none';
@@ -668,6 +692,10 @@ var ICON_LINK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" str
   '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
 var ICON_SHARE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
   '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
+var ICON_ZOOM = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+  '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>';
+var ICON_FIT = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+  '<path d="M3 9V5a2 2 0 0 1 2-2h4"/><path d="M15 3h4a2 2 0 0 1 2 2v4"/><path d="M21 15v4a2 2 0 0 1-2 2h-4"/><path d="M9 21H5a2 2 0 0 1-2-2v-4"/></svg>';
 var ICON_CHECK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
   '<path d="M20 6L9 17l-5-5"/></svg>';
 function renderCard(gid, tr) {
@@ -685,6 +713,7 @@ function renderCard(gid, tr) {
     ? '<div style="display:flex;gap:4px;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid ' + LINE + '">' +
       '<a href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener" style="' + ELL + ';flex:1;color:#1c5cab;' +
       'font-size:11.5px;text-decoration:none">KAKEN <span style="font-size:10px">↗</span></a>' +
+      '<span data-zoom="1" title="' + (isGlobe ? 'この点を正面に' : '全体 ⇄ 周辺') + '" style="' + ICON_BTN + '">' + (isGlobe ? ICON_ZOOM : (isNearView() ? ICON_FIT : ICON_ZOOM)) + '</span>' +
       '<span data-copy="1" title="リンクをコピー" aria-label="リンクをコピー" style="' + ICON_BTN + '">' + ICON_LINK + '</span>' +
       (navigator.share ? '<span data-share="1" title="共有" aria-label="共有" style="' + ICON_BTN + '">' + ICON_SHARE + '</span>' : '') + '</div>'
     : '';
@@ -802,6 +831,11 @@ function actOn(gid, cx, cy) { selectPoint(gid, cx, cy); }  // PC もカード（
 card.addEventListener('click', function (e) {
   var t = e.target;
   if (t.getAttribute('data-close')) { e.preventDefault(); clearSelection(); return; }
+  if (t.getAttribute('data-zoom')) {
+    e.preventDefault(); e.stopPropagation(); toggleView();
+    if (!isGlobe) setTimeout(function () { t.innerHTML = isNearView() ? ICON_FIT : ICON_ZOOM; }, 1300);
+    return;
+  }
   if (t.getAttribute('data-copy') || t.getAttribute('data-share')) {
     e.preventDefault(); e.stopPropagation();
     var row = selGid !== null ? getRow(selGid) : null; if (!row) return;
@@ -970,8 +1004,8 @@ function traceVisible(ti) {
 // 描画後に点の画面座標を求めてタッチはリング＋カード。PC はカメラ移動のみ
 function focusPoint3d(gid) {
   plot._lastFocus = gid;  // 検証用
-  var cam = plot._fullLayout.scene.camera || {};
-  var eye = cam.eye || { x: 1.25, y: 1.25, z: 1.25 }, ctr = cam.center || { x: 0, y: 0, z: 0 }, up = cam.up || { x: 0, y: 0, z: 1 };
+  var cam = liveCamera();
+  var eye = cam.eye, ctr = cam.ctr, up = cam.up;
   // Plotly のカメラ座標（eye/center）は、データ座標 × dataScale にシーンの model 行列（アスペクト比の拡縮＋箱の中心への
   // 平行移動）を掛けた空間で表される。model を掛け忘れると 3D（箱が原点対称でない）で注視点がずれる
   var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
@@ -990,26 +1024,76 @@ function focusPoint3d(gid) {
     upd = { 'scene.camera.eye': { x: ux * d, y: uy * d, z: uz * d }, 'scene.camera.center': { x: 0, y: 0, z: 0 }, 'scene.camera.up': upv };
   } else {
     var dx = eye.x - ctr.x, dy = eye.y - ctr.y, dz = eye.z - ctr.z, len = Math.hypot(dx, dy, dz) || 1;
-    var dist = Math.max(0.5, Math.min(len, 0.9));  // 近づきすぎない範囲で寄る
+    var dist = Math.max(0.6, Math.min(len, 1.1));  // 近づきすぎない範囲で寄る（周辺が見える程度）
     upd = { 'scene.camera.center': { x: px, y: py, z: pz },
             'scene.camera.eye': { x: px + dx / len * dist, y: py + dy / len * dist, z: pz + dz / len * dist }, 'scene.camera.up': up };
   }
-  Plotly.relayout(plot, upd).then(function () {
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      var xy = project3d(gid) || [window.innerWidth / 2, window.innerHeight / 2];
-      selectPoint(gid, xy[0], xy[1]);
-    }); });
-  });
+  // 先に選択して（リング＋カード）、カメラを 1.2 秒かけて補間する。リングは追随で付いてくる
+  var xy0 = project3d(gid) || [window.innerWidth / 2, window.innerHeight / 2];
+  selectPoint(gid, xy0[0], xy0[1]);
+  animateCamera(upd, 1200);
+}
+// カメラの補間。球面は視線方向を球面補間（大円に沿って回る）、3D は eye/center を線形補間
+var camAnim = null;
+function animateCamera(target, ms) {
+  var c0 = liveCamera();
+  var e1 = target['scene.camera.eye'], c1 = target['scene.camera.center'], u1 = target['scene.camera.up'] || c0.up;
+  var t0 = performance.now(), token = {};
+  camAnim = token;
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t }; }
+  function step(now) {
+    if (camAnim !== token) return;
+    var t = Math.min(1, (now - t0) / ms), k = ease(t), eye;
+    if (isGlobe) {  // 方向は slerp、距離は線形
+      var d0 = Math.hypot(c0.eye.x, c0.eye.y, c0.eye.z), d1 = Math.hypot(e1.x, e1.y, e1.z);
+      var a = { x: c0.eye.x / d0, y: c0.eye.y / d0, z: c0.eye.z / d0 }, b = { x: e1.x / d1, y: e1.y / d1, z: e1.z / d1 };
+      var cosw = Math.max(-1, Math.min(1, a.x * b.x + a.y * b.y + a.z * b.z)), w = Math.acos(cosw), dir;
+      if (w < 1e-4) dir = b;
+      else { var sa = Math.sin((1 - k) * w) / Math.sin(w), sb = Math.sin(k * w) / Math.sin(w);
+             dir = { x: a.x * sa + b.x * sb, y: a.y * sa + b.y * sb, z: a.z * sa + b.z * sb }; }
+      var d = d0 + (d1 - d0) * k;
+      eye = { x: dir.x * d, y: dir.y * d, z: dir.z * d };
+    } else eye = lerp(c0.eye, e1, k);
+    var upd = { 'scene.camera.eye': eye, 'scene.camera.center': lerp(c0.ctr, c1, k), 'scene.camera.up': t < 1 ? c0.up : u1 };
+    Plotly.relayout(plot, upd).then(updateSelectionPos);
+    if (t < 1) requestAnimationFrame(step); else camAnim = null;
+  }
+  requestAnimationFrame(step);
+}
+function liveCamera() {
+  var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
+  var c = (sc && sc.getCamera) ? sc.getCamera() : (plot._fullLayout.scene.camera || {});
+  var eye = c.eye || { x: 1.25, y: 1.25, z: 1.25 }, ctr = c.center || { x: 0, y: 0, z: 0 }, up = c.up || { x: 0, y: 0, z: 1 };
+  return { eye: { x: eye.x, y: eye.y, z: eye.z }, ctr: { x: ctr.x, y: ctr.y, z: ctr.z }, up: { x: up.x, y: up.y, z: up.z } };
 }
 // その課題へ移動して選択（検索ヒットのクリック、URL の ?award= で共用）
 window.focusPoint = focusPoint;
+var NEAR_SPAN = 2.5;  // 着地の半幅（データ座標）。周辺の島と隣接分野が見える程度
 function focusPoint(gid) {
   if (is3d) { focusPoint3d(gid); return; }
-  var span = 1.5;
-  Plotly.relayout(plot, {
-    'xaxis.range': [xs[gid] - span, xs[gid] + span],
-    'yaxis.range': [ys[gid] - span, ys[gid] + span],
-  }).then(function () { var xy = projected(gid); selectPoint(gid, xy[0], xy[1]); });
+  var xy = projected(gid); selectPoint(gid, xy[0], xy[1]);  // 先に選択（現在の倍率でリング＋カード）
+  animateRange([xs[gid] - NEAR_SPAN, xs[gid] + NEAR_SPAN], [ys[gid] - NEAR_SPAN, ys[gid] + NEAR_SPAN], 1200);
+}
+// 2D の範囲を補間（対数で、拡大率が一定の速さで変わるように）。リングは各フレームで追随
+var rangeAnim = null;
+function animateRange(xr1, yr1, ms) {
+  var fl = plot._fullLayout, xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
+  var t0 = performance.now(), token = {};
+  rangeAnim = token;
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function mix(r0, r1, k) {  // 中心は線形、幅は対数補間
+    var c0 = (r0[0] + r0[1]) / 2, c1 = (r1[0] + r1[1]) / 2, w0 = r0[1] - r0[0], w1 = r1[1] - r1[0];
+    var c = c0 + (c1 - c0) * k, w = Math.exp(Math.log(w0) + (Math.log(w1) - Math.log(w0)) * k);
+    return [c - w / 2, c + w / 2];
+  }
+  function step(now) {
+    if (rangeAnim !== token) return;
+    var t = Math.min(1, (now - t0) / ms), k = ease(t);
+    Plotly.relayout(plot, { 'xaxis.range': mix(xr0, xr1, k), 'yaxis.range': mix(yr0, yr1, k) }).then(placeSelection);
+    if (t < 1) requestAnimationFrame(step); else rangeAnim = null;
+  }
+  requestAnimationFrame(step);
 }
 function runSearch(q) {
   clearHighlight();
