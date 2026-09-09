@@ -866,13 +866,24 @@ function renderCard(gid, tr) {
   card.style.borderColor = tr.color;
   card.style.display = 'block';
 }
+var safeProbe = null;
+function safeBottom() {  // iOS のホームバー分（env(safe-area-inset-bottom)）を px で
+  if (!safeProbe) {
+    safeProbe = document.createElement('div');
+    safeProbe.style.cssText = 'position:fixed;left:-9999px;top:0;height:0;padding-bottom:env(safe-area-inset-bottom)';
+    document.body.appendChild(safeProbe);
+  }
+  return parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
+}
 function placeCard(cx, cy) {  // 点（画面座標）と重ならない位置に置く
   var W = window.innerWidth, H = window.innerHeight;
   if (narrow) {  // スマホ幅: 基本は画面の下端。点が下端のカードと重なる位置のときだけ上端
     // （以前は下部に大区分ボタンがあり 64px 上げていた。ボタンをヘッダーへ移した後もその名残が残っていた。2026-09-09 修正）
     card.style.top = ''; card.style.bottom = '';
-    var bottomTop = H - 12 - 34 - card.offsetHeight - 24;  // 下端カードの上辺（safe-area 最大34px と余白を見込む）
-    if (cy > bottomTop) card.style.top = '56px';
+    // 下端に置いたときのカードの上辺を実測（safe-area は env() を読む要素で測る）。
+    // 点のリングがその上辺に掛かるときだけ上端へ（上に出る状況を最小限にする。2026-09-09 ユーザ要望）
+    var bottomTop = H - 12 - safeBottom() - card.offsetHeight;
+    if (cy + RING / 2 + 2 > bottomTop) card.style.top = '56px';
     else card.style.bottom = 'calc(12px + env(safe-area-inset-bottom))';
     return;
   }
