@@ -30,6 +30,13 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <script data-goatcounter="https://rma-lab.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
+<script>
+// Service Worker: 取得した詳細データ・座標・Plotly を端末に保存し、再訪時は通信なしで開く（オフライン可）。
+// scope は ../（/kaken-atlas/）。sw.js はビルド時にデータ版を埋め込んで生成される
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('../sw.js').catch(function () {}); });
+}
+</script>
 <style>
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); touch-action:none; }

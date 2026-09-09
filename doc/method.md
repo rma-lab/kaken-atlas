@@ -252,6 +252,14 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
   （本物の `<a target=_blank>`。iOS のポップアップ制限と PWA で確実に開くため）。
   3D／球面のタップ位置判定は Plotly を使わず `nearestGid3d` で同期に決める。
 
+### Service Worker（v1.2）
+
+`docs/sw.js` は `build_web_map.py` が生成する（手で編集しない）。取得したファイルをその場で保存する方式で、先読みで二重に落とさない。
+- 詳細データ（`shards/*.json`）と座標（`points.bin`）：キャッシュ優先。キャッシュ名にデータ版（共有シャードと各ビューの points.bin の
+  内容ハッシュ）を含め、データが変わると sw.js が変わって新しい Worker が入り、古いキャッシュを捨てる。
+- HTML：ネットワーク優先（UI の更新を即反映）、オフライン時はキャッシュ。Plotly CDN・画像：キャッシュ優先。計測は素通し。
+- 効果：再訪時の通信ゼロ、オフラインでも開く。iOS はホーム画面に追加していないサイトの保存領域を 7 日未使用で消すことがある。
+
 ### 検証
 
 UI 変更は **ヘッドレス Chrome（puppeteer-core、iPhone エミュレーション）で回帰確認**してから公開する。

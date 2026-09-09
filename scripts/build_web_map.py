@@ -220,10 +220,84 @@ def main() -> None:
     )
     (out_dir / "index.html").write_text(html, encoding="utf-8")
 
+    write_service_worker(out_dir.parent)
+
     total = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
     print(f"出力: {out_dir}/ 合計 {total / 1e6:.1f} MB "
           f"(points.bin {len(points_bin) / 1e6:.1f} MB, 共有シャード {n_shards} 個 → {shard_dir}/, トレース {len(traces)} 本, "
           f"index.html {(out_dir / 'index.html').stat().st_size / 1e3:.0f} KB)")
+
+
+def write_service_worker(docs: Path) -> None:
+    """docs/sw.js を書く。データ版（共有シャード＋各ビューの points.bin の内容ハッシュ）をキャッシュ名に埋め込む。
+
+    データが変わると sw.js のバイト列が変わり、ブラウザが新しい Service Worker を入れて古いキャッシュを捨てる。
+    キャッシュは取得時に貯める（先読みで二重に落とさない）。HTML はネットワーク優先（更新を即反映）、
+    データ（shards/*.json, points.bin）と Plotly CDN・画像はキャッシュ優先。計測（GoatCounter）は素通し。
+    """
+    import hashlib
+    h = hashlib.sha1()
+    for f in sorted(docs.glob("shards/*.json")) + sorted(docs.glob("*/points.bin")):
+        h.update(f.name.encode()); h.update(f.read_bytes())
+    ver = h.hexdigest()[:12]
+    (docs / "sw.js").write_text(SW_TEMPLATE.replace("__DATA_VER__", ver), encoding="utf-8")
+    print(f"出力: {docs}/sw.js (data version {ver})")
+
+
+SW_TEMPLATE = r"""// KAKEN-ATLAS Service Worker（scripts/build_web_map.py が生成。手で編集しない）
+// データ版: __DATA_VER__（共有シャードと各ビューの points.bin の内容ハッシュ。変わると古いキャッシュを捨てる）
+var DATA_CACHE = 'ka-data-__DATA_VER__';
+var PAGE_CACHE = 'ka-pages-v1';
+var STATIC_CACHE = 'ka-static-v1';
+
+self.addEventListener('install', function (e) { self.skipWaiting(); });
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (keys) {
+    return Promise.all(keys.filter(function (k) {
+      return k.indexOf('ka-') === 0 && k !== DATA_CACHE && k !== PAGE_CACHE && k !== STATIC_CACHE;
+    }).map(function (k) { return caches.delete(k); }));
+  }).then(function () { return self.clients.claim(); }));
+});
+
+function cacheFirst(cacheName, req) {
+  return caches.open(cacheName).then(function (c) {
+    return c.match(req).then(function (hit) {
+      if (hit) return hit;
+      return fetch(req).then(function (res) {
+        if (res && (res.ok || res.type === 'opaque')) c.put(req, res.clone());
+        return res;
+      });
+    });
+  });
+}
+function networkFirst(cacheName, req) {
+  return caches.open(cacheName).then(function (c) {
+    return fetch(req).then(function (res) {
+      if (res && res.ok) c.put(req, res.clone());
+      return res;
+    }).catch(function () {
+      return c.match(req).then(function (hit) { return hit || Response.error(); });
+    });
+  });
+}
+
+self.addEventListener('fetch', function (e) {
+  var req = e.request;
+  if (req.method !== 'GET') return;
+  var url = new URL(req.url);
+  if (url.hostname.indexOf('goatcounter') >= 0 || url.hostname === 'gc.zgo.at') return;  // 計測は素通し
+  var p = url.pathname;
+  if (url.origin === location.origin) {
+    if (/\/shards\/\d+\.json$/.test(p) || /\/points\.bin$/.test(p)) { e.respondWith(cacheFirst(DATA_CACHE, req)); return; }
+    if (/\.(png|jpg|webmanifest)$/.test(p)) { e.respondWith(cacheFirst(STATIC_CACHE, req)); return; }
+    if (req.mode === 'navigate' || /\/$/.test(p) || /\.html$/.test(p)) { e.respondWith(networkFirst(PAGE_CACHE, req)); return; }
+    return;
+  }
+  if (url.hostname === 'cdn.plot.ly' || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    e.respondWith(cacheFirst(STATIC_CACHE, req)); return;
+  }
+});
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +336,13 @@ TEMPLATE = r"""<!doctype html>
 <script src="__PLOTLY_CDN__" charset="utf-8"></script>
 <script data-goatcounter="https://rma-lab.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
+<script>
+// Service Worker: 取得した詳細データ・座標・Plotly を端末に保存し、再訪時は通信なしで開く（オフライン可）。
+// scope は ../（/kaken-atlas/）。sw.js はビルド時にデータ版を埋め込んで生成される
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('../sw.js').catch(function () {}); });
+}
+</script>
 <style>
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); touch-action:none; }

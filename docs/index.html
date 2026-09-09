@@ -84,6 +84,11 @@
 <meta name="theme-color" content="#fcfcfb">
 <script data-goatcounter="https://rma-lab.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
 <style>
   :root { --ink:#0b0b0b; --mute:#6f6e69; --bg:#fcfcfb; }
   * { box-sizing:border-box; }
