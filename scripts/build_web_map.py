@@ -634,7 +634,7 @@ document.getElementById('ka-help-body').innerHTML = isTouch
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
             '<div>ダブルタップ: 全体表示に戻る</div>') +
     '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
-    '<div>「大区分」: 表示切替・「のみ」でその区分だけ・すべて表示/非表示</div>'
+    '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>'
   : is3d
   ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
     '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
@@ -1312,10 +1312,11 @@ document.addEventListener('keydown', function (e) {
 });
 
 // ---- ボトムシート（スマホ幅のみ）: 大区分と種目で同じ部品を使う ----
-// 行＝（色の丸）名前・件数・「のみ」。行タップで表示切替（状態は濃淡）。上部に「すべて表示／すべて非表示」。
+// 行＝（色の丸）名前・件数。行タップで表示切替（状態は濃淡）。上部に「すべて表示／すべて非表示」。
+// 「のみ」ボタンは廃止（一度すべて非表示にしてから必要なものを表示する方式。2026-09-09 ユーザ判断）。
 // 大区分は Plotly 凡例の代替、種目は PC のチェックボックス一覧の代替（同じ操作は同じ形にする。2026-09-09）
 var sheetBackdrop = null, openSheetEl = null;
-function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], isOn(i), toggle(i), only(i), all(on)}
+function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], isOn(i), toggle(i), all(on)}
   if (!sheetBackdrop) {
     sheetBackdrop = document.createElement('div');
     sheetBackdrop.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(20,20,15,0.3);' +
@@ -1342,13 +1343,11 @@ function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], 
     '<div style="display:grid;grid-template-columns:1fr;gap:5px">' +
     cfg.items.map(function (it, i) {
       return '<div class="ka-sheet-item" data-i="' + i + '" style="display:flex;align-items:center;' +
-        'min-width:0;gap:8px;border:1px solid ' + LINE + ';border-radius:9px;padding:5px 6px 5px 10px;' +
+        'min-width:0;gap:8px;border:1px solid ' + LINE + ';border-radius:9px;padding:6px 10px;' +
         'background:#fff;transition:opacity .15s">' +
         (it.color ? '<span style="flex:none;width:11px;height:11px;border-radius:50%;background:' + it.color + '"></span>' : '') +
         '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.label) + '</span>' +
-        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(it.n) + '</span>' +
-        '<span class="ka-sheet-only" data-i="' + i + '" style="flex:none;padding:2px 7px;border-radius:9px;' +
-        'background:#eef2f8;color:#1c5cab;font-size:11px">のみ</span></div>';
+        '<span style="color:' + MUTED + ';font-size:11px">' + fmt(it.n) + '</span></div>';
     }).join('') + '</div>';
   document.body.appendChild(sheet);
   var rows = sheet.querySelectorAll('.ka-sheet-item');
@@ -1364,9 +1363,6 @@ function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], 
   };
   rows.forEach(function (el) {
     el.addEventListener('click', function () { cfg.toggle(parseInt(el.getAttribute('data-i'), 10)); refresh(); });
-  });
-  sheet.querySelectorAll('.ka-sheet-only').forEach(function (el) {
-    el.addEventListener('click', function (e) { e.stopPropagation(); cfg.only(parseInt(el.getAttribute('data-i'), 10)); refresh(); });
   });
   sheet.querySelector('.ka-sheet-all').addEventListener('click', function () { cfg.all(true); refresh(); });
   sheet.querySelector('.ka-sheet-none').addEventListener('click', function () { cfg.all(false); refresh(); });
@@ -1397,7 +1393,6 @@ if (narrow) {
     items: anchors.map(function (t) { return { label: t.label, color: t.color, n: t.n }; }),
     isOn: function (i) { return !!daiOn[anchors[i].dai]; },
     toggle: function (i) { daiOn[anchors[i].dai] = !daiOn[anchors[i].dai]; applyDai(); },
-    only: function (i) { anchors.forEach(function (a) { daiOn[a.dai] = a.dai === anchors[i].dai; }); applyDai(); },
     all: function (on) { anchors.forEach(function (a) { daiOn[a.dai] = on; }); applyDai(); },
   });
   document.getElementById('ka-dai-btn').addEventListener('click', daiSheet.open);
@@ -1422,7 +1417,6 @@ if (narrow) {
       items: cats.map(function (c) { return { label: c, n: counts[c] }; }),
       isOn: function (i) { return !!catOn[cats[i]]; },
       toggle: function (i) { catOn[cats[i]] = !catOn[cats[i]]; applyCats(); },
-      only: function (i) { cats.forEach(function (c) { catOn[c] = c === cats[i]; }); applyCats(); },
       all: function (on) { cats.forEach(function (c) { catOn[c] = on; }); applyCats(); },
     });
     document.getElementById('ka-filter-btn').addEventListener('click', catSheet.open);
