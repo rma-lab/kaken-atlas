@@ -47,6 +47,9 @@ KAKEN opensearch API ──fetch──▶ data/raw/opensearch/<年度>/*.xml   �
   （`umap2d_nn15_md0.1.parquet` = n_neighbors=15, min_dist=0.1）、図に出所・件数・パラメータを焼き込む。
 - **距離の空間を混ぜない**（[§7](#7-次元削減reduce)、[§12](#12-今後r9-以降の設計メモ)）。
 - 秘密情報（API の appid）は `.env` のみ。`data/` と `reports/` は git 管理外。
+- **研究者名・所属機関を地図に載せない**（2026-09-09 決定）。点の配置は研究内容だけ、色は公式区分だけ。名前や機関の先入観なしに
+  研究内容で学術を俯瞰してもらうための方針で、個人・機関の情報は各課題から KAKEN へのリンク先に委ねる。
+  公開データ（`docs/shards/`）にも氏名・機関は含めていない。
 
 環境は uv + Python 3.12 固定。3.12 なのは GPU クラスタ側の CUDA ホイールの安定性のため
 （`pyproject.toml` の `tool.uv.sources` で Linux の torch を cu128 ビルドに固定している。
