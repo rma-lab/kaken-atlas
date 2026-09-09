@@ -25,12 +25,13 @@ function cacheFirst(cacheName, req) {
   });
 }
 function networkFirst(cacheName, req) {
+  var key = req.url.split('?')[0];  // ?award=… などの検索文字列はページの内容に影響しないので鍵から外す
   return caches.open(cacheName).then(function (c) {
     return fetch(req).then(function (res) {
-      if (res && res.ok) c.put(req, res.clone());
+      if (res && res.ok) c.put(key, res.clone());
       return res;
     }).catch(function () {
-      return c.match(req).then(function (hit) { return hit || Response.error(); });
+      return c.match(key).then(function (hit) { return hit || Response.error(); });
     });
   });
 }

@@ -204,6 +204,7 @@ def main() -> None:
         n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
         pointsBytes=len(points_bin), quant=quant, ktypes=ktypes, cats=cats,
         traces=traces, catOrder=CATEGORY_ORDER,
+        shardFirst=[rows[s * SHARD_SIZE][0] for s in range(n_shards)],  # 課題番号→シャードの二分探索用
         footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
@@ -271,12 +272,13 @@ function cacheFirst(cacheName, req) {
   });
 }
 function networkFirst(cacheName, req) {
+  var key = req.url.split('?')[0];  // ?award=… などの検索文字列はページの内容に影響しないので鍵から外す
   return caches.open(cacheName).then(function (c) {
     return fetch(req).then(function (res) {
-      if (res && res.ok) c.put(req, res.clone());
+      if (res && res.ok) c.put(key, res.clone());
       return res;
     }).catch(function () {
-      return c.match(req).then(function (hit) { return hit || Response.error(); });
+      return c.match(key).then(function (hit) { return hit || Response.error(); });
     });
   });
 }
@@ -428,7 +430,19 @@ function ensureShard(s) {
     .catch(function (e) { detPending[s] = null; throw e; });
   return detPending[s];
 }
-var uidOf = null;  // gid（描画順）→ uid（課題番号順）。points.bin の末尾から読む
+var uidOf = null, gidOfUid = null;  // gid（描画順）⇄ uid（課題番号順）。points.bin の末尾から読む
+// 課題番号 → gid。名簿は課題番号順なので、各シャード先頭の番号（M.shardFirst）で二分探索し、その 1 片だけ読む
+function findGidByAward(award) {
+  award = String(award || '').trim().toUpperCase();
+  if (!award || !gidOfUid) return Promise.resolve(null);
+  var lo = 0, hi = M.shardFirst.length - 1;
+  while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (M.shardFirst[mid] <= award) lo = mid; else hi = mid - 1; }
+  return ensureShard(lo).then(function (rows) {
+    for (var i = 0; i < rows.length; i++) if (rows[i][0] === award) return gidOfUid[lo * M.shardSize + i];
+    return null;
+  }).catch(function () { return null; });
+}
+function awardUrl(row) { return location.origin + location.pathname + '?award=' + encodeURIComponent(row[0]); }
 function shardOf(gid) { return uidOf[gid] >> SHARD_SHIFT; }
 function getRow(gid) {
   var u = uidOf[gid], d = det[u >> SHARD_SHIFT];
@@ -485,6 +499,8 @@ async function main() {
   xs = deq(0); ys = deq(1); if (is3d) zs = deq(2);
   // 末尾: gid → uid（課題番号順の通し番号。共有シャードの行を引く）
   uidOf = new Uint32Array(buf, (is3d ? 3 : 2) * N * 2, N);
+  gidOfUid = new Uint32Array(N);  // 逆引き（課題番号 → uid → gid。URL の ?award= 用）
+  for (var u = 0; u < N; u++) gidOfUid[uidOf[u]] = u;
 
   // gid → トレース番号（検索の表示判定用）と、トレース番号 → 先頭gid
   traceOf = new Uint16Array(N);
@@ -581,6 +597,14 @@ async function main() {
   document.getElementById('ka-loading').style.display = 'none';
   setupUI();
   startPrefetch();
+  // URL の ?award=課題番号 → その課題へ移動して選択（該当シャード 1 片だけ読む。全件の先読み完了は待たない）
+  var awardParam = new URLSearchParams(location.search).get('award');
+  if (awardParam) {
+    findGidByAward(awardParam).then(function (gid) {
+      if (gid === null || gid === undefined) return;
+      setTimeout(function () { focusPoint(gid); }, is3d ? 600 : 200);  // 初期描画が落ち着いてから
+    });
+  }
 }
 
 // ==== フェーズ2: 背景先読み（同時4本）。完了で検索が有効になる ====
@@ -734,11 +758,11 @@ document.getElementById('ka-help-body').innerHTML = isTouch
     '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>'
   : is3d
   ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
-    '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
+    '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
     '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>'
   : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
     '<div>ダブルクリック: 全体表示に戻る</div>' +
-    '<div>点にホバー: 概要 / クリック: KAKENページを開く</div>' +
+    '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
     '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
     '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
     '<div>Esc: 選択解除</div>';
@@ -806,7 +830,7 @@ function renderTip(gid, tr) {
   tip.innerHTML = headerHtml(tr, false) +
     '<div style="' + ELL + '">' + title + '</div>' +
     '<div style="' + ELL + '">' + tail + '</div>' +
-    '<div style="color:' + MUTED + ';font-size:11px">クリックでKAKENページを開く</div>';
+    '<div style="color:' + MUTED + ';font-size:11px">クリックで詳細</div>';
   tip.style.borderColor = tr.color;
   tip.style.display = 'block'; placeTip();
 }
@@ -956,12 +980,35 @@ function renderCard(gid, tr) {
     '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? catOf(gid, row) + ' / ' + row[0] : catOf(gid, null)) + '</div>' +
     '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px;min-height:1.5em">' + esc(row ? row[3] : '') + '</div>';
   var inner = headerHtml(tr, true) + body;
+  var BTN2 = 'display:inline-block;padding:2px 9px;border:1px solid ' + LINE + ';border-radius:10px;background:#fff;' +
+    'color:#1c5cab;font-size:11px;cursor:pointer;user-select:none;-webkit-user-select:none';
+  var foot = row
+    ? '<div style="display:flex;gap:6px;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid ' + LINE + '">' +
+      '<span style="' + ELL + ';flex:1;color:' + MUTED + ';font-size:11px">クリックで KAKEN ページ</span>' +
+      '<span data-copy="1" style="' + BTN2 + '">リンクをコピー</span>' +
+      (navigator.share ? '<span data-share="1" style="' + BTN2 + '">共有</span>' : '') + '</div>'
+    : '';
   card.innerHTML = row
     ? '<a data-open="1" href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener"' +
-      ' style="display:block;color:inherit;text-decoration:none;cursor:pointer">' + inner + '</a>'
+      ' style="display:block;color:inherit;text-decoration:none;cursor:pointer">' + inner + '</a>' + foot
     : inner;
   card.style.borderColor = tr.color;
   card.style.display = 'block';
+  // アドレスバーの URL をこの課題のものに（そのままコピーして共有できる）
+  if (row && history.replaceState) history.replaceState(null, '', location.pathname + '?award=' + encodeURIComponent(row[0]));
+}
+function copyText(text) {
+  function legacy() {  // clipboard API が使えない／拒否された場合の予備（選択して copy コマンド）
+    return new Promise(function (res, rej) {
+      var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove(); ok ? res() : rej(new Error('copy failed'));
+    });
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).catch(legacy);
+  return legacy();
 }
 var safeProbe = null;
 function safeBottom() {  // iOS のホームバー分（env(safe-area-inset-bottom)）を px で
@@ -1007,6 +1054,7 @@ function selectPoint(gid, cx, cy) {
 function clearSelection() {
   if (selGid === null) return;
   selGid = null; selXY = null; card.style.display = 'none'; hideRing();
+  if (history.replaceState && location.search) history.replaceState(null, '', location.pathname);
 }
 // PC: クリックで即 KAKEN ページ（新規タブ）。DOM click と plotly_click の両方から呼ばれ得るので 600ms で重複抑止
 var lastK = null, lastT = 0;
@@ -1027,9 +1075,23 @@ function openKaken(gid) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 // 点が確定したときの動作: PC は即オープン、タッチはカード
-function actOn(gid, cx, cy) { if (isTouch) selectPoint(gid, cx, cy); else openKaken(gid); }
+function actOn(gid, cx, cy) { selectPoint(gid, cx, cy); }  // PC もカード（2026-09-09 決定。KAKEN はカードのクリックで）
 card.addEventListener('click', function (e) {
-  if (e.target.getAttribute('data-close')) { e.preventDefault(); clearSelection(); }
+  var t = e.target;
+  if (t.getAttribute('data-close')) { e.preventDefault(); clearSelection(); return; }
+  if (t.getAttribute('data-copy') || t.getAttribute('data-share')) {
+    e.preventDefault(); e.stopPropagation();
+    var row = selGid !== null ? getRow(selGid) : null; if (!row) return;
+    var url = awardUrl(row);
+    if (t.getAttribute('data-share')) {
+      navigator.share({ title: row[2] || row[0], url: url }).catch(function () {});
+      return;
+    }
+    copyText(url).then(function () {
+      var orig = t.textContent; t.textContent = 'コピーしました'; setTimeout(function () { t.textContent = orig; }, 1500);
+    }).catch(function () { t.textContent = 'コピーできませんでした'; });
+    return;
+  }
   // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
 });
 function projected(gid) {  // 2D: データ座標→画面座標
@@ -1103,7 +1165,7 @@ plot.addEventListener('click', function (e) {
   if (gestureMoved || now < suppressUntil) return;
   var xy = (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [e.clientX, e.clientY];
   cancelTap(false);
-  if (!isTouch && hoveredGid !== null) { openKaken(hoveredGid); return; }
+  if (!isTouch && hoveredGid !== null) { selectPoint(hoveredGid, xy[0], xy[1]); return; }
   // 2D の plotly_click は DOM click より先に同期で届くので待ちは短くてよい。gl3d は描画フレーム後に届く
   pendingTap = { x: xy[0], y: xy[1], timer: setTimeout(function () { cancelTap(true); }, is3d ? 700 : 60) };
 });
@@ -1219,12 +1281,21 @@ function focusPoint3d(gid) {
             'scene.camera.eye': { x: px + dx / len * dist, y: py + dy / len * dist, z: pz + dz / len * dist }, 'scene.camera.up': up };
   }
   Plotly.relayout(plot, upd).then(function () {
-    if (!isTouch) return;
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       var xy = project3d(gid) || [window.innerWidth / 2, window.innerHeight / 2];
       selectPoint(gid, xy[0], xy[1]);
     }); });
   });
+}
+// その課題へ移動して選択（検索ヒットのクリック、URL の ?award= で共用）
+window.focusPoint = focusPoint;
+function focusPoint(gid) {
+  if (is3d) { focusPoint3d(gid); return; }
+  var span = 1.5;
+  Plotly.relayout(plot, {
+    'xaxis.range': [xs[gid] - span, xs[gid] + span],
+    'yaxis.range': [ys[gid] - span, ys[gid] + span],
+  }).then(function () { var xy = projected(gid); selectPoint(gid, xy[0], xy[1]); });
 }
 function runSearch(q) {
   clearHighlight();
@@ -1272,14 +1343,7 @@ function runSearch(q) {
       e.preventDefault();
       var h = hits[parseInt(a.getAttribute('data-k'), 10)];
       if (isTouch) qResults.style.display = 'none';  // スマホは結果窓が地図を覆うので閉じる（強調は残す）
-      if (is3d) { focusPoint3d(h.gid); return; }
-      var span = 1.5;
-      Plotly.relayout(plot, {
-        'xaxis.range': [xs[h.gid] - span, xs[h.gid] + span],
-        'yaxis.range': [ys[h.gid] - span, ys[h.gid] + span],
-      }).then(function () {  // タッチはズーム後にカード。PC は検索ヒットの輪郭表示が場所を示す
-        if (isTouch) { var xy = projected(h.gid); selectPoint(h.gid, xy[0], xy[1]); }
-      });
+      focusPoint(h.gid);
     });
   });
 }
