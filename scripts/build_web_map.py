@@ -268,7 +268,7 @@ TEMPLATE = r"""<!doctype html>
     #ka-bar > #ka-q-wrap { flex-shrink:1; }
     #ka-filter-btn, #ka-help-btn, #ka-dai-btn { white-space:nowrap; font-size:12px; }
     #ka-help-wrap { display:none !important; }  /* 「操作」はサイトメニュー（羅針盤）の中へ */
-    #ka-help-body { left:0 !important; right:auto !important; }
+    #ka-help-body { left:0 !important; right:auto !important; white-space:normal !important; width:calc(100vw - 20px); box-sizing:border-box; }
     .ka-sub { display:none !important; }
     #ka-results { width:86vw !important; }
   }
@@ -515,7 +515,7 @@ function finishPrefetch() {
   if (allLoaded) return;
   allLoaded = true;
   var q = document.getElementById('ka-q');
-  if (q) { q.disabled = false; q.placeholder = 'タイトル・キーワード・課題番号を検索'; }
+  if (q) { q.disabled = false; q.placeholder = narrow ? 'タイトル・番号で検索' : 'タイトル・キーワード・課題番号を検索'; }
   var p2 = document.getElementById('ka-phase2');
   document.getElementById('ka-bar2-wrap').style.display = 'none';
   document.getElementById('ka-p2-msg').textContent = '✓ 全データ読み込み完了（検索が使えます）';
