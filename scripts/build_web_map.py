@@ -263,8 +263,12 @@ TEMPLATE = r"""<!doctype html>
   @media (max-width:640px) {
     #ka-bar { gap:8px !important; padding:0 10px !important; }
     #ka-title { display:none !important; }  /* タイトルはタブ・入口ページにある */
-    #ka-bar input { min-width:100px !important; }
-    #ka-filter-btn, #ka-help-btn { white-space:nowrap; font-size:12px; }
+    #ka-q-wrap { flex:1 1 auto !important; min-width:72px !important; }  /* 検索欄が先に縮み、ボタンは常に収まる */
+    #ka-bar > div { flex-shrink:0; }
+    #ka-bar > #ka-q-wrap { flex-shrink:1; }
+    #ka-filter-btn, #ka-help-btn, #ka-dai-btn { white-space:nowrap; font-size:12px; }
+    #ka-help-wrap { display:none !important; }  /* 「操作」はサイトメニュー（羅針盤）の中へ */
+    #ka-help-body { left:0 !important; right:auto !important; }
     .ka-sub { display:none !important; }
     #ka-results { width:86vw !important; }
   }
@@ -609,6 +613,21 @@ if (isTouch) {
 
 if (isGlobe) {  // 球面はトレースを大区分×組で束ねるため種目単位の表示切替ができない
   document.getElementById('ka-filter-wrap').style.display = 'none';
+}
+if (narrow) {  // 狭幅ではヘッダーに「操作」を置かず、羅針盤メニューの末尾から開く
+  var homeBody = document.getElementById('ka-home-body'), helpBody = document.getElementById('ka-help-body');
+  var item = document.createElement('div');
+  item.innerHTML = '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>' +
+    '<div id="ka-help-link" style="padding:6px 16px;color:' + INK + ';white-space:nowrap">操作の説明</div>';
+  homeBody.appendChild(item);
+  document.getElementById('ka-home-wrap').appendChild(helpBody);  // 外側タップで閉じる仕組みを共有
+  document.getElementById('ka-help-link').addEventListener('click', function (e) {
+    e.stopPropagation(); homeBody.style.display = 'none'; helpBody.style.display = 'block';
+  });
+  document.getElementById('ka-home-btn').addEventListener('click', function () { helpBody.style.display = 'none'; });
+  document.addEventListener('click', function (e) {
+    if (!document.getElementById('ka-home-wrap').contains(e.target)) helpBody.style.display = 'none';
+  });
 }
 document.getElementById('ka-help-body').innerHTML = isTouch
   ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小' + (isGlobe ? '' : ' / 2本指ドラッグ: 移動') + '</div>'
