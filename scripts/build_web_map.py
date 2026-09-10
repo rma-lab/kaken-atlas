@@ -438,7 +438,6 @@ function ensureShard(s) {
   return detPending[s];
 }
 var uidOf = null, gidOfUid = null;  // gid（描画順）⇄ uid（課題番号順）。points.bin の末尾から読む
-var sphereGrid = null;  // 球面の不透明球の格子（main で生成、setupUI の adaptSphere が縮小時に縮める）
 // 課題番号 → gid。名簿は課題番号順なので、各シャード先頭の番号（M.shardFirst）で二分探索し、その 1 片だけ読む
 function findGidByAward(award) {
   award = String(award || '').trim().toUpperCase();
@@ -543,7 +542,7 @@ async function main() {
     if (is3d) d.z = zs.subarray(t.off, end);
     data.push(d); gidOffset.push(t.off);
   });
-  if (isGlobe) {  // 不透明な球（半径 M.sphereR）を末尾に追加（縮小時は距離に応じて小さくする。z-fighting 対策）（data 添字＝M.traces 添字を保つ）。gidOffset は -1（点ではない）
+  if (isGlobe) {  // 不透明な球（半径 M.sphereR）を末尾に追加（data 添字＝M.traces 添字を保つ）。gidOffset は -1（点ではない）（data 添字＝M.traces 添字を保つ）。gidOffset は -1（点ではない）
     var SR = M.sphereR || 0.985;
     var NU = 60, NV = 30, gx = [], gy = [], gz = [];
     for (var iv = 0; iv <= NV; iv++) {
@@ -554,7 +553,6 @@ async function main() {
       }
       gx.push(rx); gy.push(ry); gz.push(rz);
     }
-    sphereGrid = { x: gx, y: gy, z: gz, r: SR };  // 縮小時に距離に応じて縮める（下の adaptSphere）
     data.push({ type: 'surface', x: gx, y: gy, z: gz, showscale: false, hoverinfo: 'none', showlegend: false,
       colorscale: [[0, '#f3f2ec'], [1, '#f3f2ec']], opacity: 1,
       lighting: { ambient: 0.9, diffuse: 0.3, specular: 0.02, roughness: 0.9 }, contours: { x: { highlight: false }, y: { highlight: false }, z: { highlight: false } } });
@@ -657,7 +655,7 @@ function finishPrefetch() {
 function setupUI() {
 // 読み込み時の範囲／カメラを「全体」として記録（カードの 全体⇄周辺 切替で戻る先）
 if (!is3d) homeRange = { x: plot._fullLayout.xaxis.range.slice(), y: plot._fullLayout.yaxis.range.slice() };
-else { homeCam = liveCamera(); initEyeDist = Math.hypot(homeCam.eye.x - homeCam.ctr.x, homeCam.eye.y - homeCam.ctr.y, homeCam.eye.z - homeCam.ctr.z); }
+else { homeCam = liveCamera(); adaptDepth(); }
 
 // ---- ヘッダーバー ----
 var bar = document.createElement('div');
@@ -1100,27 +1098,21 @@ function selectPoint(gid, cx, cy) {
 }
 // 地図を動かしたら選択点の位置を置き直す（リングは追随。PC のカードは点に付いて動く、スマホのカードは下端／上端に固定。
 // 球面の裏側・カメラ後方なら隠す）。2026-09-09 ユーザ「動かしても黒円は消えない、追随する。カードも消えない」
-// 球面: 視点が遠ざかると深度バッファの分解能が落ち、点（半径≈1）と不透明球（0.985）が z-fighting で同心の縞になる
-// （2026-09-10 ユーザ報告。球の半径や点の散らしを固定で変えても、平行投影にしても解消しない）。
-// 対策＝**視距離の 2 乗に比例して球を小さくする**（透視投影の深度誤差は距離の 2 乗に比例）。
-// 既定の視距離（読み込み時）で隙間 0.015、2.5 倍の距離で約 0.09（実測で縞が消える）。下限 0.6。
-var sphereScaled = 1, sphereRaf = false, initEyeDist;  // initEyeDist は setupUI 冒頭で代入するので初期化子を付けない（var の巻き上げで上書きされる）
-function adaptSphere() {
-  if (!isGlobe || !sphereGrid || sphereRaf) return;
-  sphereRaf = true;
-  requestAnimationFrame(function () {
-    sphereRaf = false;
-    var c = liveCamera(), d = Math.hypot(c.eye.x - c.ctr.x, c.eye.y - c.ctr.y, c.eye.z - c.ctr.z);
-    if (initEyeDist == null) initEyeDist = d;  // 通常は setupUI 冒頭で読み込み時の視距離を記録済み
-    var gap = 0.015 * Math.pow(d / initEyeDist, 2), r = Math.min(sphereGrid.r, Math.max(0.6, 1 - gap));
-    plot._sphereDbg = { d: d, d0: initEyeDist, r: r };  // 検証用
-    var k = r / sphereGrid.r;
-    if (Math.abs(k - sphereScaled) < 0.01) return;
-    sphereScaled = k;
-    var sc = function (g) { return g.map(function (row) { return row.map(function (v) { return v * k; }); }); };
-    Plotly.restyle(plot, { x: [sc(sphereGrid.x)], y: [sc(sphereGrid.y)], z: [sc(sphereGrid.z)] }, [plot.data.length - 1]);
-  });
+// 3D/球面: ブラウザの深度バッファは 16 ビットのことが多く（Chrome/Safari とも実測 16）、gl-plot3d の近クリップ面が
+// 0.01 と極端に近いため、少し引くだけで点（半径≈1）と裏側を隠す不透明球（0.985）の前後判定が崩れて同心の縞（z-fighting）が出る
+// （2026-09-10 ユーザ報告）。球の半径や点の散らし、平行投影では解消せず、球を縮める方式は形状の差し替えで引っかかりが出た。
+// 対策＝**近クリップ面 zNear を視距離に応じて遠ざける**（透視投影の深度分解能は zNear に反比例）。値を 1 つ変えるだけで軽い。
+// zNear = 0.4×(視距離 − 1)（球面。最近接の点までの距離のおよそ 4 割）、下限 0.02。
+function adaptDepth() {
+  if (!is3d) return;
+  var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
+  if (!sc || !sc.glplot) return;
+  var c = liveCamera(), d = Math.hypot(c.eye.x - c.ctr.x, c.eye.y - c.ctr.y, c.eye.z - c.ctr.z);
+  var margin = isGlobe ? 1.0 : 1.8;  // 注視点から最も近い点までの距離の見積もり（球面は半径 1、3D は箱の対角の半分程度）
+  var zn = Math.max(0.02, 0.4 * (d - margin));
+  if (Math.abs(sc.glplot.zNear - zn) > zn * 0.05) { sc.glplot.zNear = zn; sc.glplot.zFar = Math.max(1000, d * 10); }
 }
+var adaptSphere = adaptDepth;  // 旧名（呼び出し箇所の互換）
 var followRaf = false, followTimer = null;
 function placeSelection() {
   if (selGid === null) return;
