@@ -34,6 +34,12 @@ from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, load_dai_labels  # noqa: E4
 from plot_map_interactive import CATEGORY_ORDER, FOOTER  # noqa: E402
 
 SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使う）
+# 球面ビュー: 点の半径の散らし（σ, クリップ）と、裏側を隠す不透明球の半径。点と球の隙間が小さいと、縮小時に
+# 深度バッファの分解能が足りず z-fighting の縞が出る（2026-09-10 ユーザ報告）。隙間 ≥ 0.02 を確保する
+import os
+GLOBE_JITTER_SIGMA = float(os.environ.get("GLOBE_JITTER_SIGMA", "0.002"))
+GLOBE_JITTER_CLIP = float(os.environ.get("GLOBE_JITTER_CLIP", "0.005"))
+GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の視距離での半径。縮小時は JS 側で距離に応じて小さくする
 PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 
@@ -153,7 +159,7 @@ def main() -> None:
         # 半径に微小な乱数を与える（不透明描画では奥行きで勝者が決まり色の偏りを防ぐ。
         # 半透明描画では効かないため、build_order の交互描画で偏りを平均化する。再現性のため seed 固定）
         rng = np.random.default_rng(42)
-        r = 1.0 + np.clip(rng.normal(0.0, 0.004, n), -0.01, 0.01)
+        r = 1.0 + np.clip(rng.normal(0.0, GLOBE_JITTER_SIGMA, n), -GLOBE_JITTER_CLIP, GLOBE_JITTER_CLIP)
         big = big.with_columns([(pl.col(c) * pl.Series(r)).alias(c) for c in dims])
 
     # 座標の量子化: 各軸を int16 全域に線形写像（分解能=値域/65535、1ピクセル未満）
@@ -205,6 +211,7 @@ def main() -> None:
         pointsBytes=len(points_bin), quant=quant, ktypes=ktypes, cats=cats,
         traces=traces, catOrder=CATEGORY_ORDER,
         shardFirst=[rows[s * SHARD_SIZE][0] for s in range(n_shards)],  # 課題番号→シャードの二分探索用
+        sphereR=GLOBE_SPHERE_R if is_globe else None,
         footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
@@ -431,6 +438,7 @@ function ensureShard(s) {
   return detPending[s];
 }
 var uidOf = null, gidOfUid = null;  // gid（描画順）⇄ uid（課題番号順）。points.bin の末尾から読む
+var sphereGrid = null;  // 球面の不透明球の格子（main で生成、setupUI の adaptSphere が縮小時に縮める）
 // 課題番号 → gid。名簿は課題番号順なので、各シャード先頭の番号（M.shardFirst）で二分探索し、その 1 片だけ読む
 function findGidByAward(award) {
   award = String(award || '').trim().toUpperCase();
@@ -535,16 +543,18 @@ async function main() {
     if (is3d) d.z = zs.subarray(t.off, end);
     data.push(d); gidOffset.push(t.off);
   });
-  if (isGlobe) {  // 半径 0.985 の不透明な球を末尾に追加（data 添字＝M.traces 添字を保つ）。gidOffset は -1（点ではない）
+  if (isGlobe) {  // 不透明な球（半径 M.sphereR）を末尾に追加（縮小時は距離に応じて小さくする。z-fighting 対策）（data 添字＝M.traces 添字を保つ）。gidOffset は -1（点ではない）
+    var SR = M.sphereR || 0.985;
     var NU = 60, NV = 30, gx = [], gy = [], gz = [];
     for (var iv = 0; iv <= NV; iv++) {
       var th = Math.PI * iv / NV, rx = [], ry = [], rz = [];
       for (var iu = 0; iu <= NU; iu++) {
         var ph = 2 * Math.PI * iu / NU;
-        rx.push(0.985 * Math.sin(th) * Math.cos(ph)); ry.push(0.985 * Math.sin(th) * Math.sin(ph)); rz.push(0.985 * Math.cos(th));
+        rx.push(SR * Math.sin(th) * Math.cos(ph)); ry.push(SR * Math.sin(th) * Math.sin(ph)); rz.push(SR * Math.cos(th));
       }
       gx.push(rx); gy.push(ry); gz.push(rz);
     }
+    sphereGrid = { x: gx, y: gy, z: gz, r: SR };  // 縮小時に距離に応じて縮める（下の adaptSphere）
     data.push({ type: 'surface', x: gx, y: gy, z: gz, showscale: false, hoverinfo: 'none', showlegend: false,
       colorscale: [[0, '#f3f2ec'], [1, '#f3f2ec']], opacity: 1,
       lighting: { ambient: 0.9, diffuse: 0.3, specular: 0.02, roughness: 0.9 }, contours: { x: { highlight: false }, y: { highlight: false }, z: { highlight: false } } });
@@ -647,7 +657,7 @@ function finishPrefetch() {
 function setupUI() {
 // 読み込み時の範囲／カメラを「全体」として記録（カードの 全体⇄周辺 切替で戻る先）
 if (!is3d) homeRange = { x: plot._fullLayout.xaxis.range.slice(), y: plot._fullLayout.yaxis.range.slice() };
-else homeCam = liveCamera();
+else { homeCam = liveCamera(); initEyeDist = Math.hypot(homeCam.eye.x - homeCam.ctr.x, homeCam.eye.y - homeCam.ctr.y, homeCam.eye.z - homeCam.ctr.z); }
 
 // ---- ヘッダーバー ----
 var bar = document.createElement('div');
@@ -1090,6 +1100,27 @@ function selectPoint(gid, cx, cy) {
 }
 // 地図を動かしたら選択点の位置を置き直す（リングは追随。PC のカードは点に付いて動く、スマホのカードは下端／上端に固定。
 // 球面の裏側・カメラ後方なら隠す）。2026-09-09 ユーザ「動かしても黒円は消えない、追随する。カードも消えない」
+// 球面: 視点が遠ざかると深度バッファの分解能が落ち、点（半径≈1）と不透明球（0.985）が z-fighting で同心の縞になる
+// （2026-09-10 ユーザ報告。球の半径や点の散らしを固定で変えても、平行投影にしても解消しない）。
+// 対策＝**視距離の 2 乗に比例して球を小さくする**（透視投影の深度誤差は距離の 2 乗に比例）。
+// 既定の視距離（読み込み時）で隙間 0.015、2.5 倍の距離で約 0.09（実測で縞が消える）。下限 0.6。
+var sphereScaled = 1, sphereRaf = false, initEyeDist;  // initEyeDist は setupUI 冒頭で代入するので初期化子を付けない（var の巻き上げで上書きされる）
+function adaptSphere() {
+  if (!isGlobe || !sphereGrid || sphereRaf) return;
+  sphereRaf = true;
+  requestAnimationFrame(function () {
+    sphereRaf = false;
+    var c = liveCamera(), d = Math.hypot(c.eye.x - c.ctr.x, c.eye.y - c.ctr.y, c.eye.z - c.ctr.z);
+    if (initEyeDist == null) initEyeDist = d;  // 通常は setupUI 冒頭で読み込み時の視距離を記録済み
+    var gap = 0.015 * Math.pow(d / initEyeDist, 2), r = Math.min(sphereGrid.r, Math.max(0.6, 1 - gap));
+    plot._sphereDbg = { d: d, d0: initEyeDist, r: r };  // 検証用
+    var k = r / sphereGrid.r;
+    if (Math.abs(k - sphereScaled) < 0.01) return;
+    sphereScaled = k;
+    var sc = function (g) { return g.map(function (row) { return row.map(function (v) { return v * k; }); }); };
+    Plotly.restyle(plot, { x: [sc(sphereGrid.x)], y: [sc(sphereGrid.y)], z: [sc(sphereGrid.z)] }, [plot.data.length - 1]);
+  });
+}
 var followRaf = false, followTimer = null;
 function placeSelection() {
   if (selGid === null) return;
@@ -1172,7 +1203,7 @@ function projected(gid) {  // 2D: データ座標→画面座標
 plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
 // 2D: パン・ピンチ直後のクリック/タップは無視（relayout を合図に抑止）。選択中はカードを点に追随
 plot.on('plotly_relayout', function () {
-  updateSelectionPos();
+  updateSelectionPos(); adaptSphere();
   if (is3d) return;
   suppressUntil = Date.now() + 400;
 });
@@ -1823,7 +1854,7 @@ if (isTouch && is3d) {
       if (!pendingCam) return;
       var pc = pendingCam; pendingCam = null;
       Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
-        .then(updateSelectionPos);
+        .then(function () { updateSelectionPos(); adaptSphere(); });
     });
   }
   // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
