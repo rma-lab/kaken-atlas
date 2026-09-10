@@ -1,9 +1,10 @@
-# KAKEN-ATLAS 技術ノート（開発者向け）
+# KAKEN-ATLAS 技術ノート（方法と可視化の設計）
 
-README より一段細かい、パイプラインの設計と決定事項の記録。**「なぜそうしたか」**を中心に書く。
-コードの使い方は各モジュールの docstring と `--help` を正とし、ここでは重複させない。
+設計の理由と決定事項の記録。**「なぜそうしたか」**を中心に書く。コードの使い方は各モジュールの docstring と `--help` を正とする。
+このノートは 3 部構成で、ここは **方法（データ・埋め込み・次元削減）と可視化の設計**。
 
-対象読者はこのリポジトリを読む・動かす・拡張する人。地図の使い方は README と実物を参照。
+- **[web.md](web.md)** … 地図サイトの実装と運用（配信構造、Plotly の制約、タッチ操作、Service Worker、検証、版管理、再生成手順）
+- **[roadmap.md](roadmap.md)** … R9 以降の設計メモ（クラスタリング、3 指標、距離の定義、機能の構想）。実装が進んだものはここへ昇格させる
 
 - [1. 全体像と設計原則](#1-全体像と設計原則)
 - [2. データ取得（fetch）](#2-データ取得fetch)
@@ -13,10 +14,8 @@ README より一段細かい、パイプラインの設計と決定事項の記�
 - [6. 埋め込み（embed）](#6-埋め込みembed)
 - [7. 次元削減（reduce）](#7-次元削減reduce)
 - [8. 配色：意味順色相環](#8-配色意味順色相環)
-- [9. 地図サイト（build_web_map）](#9-地図サイトbuild_web_map)
-- [10. 静的図と時系列 KDE](#10-静的図と時系列-kde)
-- [11. 既知の制約](#11-既知の制約)
-- [12. 今後（R9 以降）の設計メモ](#12-今後r9-以降の設計メモ)
+- [9. 静的図と時系列 KDE](#9-静的図と時系列-kde)
+- [10. 地図の読み方と既知の制約](#10-地図の読み方と既知の制約)
 - [参考文献](#参考文献)
 
 ---
@@ -45,7 +44,7 @@ KAKEN opensearch API ──fetch──▶ data/raw/opensearch/<年度>/*.xml   �
   列（`status_code`、`shokubun_codes` など）で判断できるようにする。
 - **決定は再現できる形で残す**。乱数シード固定、パラメータをファイル名に含める
   （`umap2d_nn15_md0.1.parquet` = n_neighbors=15, min_dist=0.1）、図に出所・件数・パラメータを焼き込む。
-- **距離の空間を混ぜない**（[§7](#7-次元削減reduce)、[§12](#12-今後r9-以降の設計メモ)）。
+- **距離の空間を混ぜない**（[§7](#7-次元削減reduce)、[roadmap.md](roadmap.md)）。
 - 秘密情報（API の appid）は `.env` のみ。`data/` と `reports/` は git 管理外。
 - **研究者名・所属機関を地図に載せない**（2026-09-09 決定）。点の配置は研究内容だけ、色は公式区分だけ。名前や機関の先入観なしに
   研究内容で学術を俯瞰してもらうための方針で、個人・機関の情報は各課題から KAKEN へのリンク先に委ねる。
@@ -183,7 +182,7 @@ UMAP は分解ではなく最適化で、①高次元（768 次元・コサイ�
 （768 次元の単位超球面上の角度）であることと、出力が 2 次元球面であることの間に対応関係はない。
 
 UMAP で**保存されるのは局所近傍関係だけ**。クラスタ間の距離やクラスタの面積は解釈しない。
-クラスタリング前段の UMAP（10〜50 次元、`min_dist≈0`）は可視化用とは目的が違うので別にかける（[§12](#12-今後r9-以降の設計メモ)）。
+クラスタリング前段の UMAP（10〜50 次元、`min_dist≈0`）は可視化用とは目的が違うので別にかける（[roadmap.md](roadmap.md)）。
 
 ## 8. 配色：意味順色相環
 
@@ -204,83 +203,7 @@ F〈農学〉・G〈生物学〉・H〈薬学〉がほぼ同色、B・C・J も�
 地図では大区分ごとの単独表示で補える。改善案は色相環の順序を保ったまま隣接色の明度を交互に振り、
 「色覚配慮」トグルで切り替えること。
 
-## 9. 地図サイト（build_web_map）
-
-`scripts/build_web_map.py` → `docs/map2d/`、`docs/map3d/`、`docs/globe/`（GitHub Pages、master の `/docs`）
-
-```bash
-uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet
-uv run python scripts/build_web_map.py data/processed/umap3d_nn15_md0.1.parquet
-uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.3.parquet
-```
-
-入口 `docs/index.html` は手書き。背景の点群画像は `scripts/make_hero.py`、
-アイコン（favicon／PWA／apple-touch）は `scripts/make_icon.py` で生成する。
-
-### 構造
-
-自己完結 HTML（約 130MB）は GitHub の 100MB 制限を超えるため、データを外に出した：
-
-- `index.html`（約 90KB、Plotly.js は CDN）
-- `points.bin`：座標を各軸 int16 に量子化（分解能は値域/65535、1 ピクセル未満）。トレース順（描画順）に連続配置。
-  末尾に「描画順 → 課題番号順の通し番号（uid）」の対応表（uint32）を同梱。
-- `docs/shards/NNN.json`：タイトル・キーワード・種目などを **課題番号順** に 2,048 件ずつ 101 片に分割。
-  描画順はビューごとに違う（2D/3D は大区分×種目、球面は大区分×乱数 16 組）が、詳細データは 1 セットを 3 ビューで共有し、
-  各ビューは対応表で引く。同じ URL なのでブラウザキャッシュがビュー間で効き、切り替え時に再読み込みしない（v1.1）。
-  `kaken_id` は「KAKENHI-<種別>-<課題番号>」に分解できることを検証済みで、種別コードだけ持つ。
-
-**二段階読み込み**：①`points.bin` をプログレスバー付きで取得して描画（実測 1.5 秒）、
-②シャードを背景で先読みし、完了で検索を有効化（実測 8.4 秒）。未取得片へのホバーはその片だけ即時取得。
-1 閲覧の転送量は約 20MB（シャードは gzip 配信）。
-
-### トレース設計と Plotly 3D の制約
-
-- 2D／3D のトレースは **大区分 × 種目**。種目フィルタはトレースの表示切替なのでデータ転送なしで速い。
-- **Plotly の 3D 判定はオブジェクト番号を 8 ビットで持ち、トレース数が 255 を超えるとホバー・クリックが効かなくなる**。
-  球面はこの制約に当たったため、トレースを「大区分 × 乱数 16 組」に統合し（222 本）、種目はシャード行に持たせた
-  （球面は種目フィルタ非対応）。
-- 球面の点を不透明にすると gl-scatter3d の不透明経路が半透明の 3〜6 倍遅い。半透明にすると重なりの最上層が
-  描画順に偏って色が嘘になるので、各点を乱数で組に分け、組ごとに大区分の描画順を回転させて交互に描く。
-- 小さな半透明の点は画素中心を覆わず約 3 割が「下地」判定になる。カメラ行列で全点を投影して最近傍を探す
-  自前判定（`nearestGid3d`、投影誤差 1px 未満）で補完する。
-
-### タッチ端末
-
-- Plotly の 2D はタッチのピンチに対応しないため自前実装。
-- 3D／球面は Plotly にタッチイベントを一切渡さず、カメラを自前で計算して `relayout` する
-  （1 本指＝自由回転、2 本指＝拡大縮小、3D のみ移動、球面は中心固定）。Plotly のタッチ処理と競合させると
-  離した瞬間に向きが戻る不具合が実機で起きた。
-- 回転には慣性がある（離す直前 150ms の指速度、時定数 500ms の指数減衰、次のタッチで停止）。
-- 点の選択：PC もタッチも、点をクリック／タップ → カード → カードのどこをクリックしても KAKEN（v1.2 で PC もカード方式に統一）。
-  PC はホバーで概要も出す。カードに「リンクをコピー」
-  （本物の `<a target=_blank>`。iOS のポップアップ制限と PWA で確実に開くため）。
-  3D／球面のタップ位置判定は Plotly を使わず `nearestGid3d` で同期に決める。
-
-### 課題ごとの URL（v1.2）
-
-`…/map2d/?award=19K16373` のように課題番号を付けて開くと、その課題を選択した状態で表示する。名簿（共有シャード）が
-課題番号順なので、各片の先頭番号（`M.shardFirst`、101 個）で二分探索して該当する 1 片だけ読み、行番号 → uid → gid
-（`points.bin` 同梱の対応表の逆引き）で点を特定する。SNS のプレビュー画像は URL ごとに変えられない（静的サイト）。
-
-### Service Worker（v1.2）
-
-`docs/sw.js` は `build_web_map.py` が生成する（手で編集しない）。取得したファイルをその場で保存する方式で、先読みで二重に落とさない。
-- 詳細データ（`shards/*.json`）と座標（`points.bin`）：キャッシュ優先。キャッシュ名にデータ版（共有シャードと各ビューの points.bin の
-  内容ハッシュ）を含め、データが変わると sw.js が変わって新しい Worker が入り、古いキャッシュを捨てる。
-- HTML：ネットワーク優先（UI の更新を即反映）、オフライン時はキャッシュ。Plotly CDN・画像：キャッシュ優先。計測は素通し。
-- 効果：再訪時の通信ゼロ、オフラインでも開く。iOS はホーム画面に追加していないサイトの保存領域を 7 日未使用で消すことがある。
-
-### 検証
-
-UI 変更は **ヘッドレス Chrome（puppeteer-core、iPhone エミュレーション）で回帰確認**してから公開する。
-swiftshader は描画が遅く、CDP 経由のタッチイベントは実機とかけ離れた時刻列になるので、
-慣性のような時間依存の検証はページ内で合成 TouchEvent を発行する。停止時間など絶対値は実機でしか測れない。
-
-### 計測
-
-GoatCounter（`rma-lab.goatcounter.com`）で閲覧数のみ。Cookie なし。
-
-## 10. 静的図と時系列 KDE
+## 9. 静的図と時系列 KDE
 
 `scripts/plot_map.py`（密度）、`scripts/plot_map_dai.py`（大区分パネル・一覧）、`scripts/plot_kde_years.py`（年度別）
 → `reports/figures/`（git 管理外。公開用に選んだものだけ `doc/figures/` に置く）
@@ -304,81 +227,28 @@ GoatCounter（`rma-lab.goatcounter.com`）で閲覧数のみ。Cookie なし。
 
 ![後期−前期のシェア差分](figures/kde_change.png)
 
-## 11. 既知の制約
+## 10. 地図の読み方と既知の制約
+
+この地図で信頼できるのは「近いものは近い」という局所的な関係だけである。読み方の原則：
+
+- **遠さ・面積・空白の形に意味はない**。離れた大陸同士の距離、大陸の面積、半島の長さは解釈できない。乱数シードやパラメータを変えると形は変わる。
+- **空白は「近傍グラフの断絶」であって未開拓領域ではない**。二つの大陸の間に空白があるのは、その間を近傍でたどる鎖がほとんどないことを意味する。
+  空白の**中**に課題を想定するのではなく、空白の**両岸**の関係（大陸間の近傍リンク数、最短路の長さ）を見る。
+  小さなスケールの穴やリングは実在し得るが、シード・近傍数・パーシステントホモロジーで安定性の確認が要る。
+- **色＝公式の審査区分、配置＝概要文の意味**。色が混ざる場所は誤分類ではなく、区分の境界が概要文の上では曖昧な場所。
+  同じ区分が複数箇所に現れるのは、その区分の中に異なる研究群があることの表示。
+- **課題間の距離は 768 次元のコサインで測る**（地図上ではない）。類似度の絶対値は解釈せず順位で使う（§6）。
+  「面に沿った道のり」（近傍グラフの測地距離）や「密度を速度場とする所要時間」は [roadmap.md](roadmap.md) を参照。
+- 球面版の南半球の海は spread と有限面積の帰結で、「研究がない」意味ではない（§7）。北・南・中心に意味はない。
+
+既知の制約：
 
 - **概要文の性質**：採択時概要は申請書の要約で、実際の研究内容や成果とはずれる。成果概要で別コーパスを作る案はあるが、
   2 種類を混ぜてはいけない。
 - **英語のみの課題**：一部は英語テキストで、Ruri は日本語向けなので配置の妥当性は日本語より低い。
 - **UMAP の限界**：局所構造以外（クラスタ間距離・面積）は解釈しない。周辺部は引き伸ばされる（球面版はその代わり縁の見かけ密度が上がる）。
 - **色覚**：[§8](#8-配色意味順色相環) の未対応事項。
-- **Plotly の限界**：トレース 255 本、不透明点の遅さ、タッチ非対応。R10 のウェブアプリでは deck.gl 系への移行が本命。
-- **転送量**：GitHub Pages の目安 100GB/月に対し 1 閲覧 20MB なので月 5,000 閲覧程度が上限。
-
-## 12. 今後（R9 以降）の設計メモ
-
-クラスタリングと 3 指標（新規性・架橋性・成長性）の設計合意。詳細は着手時に更新する。
-
-**距離を扱う 3 つの空間を混ぜない**：
-
-| 空間 | 距離 | 用途 |
-|---|---|---|
-| 768 次元（L2 正規化） | コサイン | UMAP の近傍グラフ構築、**距離ベース指標（新規性など）の計算** |
-| UMAP 10〜50 次元（min_dist≈0） | ユークリッド | HDBSCAN。距離の忠実さを捨てて密度の分解能を取る |
-| UMAP 2〜3 次元 | ― | 可視化専用 |
-
-**パラメータ選択**：306 小区分との一致度をチューニング基準にしてはならない（「区分に依存しない構造発見」と循環する）。
-代わりに ①内的妥当性（DBCV）、②安定性（パラメータグリッド間の ARI でプラトーを探す、サブサンプリング・シード安定性）、
-③実質的妥当性（特徴語で名付け可能か、外部アンカー、URA による評価実験）。
-パラメータを先に固定してから 306 比較を行う（一致度は従属変数）。感度分析を併記し、複数粒度の提示も想定。
-
-**306 比較**：対象は小区分を持つ基盤・若手約 15.4 万件。クロス表（純度・エントロピー）、
-一致／分裂／融合／新出のパターン分類、ARI・NMI を大・中・小の 3 階層で、768 次元での区分重心と内部分散。
-乖離は区分の欠陥を意味しない（審査区分は審査体制という別目的の設計）。
-
-**HDBSCAN のノイズ点は捨てない**（新規性指標の候補）。所属確率（soft clustering）は架橋性の材料。
-文書内部由来の架橋性として、概要を文単位で埋め込んだときの文ベクトルの分散も候補。
-
-**クラスタ命名**：c-TF-IDF の特徴語＋代表課題タイトルから LLM で日本語ラベルを生成し人が検品する。
-プレゼンテーション層であって分析層ではない（ラベルが変わっても分析結果は不変）。
+- **研究者名・所属機関は載せない**方針（§1）。実務での必要は、利用者が手元データを持ち込むレイヤで応える（[roadmap.md](roadmap.md)）。
+- 実装上の制約（Plotly、転送量、端末保存）は [web.md](web.md) を参照。
 
 ## 参考文献
-
-設計の根拠として実際に参照したもの。思想面で影響を受けたものには一言添える。
-
-**先行研究・思想**
-
-- 持橋大地. Researcher2Vec: ニューラル線形モデルによる自然言語処理研究者の可視化と推薦. 言語処理学会第27回年次大会 (NLP2021), 2021.
-  http://chasen.org/~daiti-m/paper/nlp2021researcher2vec.pdf
-  — 研究者を「論文の内容そのもの」から実数ベクトルで表し、可視化・検索・推薦を一つの空間で行うという構図は本プロジェクトと同じ。
-  研究者ベクトル＝文書ベクトルの平均、言葉による検索、「高次元ベクトルは自分自身にしか似ず全体構造が見えない」ため
-  次元を落として可視化する、という各論点は R9・R10 の設計に直接効く。脚注に JSPS 学術情報分析センターでの
-  科研費約 11 万件へのトピックモデル適用（審査委員候補推薦）の実運用が記されており、科研費テキスト解析の先行実績。
-- 日本学術振興会 学術情報分析センター. 平成 30 年度活動報告, 2019. https://www.jsps.go.jp/j-csia/data/h30/JSPS-CSIA_REPORT_2018_4.pdf
-- M. Katsurai, I. Ohmukai, H. Takeda. Topic Representation of Researchers' Interests in a Large-Scale Academic Database and Its Application to Author Disambiguation. IEICE Trans. Inf. & Syst., E99-D(4), 2016. — CiNii 約 10 万研究者・300 万論文へのトピックモデル。
-- O. Levy, Y. Goldberg. Neural Word Embedding as Implicit Matrix Factorization. NeurIPS 2014. — Researcher2Vec の理論的基礎。
-
-**埋め込み**
-
-- H. Tsukagoshi, R. Sasano. Ruri: Japanese General Text Embeddings. arXiv:2409.07737, 2024. モデル: https://huggingface.co/cl-nagoya/ruri-v3-310m
-- SB Intuitions. JMTEB: Japanese Massive Text Embedding Benchmark. https://github.com/sbintuitions/JMTEB — モデル選定に用いたベンチマーク。
-- K. Ethayarajh. How Contextual are Contextualized Word Representations? EMNLP 2019. — Transformer 埋め込みの異方性（本ノート §6 の「類似度の絶対値は解釈しない」の背景）。
-
-**次元削減・クラスタリング・妥当性**
-
-- L. McInnes, J. Healy, J. Melville. UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction. arXiv:1802.03426, 2018.
-  球面埋め込みは同ライブラリのドキュメント "Embedding to non-Euclidean spaces" に従う。
-- R. J. G. B. Campello, D. Moulavi, J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. PAKDD 2013. — HDBSCAN。
-- L. McInnes, J. Healy, S. Astels. hdbscan: Hierarchical density based clustering. J. Open Source Software, 2(11), 2017.
-- D. Moulavi, P. A. Jaskowiak, R. J. G. B. Campello, A. Zimek, J. Sander. Density-Based Clustering Validation. SDM 2014. — DBCV。
-- M. Grootendorst. BERTopic: Neural topic modeling with a class-based TF-IDF procedure. arXiv:2203.05794, 2022. — 埋め込み→UMAP→HDBSCAN→c-TF-IDF という R9 パイプラインの標準形。
-
-**配色**
-
-- B. Ottosson. A perceptual color space for image processing (Oklab), 2020. https://bottosson.github.io/posts/oklab/ — 色相環の等間隔配置に OKLCH を用いた根拠。
-- M. Held, R. M. Karp. A Dynamic Programming Approach to Sequencing Problems. J. SIAM, 10(1), 1962. — 11 大区分の最短巡回路。
-- G. M. Machado, M. M. Oliveira, L. A. F. Fernandes. A Physiologically-based Model for Simulation of Color Vision Deficiency. IEEE TVCG, 15(6), 2009. — 色覚シミュレーション。
-
-**データ**
-
-- 国立情報学研究所. KAKEN 科学研究費助成事業データベース. https://kaken.nii.ac.jp/ — API 仕様 https://bitbucket.org/niijp/kaken_definition、
-  マスタ https://bitbucket.org/niijp/grants_masterxml_kaken、利用規程 https://support.nii.ac.jp/kaken/about/terms
