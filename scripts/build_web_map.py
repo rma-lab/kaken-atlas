@@ -1680,14 +1680,21 @@ var selPanel = document.createElement('div');
 selPanel.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:999;display:none;' +
   (narrow ? 'right:14px;max-height:40vh;' : 'max-width:400px;max-height:55vh;') + 'overflow-y:auto;padding:10px 14px;' + PANEL;
 document.body.appendChild(selPanel);
-var lassoMode = false, lassoBtn = null, lassoSvg = null, lassoPath = null, lassoPts = null, lassoPointerId = null, lassoEndedAt = 0;
+var lassoMode = false, lassoBtn = null, lassoSvg = null, lassoPath = null, lassoVeil = null, lassoPts = null, lassoData = null,
+    lassoPointerId = null, lassoEndedAt = 0;
 window.kaToggleLasso = function () { setLassoMode(!lassoMode); };
-plot._dbgLasso = function () { return { mode: lassoMode, outline: !!(lassoPath && lassoPath.getAttribute('d')), panel: selPanel.style.display }; };  // 検証用
+plot._dbgLasso = function () { return { mode: lassoMode, outline: !!(lassoPath && lassoPath.getAttribute('d')), veil: !!(lassoVeil && lassoVeil.getAttribute('d')), data: lassoData ? lassoData.length : 0, panel: selPanel.style.display }; };  // 検証用
 if (!is3d) {
   var mbBtns = plot.querySelectorAll('.modebar-btn');
   for (var bi = 0; bi < mbBtns.length; bi++) if (mbBtns[bi].getAttribute('data-title') === '囲って集計（なげなわ）') lassoBtn = mbBtns[bi];
   lassoSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   lassoSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:5;display:none;touch-action:none;cursor:crosshair';
+  // 囲い終えた後は、囲いの外側に薄い膜をかけて内側だけ鮮やかに残す（evenodd の穴あき矩形。Plotly には触らないので軽い）
+  lassoVeil = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  lassoVeil.setAttribute('fill', 'rgba(252,252,251,0.62)');
+  lassoVeil.setAttribute('fill-rule', 'evenodd');
+  lassoVeil.setAttribute('stroke', 'none');
+  lassoSvg.appendChild(lassoVeil);
   lassoPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   lassoPath.setAttribute('fill', 'rgba(28,92,171,0.08)');
   lassoPath.setAttribute('stroke', '#1c5cab');
@@ -1699,11 +1706,36 @@ if (!is3d) {
 }
 function setLassoMode(on) {
   lassoMode = !!on;
-  if (lassoSvg) lassoSvg.style.display = lassoMode ? 'block' : 'none';
+  if (lassoSvg) {
+    // 描いている間はポインタを受ける。結果表示中は表示だけして操作は下の地図へ通す
+    lassoSvg.style.display = (lassoMode || lassoData) ? 'block' : 'none';
+    lassoSvg.style.pointerEvents = lassoMode ? 'auto' : 'none';
+  }
   if (lassoBtn) lassoBtn.classList.toggle('active', lassoMode);
-  if (lassoMode) { clearSelection(); hoverNone(); }
+  if (lassoMode) { lassoClearOutline(); clearSelection(); hoverNone(); }
 }
-function lassoClearOutline() { if (lassoPath) lassoPath.setAttribute('d', ''); lassoPts = null; }
+function lassoClearOutline() {
+  if (lassoPath) lassoPath.setAttribute('d', '');
+  if (lassoVeil) lassoVeil.setAttribute('d', '');
+  lassoPts = null; lassoData = null;
+  if (lassoSvg && !lassoMode) lassoSvg.style.display = 'none';
+}
+function pathOf(pts) {
+  var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+  for (var i = 1; i < pts.length; i++) d += 'L' + pts[i][0].toFixed(1) + ',' + pts[i][1].toFixed(1);
+  return d + 'Z';
+}
+// 囲った多角形（データ座標）を現在の範囲で描き直す。地図を動かしても囲いが追随する
+function lassoRender() {
+  if (!lassoData || !lassoPath) return;
+  var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
+  var sx = sz.w / (xr[1] - xr[0]), sy = sz.h / (yr[1] - yr[0]);
+  var pts = lassoData.map(function (q) { return [sz.l + (q[0] - xr[0]) * sx, sz.t + (yr[1] - q[1]) * sy]; });
+  // 膜は描画領域（軸の内側）だけにかけ、凡例やツールバーは霞ませない
+  var x0 = sz.l, y0 = sz.t, x1 = sz.l + sz.w, y1 = sz.t + sz.h;
+  lassoPath.setAttribute('d', pathOf(pts));
+  lassoVeil.setAttribute('d', 'M' + x0 + ',' + y0 + 'H' + x1 + 'V' + y1 + 'H' + x0 + 'Z ' + pathOf(pts));
+}
 function closeSelPanel() { selPanel.style.display = 'none'; lassoClearOutline(); setLassoMode(false); }
 function lassoLocal(e) {  // ポインタ位置 → plot 要素内の座標
   var r = plot.getBoundingClientRect();
@@ -1711,9 +1743,7 @@ function lassoLocal(e) {  // ポインタ位置 → plot 要素内の座標
 }
 function lassoDraw() {
   if (!lassoPts || lassoPts.length < 2) return;
-  var d = 'M' + lassoPts[0][0].toFixed(1) + ',' + lassoPts[0][1].toFixed(1);
-  for (var i = 1; i < lassoPts.length; i++) d += 'L' + lassoPts[i][0].toFixed(1) + ',' + lassoPts[i][1].toFixed(1);
-  lassoPath.setAttribute('d', d + 'Z');
+  lassoPath.setAttribute('d', pathOf(lassoPts));
 }
 if (lassoSvg) {
   lassoSvg.addEventListener('pointerdown', function (e) {
@@ -1733,9 +1763,12 @@ if (lassoSvg) {
     if (e.pointerId !== lassoPointerId) return;
     lassoPointerId = null; lassoEndedAt = Date.now();
     var pts = lassoPts;
-    setLassoMode(false);  // 囲い終えたら移動モードへ（輪郭は残す）
-    if (!pts || pts.length < 3) { lassoClearOutline(); return; }
-    lassoPts = pts; lassoDraw();
+    if (!pts || pts.length < 3) { lassoClearOutline(); setLassoMode(false); return; }
+    // 多角形をデータ座標で保持し、囲い終えたら移動モードへ（囲いは追随表示）
+    var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
+    lassoData = pts.map(function (q) { return [xr[0] + (q[0] - sz.l) / sz.w * (xr[1] - xr[0]), yr[1] - (q[1] - sz.t) / sz.h * (yr[1] - yr[0])]; });
+    setLassoMode(false);
+    lassoRender();
     summarizeGids(gidsInPolygon(pts));
   }
   lassoSvg.addEventListener('pointerup', lassoEnd);
@@ -1765,9 +1798,10 @@ if (lassoSvg) {
     }
     return out;
   }
-  // 地図を動かしたら輪郭は位置が合わなくなるので消す（パネルは残す）
-  plot.on('plotly_relayouting', lassoClearOutline);
-  plot.on('plotly_relayout', function () { if (lassoPts && lassoPointerId === null) lassoClearOutline(); });
+  // 地図を動かしたら囲いを描き直す（パネルも残す）
+  plot.on('plotly_relayouting', lassoRender);
+  plot.on('plotly_relayout', lassoRender);
+  window.addEventListener('resize', function () { setTimeout(lassoRender, 100); });
 }
 
 function topEntries(obj, n) {
