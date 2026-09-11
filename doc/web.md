@@ -151,6 +151,8 @@ UI 変更は **ヘッドレス Chrome（puppeteer-core）で回帰確認**して
 - **公開反映**: commit 後に `git push`（GitHub Pages、master の `/docs`）。反映まで数分。Cache-Control は 10 分固定。
 - **計測**: GoatCounter（`rma-lab.goatcounter.com`）で閲覧数のみ。Cookie なし。
 - **Search Console**: ルート `https://rma-lab.github.io/` を URL プレフィックスで登録済み（確認ファイルは玄関ページのリポジトリ）。
+- **地図の HTML/CSS/JS は `scripts/web/index.template.html`、Service Worker は `scripts/web/sw.template.js`**（`build_web_map.py` が
+  置換記号を埋めて出力する。2026-09-12 に .py 内の文字列から実ファイルへ分離）。
 - **生成スクリプトの JS の注意**: `setupUI` 関数内で `var x = null;` と宣言した変数は、それより前（main や setupUI 冒頭）の代入を
   巻き上げで上書きする。setupUI 内で使う状態はトップレベルで宣言するか、初期化子なしの `var` にする。
 
