@@ -130,12 +130,13 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
 
 ## 8. 検証
 
-UI 変更は **ヘッドレス Chrome（puppeteer-core、iPhone エミュレーション）で回帰確認**してから公開する。
-swiftshader は描画が遅く、CDP 経由のタッチイベントは実機とかけ離れた時刻列になるので、
-慣性のような時間依存の検証はページ内で合成 TouchEvent を発行する。停止時間など絶対値は実機でしか測れない。
-- 時間依存の検証（慣性、フライ・トゥ）はページ内で合成 TouchEvent を発行する。CDP のタッチ API は swiftshader の遅さで実機と
-  かけ離れた時刻列になる。減衰の秒数など絶対値は実機でしか測れない。
-- ハーネスはセッションの scratchpad に置く（`ptest/*.js`）。
+UI 変更は **ヘッドレス Chrome（puppeteer-core）で回帰確認**してから公開する。回帰試験一式は `tests/web/`
+（`cd tests/web && npm install && node run.js`、3 ビュー × PC・iPhone 相当、約 2 分、46 項目。内容は `tests/web/README.md`）。
+`docs/` をローカル HTTP で配信し、実物のページを操作して確認する。描画は Metal で GPU を使う（swiftshader は深度精度と速度が
+実機と違い、z-fighting や所要時間の検証に使えない）。
+- 時間依存の検証（慣性、フライ・トゥ）はページ内で合成 TouchEvent を発行する。CDP のタッチ API は実機とかけ離れた時刻列になる。
+  減衰の秒数など絶対値は実機でしか測れない。これらは一式には含めず、必要なときにセッションの scratchpad で行う。
+- 性能の問題は推測せず CDP Profiler で自己時間の上位を見る（`scaleanchor` の罠はこれで見つけた）。
 
 ## 9. 運用（版管理・データ更新・計測）
 

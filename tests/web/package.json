@@ -1,0 +1,7 @@
+{
+  "name": "kaken-atlas-web-tests",
+  "private": true,
+  "description": "地図サイト（docs/）のヘッドレス Chrome 回帰試験",
+  "scripts": { "test": "node run.js" },
+  "dependencies": { "puppeteer-core": "^23.11.1" }
+}

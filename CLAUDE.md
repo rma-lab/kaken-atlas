@@ -88,8 +88,9 @@
 - `docs/sw.js`（Service Worker）と `docs/shards/`（3 ビュー共有の詳細データ、課題番号順）は `build_web_map.py` の生成物。
   **手で編集しない**。データを更新したら 3 ビューすべてを再生成してから commit（sw.js のデータ版が最後の生成で確定する）。
 - `reports/` は **git 管理外**（実験ノート扱い。公開物として文脈を整えるまでローカル）。
-- UI 変更時は**ヘッドレス Chrome で検証**（puppeteer-core。ハーネスはセッションの scratchpad の `ptest/` に置き、`docs/` を
-  ローカル HTTP で配信して実物に対して回帰確認する。深度・描画の検証は Metal で GPU を使う。詳細は `doc/web.md` §8）。
+- UI 変更時は**回帰試験一式を通してから公開**: `cd tests/web && npm install && node run.js`（ヘッドレス Chrome、3 ビュー × PC・
+  iPhone 相当、約 2 分。内容は `tests/web/README.md`）。新しい UI を足したらテストも足す。一時的な探索ハーネスは
+  セッションの scratchpad（`ptest/`）で良いが、残す価値のある確認は `tests/web/tests/` に移す。詳細は `doc/web.md` §8。
 - **2D は `yaxis.scaleanchor` を使わない**（範囲変更のたびに全再計算が走り、点ごとの色配列では 1 回 190ms。縦横比は JS の
   `equalScale` で自前管理。2026-09-11）。
 - **性能の問題は推測せず測る**（CDP Profiler で自己時間の上位を見る。ハーネス `ptest/glprofile.js` の流儀）。

@@ -39,3 +39,8 @@ models/
 
 # 分析レポート（実験ノート）は論文・公開物として文脈を整えるまでローカル管理
 reports/
+
+# ウェブ地図の回帰試験（tests/web）: 依存パッケージと出力
+tests/web/node_modules/
+tests/web/out/
+tests/web/package-lock.json
