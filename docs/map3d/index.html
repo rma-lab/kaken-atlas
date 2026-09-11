@@ -209,7 +209,7 @@ async function main() {
   bar1.style.width = '100%';
   await new Promise(function (res) { setTimeout(res, 30); });  // 描画前にUI更新を反映
 
-  var N = M.n, ndim = is3d ? 3 : 2;
+  var N = M.n;
   var i16 = new Int16Array(buf);
   function deq(k) {
     var q = M.quant[k], out = new Float32Array(N), base = k * N;
@@ -593,7 +593,6 @@ var ICON_ZOOM;
 var ICON_FIT;
 var ICON_CHECK;
 var safeProbe;
-var adaptSphere;  // 旧名（呼び出し箇所の互換）
 var followRaf, followTimer;
 var lastK, lastT;
 function gidOf(p) {
@@ -889,7 +888,6 @@ function openKaken(gid) {
 }
 
 // 点が確定したときの動作: PC は即オープン、タッチはカード
-function actOn(gid, cx, cy) { selectPoint(gid, cx, cy); }  // PC もカード（2026-09-09 決定。KAKEN はカードのクリックで）
 
 function projected(gid) {  // 2D: データ座標→画面座標
   var fl = plot._fullLayout, rect = plot.getBoundingClientRect();
@@ -1000,7 +998,6 @@ function initPointDetail() {
   ICON_CHECK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
     '<path d="M20 6L9 17l-5-5"/></svg>';
   safeProbe = null;
-  adaptSphere = adaptDepth;
   followRaf = false;
   followTimer = null;
   // PC: クリックで即 KAKEN ページ（新規タブ）。DOM click と plotly_click の両方から呼ばれ得るので 600ms で重複抑止
@@ -1040,7 +1037,7 @@ var pendingTap;
 function resolveTap(gid) {
   if (!pendingTap) return false;
   var t = pendingTap; clearTimeout(t.timer); pendingTap = null;
-  actOn(gid, t.x, t.y);
+  selectPoint(gid, t.x, t.y);  // PC もカード（2026-09-09 決定。KAKEN はカードのクリックで）
   return true;
 }
 
@@ -1053,7 +1050,7 @@ function initSelection() {
   plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
   // 2D: パン・ピンチ直後のクリック/タップは無視（relayout を合図に抑止）。選択中はカードを点に追随
   plot.on('plotly_relayout', function () {
-    updateSelectionPos(); adaptSphere();
+    updateSelectionPos(); adaptDepth();
     if (is3d) return;
     suppressUntil = Date.now() + 400;
   });
@@ -1869,7 +1866,7 @@ function initTouch3d() {
         if (!pendingCam) return;
         var pc = pendingCam; pendingCam = null;
         Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
-          .then(function () { updateSelectionPos(); adaptSphere(); });
+          .then(function () { updateSelectionPos(); adaptDepth(); });
       });
     }
     // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
