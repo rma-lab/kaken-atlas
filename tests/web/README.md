@@ -26,4 +26,17 @@ node run.js lasso perf # 名前の一部で絞る
 | 08_panels | 色の見方（PC・スマホ）、大区分シート |
 | 09_stale_cache | 旧版（v1.2）を保存後に新版へ切替、1 回目で正常（データ URL の版） |
 
+## リファクタリングの安全網（動作を変えていないことの確認）
+
+```bash
+uv run python tests/web/artifacts.py check   # 生成物の同一性: points.bin×3、shards×101、manifest×3、sw.js のデータ版
+uv run python tests/web/artifacts.py record  # 基準を baseline/artifacts.json に記録（git 管理）。データを意図して更新したときだけ
+node shots.js record                          # 基準スクリーンショットを out/baseline/ に撮る（git 管理外。整理を始める前に）
+node shots.js check                           # 撮り直して画素差分（差分画素 0.3% 超で NG。差分画像は out/diff/）
+```
+
+- `artifacts.py` は Python 側（build_order、manifest、シャード）の整理用。整理の前後で 14 項目すべて一致すること。
+- `shots.js` は 9 構図（3 ビュー × PC・スマホ、2D のフライトゥ＋カード、色の見方、なげなわ）。同じ機械・GPU なら差分 0.000% で
+  再現する（確認済み）。UI を意図して変えたときは基準を撮り直す。
+
 時間依存の検証（慣性など）はページ内で合成 TouchEvent を発行する必要があり、ここには含めていない（`doc/web.md` §8）。

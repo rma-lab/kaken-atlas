@@ -1,0 +1,16 @@
+{
+ "map2d/points.bin": "9d431d3c625da234",
+ "map2d/manifest": "154bb6c9c40226a0",
+ "map2d/manifest.n": "206078",
+ "map2d/manifest.traces": "174",
+ "map3d/points.bin": "4298a9f210795809",
+ "map3d/manifest": "297e4f0eb1bc5d72",
+ "map3d/manifest.n": "206078",
+ "map3d/manifest.traces": "174",
+ "globe/points.bin": "81fa725aa24e0af6",
+ "globe/manifest": "a7a2beeb2aab30d6",
+ "globe/manifest.n": "206078",
+ "globe/manifest.traces": "221",
+ "shards": "101 files d812dd160dbab403",
+ "sw.js/data-version": "f138f5d551f3"
+}
