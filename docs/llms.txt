@@ -9,9 +9,9 @@
 
 ## 何が見られるか / What it shows
 - 各点が 1 つの科研費採択課題。点をクリック（タッチ端末はタップ→カード）で KAKEN の課題ページへ。
-- 色は公式の大区分（A〜K）。配置は研究概要のテキストの意味だけで決めており、区分は使っていない。
+- 色も配置も研究概要のテキストの意味だけで決めている。色は「研究内容の環（弾性リング）上の位置」を色相にした連続色で、公式の審査区分の色ではない。区分は絞り込みにだけ使える。
 - 3 つのビュー: 2D 地図（検索・種目フィルタ・なげなわ集計）、3D 地図、球面地図（端のない地球儀）。
-- Each dot is one funded project; colour = official broad review section (A–K); position is derived only from abstract text.
+- Each dot is one funded project; both position and colour are derived only from abstract text (colour = continuous hue along a closed curve fitted in embedding space; official review sections are available only as a filter).
 
 ## 方針 / Policy
 - この地図は研究内容（採択時の研究概要）だけで課題を配置しています。研究者名や所属機関は載せず、検索・絞り込みの対象にもしていません。名前や機関の先入観なしに、研究の中身で学術の広がりを眺めてもらうためです。個々の課題の詳細は KAKEN のページをご覧ください。
@@ -21,7 +21,7 @@
 - データ: KAKEN opensearch API（国立情報学研究所）から 2018 年度以降を取得。埋め込み対象は 2019–2025 年度開始・採択時概要あり・不採択除く。
 - 埋め込み: cl-nagoya/ruri-v3-310m（768 次元、L2 正規化）。テキスト = タイトル + キーワード + 採択時研究概要。
 - 次元削減: UMAP（cosine, n_neighbors=15, min_dist=0.1, seed=42）。球面版は output_metric=haversine, min_dist=0.0, spread=0.3。
-- 配色: 大区分重心の意味的隣接を色相の隣接に写した 11 色（意味順色相環）。
+- 配色: 768 次元空間に張った閉じた輪（198 ノードのリング SOM）上の位置を色相、周囲の合意度を彩度にした連続色。色相の向きは大区分の意味順色相環（11 色）に較正。
 - 読み方の注意: UMAP が保つのは局所近傍関係のみ。クラスタ間の距離・面積・空白（海）は解釈しない。
 - Embedding: Ruri v3 310m; reduction: UMAP (cosine); sphere via haversine output metric. Only local neighbourhoods are preserved — do not interpret long distances, areas or empty regions.
 

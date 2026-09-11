@@ -1,6 +1,6 @@
 // KAKEN-ATLAS Service Worker（scripts/build_web_map.py が生成。手で編集しない）
-// データ版: 5ac2dc130c7f（共有シャードと各ビューの points.bin の内容ハッシュ。変わると古いキャッシュを捨てる）
-var DATA_CACHE = 'ka-data-5ac2dc130c7f';
+// データ版: f138f5d551f3（共有シャードと各ビューの points.bin の内容ハッシュ。変わると古いキャッシュを捨てる）
+var DATA_CACHE = 'ka-data-f138f5d551f3';
 var PAGE_CACHE = 'ka-pages-v1';
 var STATIC_CACHE = 'ka-static-v1';
 

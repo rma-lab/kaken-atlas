@@ -40,6 +40,12 @@ import os
 GLOBE_JITTER_SIGMA = float(os.environ.get("GLOBE_JITTER_SIGMA", "0.002"))
 GLOBE_JITTER_CLIP = float(os.environ.get("GLOBE_JITTER_CLIP", "0.005"))
 GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の視距離での半径。縮小時は JS 側で距離に応じて小さくする
+# 点の色（2026-09-11 決定）: 既定 "text"=研究内容から導いた連続色（弾性リング。scripts/compute_textcolor.py の色表を
+# points.bin 末尾に RGB 各 1 バイトで同梱し、点ごとに塗る）。"dai"=従来の大区分 11 色（トレース単色。比較・実験用）。
+# text のとき大区分の凡例・シートの色見本は「所属課題の平均色」（textcolor_legend.json）、カードの縁と見出しは点自身の色
+POINT_COLOR = os.environ.get("POINT_COLOR", "text")
+TEXTCOLOR_PARQUET = Path(os.environ.get("TEXTCOLOR_PARQUET", "data/processed/textcolor_d.parquet"))
+TEXTCOLOR_LEGEND = TEXTCOLOR_PARQUET.with_name("textcolor_legend.json")
 PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 
@@ -151,6 +157,12 @@ def main() -> None:
     assert bad.height == 0, f"kaken_id を分解できない行が {bad.height} 件"
 
     big, traces = build_order(df, parts=16 if is_globe else 1, merge_categories=is_globe)
+    color_legend = None
+    if POINT_COLOR == "text":  # 大区分の色見本を所属課題の平均色に差し替える（K のように散在する区分は灰色寄りになる）
+        color_legend = json.loads(TEXTCOLOR_LEGEND.read_text(encoding="utf-8"))
+        for t in traces:
+            if t["dai"] in color_legend["dai"]:
+                t["color"] = "rgb(%d,%d,%d)" % tuple(color_legend["dai"][t["dai"]]["rgb"])
     n_point_traces = sum(1 for t in traces if t["k"] == "d")
     assert len(traces) + 2 <= 255, f"トレース数 {len(traces)} が Plotly 3D の判定上限(255)を超える"
     n = big.height
@@ -176,6 +188,12 @@ def main() -> None:
     uid_of = {a: i for i, a in enumerate(sorted(big["award_number"].to_list()))}
     uids = np.array([uid_of[a] for a in big["award_number"]], dtype="<u4")
     points_bin = b"".join(a.tobytes() for a in qarrs) + uids.tobytes()
+    if POINT_COLOR == "text":  # 点ごとの色（sRGB 各 1 バイト、描画順）
+        tc = pl.read_parquet(TEXTCOLOR_PARQUET, columns=["award_number", "r", "g", "b"])
+        tcj = big.select("award_number").join(tc, on="award_number", how="left")
+        assert tcj["r"].null_count() == 0, "色表に無い課題がある"
+        rgb = np.stack([tcj[c].to_numpy() for c in ("r", "g", "b")], axis=1).astype(np.uint8)
+        points_bin += rgb.tobytes()
 
     out_dir = Path("docs/globe" if is_globe else f"docs/map{'3d' if is_3d else '2d'}")
     if len(sys.argv) > 2:  # 比較実験用に出力先を変えられる（例: reports/globe_compare/sp0.45）
@@ -212,6 +230,8 @@ def main() -> None:
         traces=traces, catOrder=CATEGORY_ORDER,
         shardFirst=[rows[s * SHARD_SIZE][0] for s in range(n_shards)],  # 課題番号→シャードの二分探索用
         sphereR=GLOBE_SPHERE_R if is_globe else None,
+        textColor=POINT_COLOR == "text",
+        colorLegend=dict(sectors=color_legend["sectors"]) if color_legend else None,
         footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
@@ -365,8 +385,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     #ka-bar > div { flex-shrink:0; }
     #ka-bar > #ka-q-wrap { flex-shrink:1; }
     #ka-filter-btn, #ka-help-btn, #ka-dai-btn { white-space:nowrap; font-size:12px; }
-    #ka-help-wrap { display:none !important; }  /* 「操作」はサイトメニュー（羅針盤）の中へ */
-    #ka-help-body { left:0 !important; right:auto !important; white-space:normal !important; width:calc(100vw - 20px); box-sizing:border-box; }
+    #ka-help-wrap, #ka-color-wrap { display:none !important; }  /* 「操作」「色の見方」はサイトメニュー（羅針盤）の中へ */
+    #ka-help-body, #ka-color-body { left:0 !important; right:auto !important; white-space:normal !important; width:calc(100vw - 20px); box-sizing:border-box; }
     .ka-sub { display:none !important; }
     #ka-results { width:86vw !important; }
   }
@@ -438,6 +458,7 @@ function ensureShard(s) {
   return detPending[s];
 }
 var uidOf = null, gidOfUid = null;  // gid（描画順）⇄ uid（課題番号順）。points.bin の末尾から読む
+var colorOf = null;  // gid → 'rgb(r,g,b)'（研究内容由来の連続色。M.textColor のとき points.bin 末尾の RGB から作る）
 // 課題番号 → gid。名簿は課題番号順なので、各シャード先頭の番号（M.shardFirst）で二分探索し、その 1 片だけ読む
 function findGidByAward(award) {
   award = String(award || '').trim().toUpperCase();
@@ -508,6 +529,12 @@ async function main() {
   uidOf = new Uint32Array(buf, (is3d ? 3 : 2) * N * 2, N);
   gidOfUid = new Uint32Array(N);  // 逆引き（課題番号 → uid → gid。URL の ?award= 用）
   for (var u = 0; u < N; u++) gidOfUid[uidOf[u]] = u;
+  // 点ごとの色（研究内容由来の連続色。M.textColor のとき末尾に RGB 各 1 バイト）
+  var rgb8 = M.textColor ? new Uint8Array(buf, (is3d ? 3 : 2) * N * 2 + N * 4, N * 3) : null;
+  if (rgb8) {
+    colorOf = new Array(N);
+    for (var ci = 0; ci < N; ci++) colorOf[ci] = 'rgb(' + rgb8[ci * 3] + ',' + rgb8[ci * 3 + 1] + ',' + rgb8[ci * 3 + 2] + ')';
+  }
 
   // gid → トレース番号（検索の表示判定用）と、トレース番号 → 先頭gid
   traceOf = new Uint16Array(N);
@@ -535,8 +562,8 @@ async function main() {
       name: t.label + ' ' + fmt(t.n), meta: t.cat, legendgroup: t.dai,
       showlegend: false, hoverinfo: 'none',
       visible: t.vis ? true : 'legendonly',
-      marker: is3d ? { size: isGlobe ? 1.4 : 1.3, color: t.color, opacity: isGlobe ? 0.75 : 0.55 }
-                   : { size: 2.2, color: t.color, opacity: 0.5 },
+      marker: is3d ? { size: isGlobe ? 1.4 : 1.3, color: colorOf ? colorOf.slice(t.off, end) : t.color, opacity: isGlobe ? 0.75 : 0.55 }
+                   : { size: 2.2, color: colorOf ? colorOf.slice(t.off, end) : t.color, opacity: 0.5 },
       type: is3d ? 'scatter3d' : 'scattergl',
     };
     if (is3d) d.z = zs.subarray(t.off, end);
@@ -698,6 +725,11 @@ bar.innerHTML =
   '<div id="ka-dai-wrap" style="display:none;align-self:stretch;align-items:center">' +
   '  <span id="ka-dai-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap;font-size:12px">大区分 ▾</span>' +
   '</div>' +
+  (M.colorLegend ? '<div id="ka-color-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
+  '  <span id="ka-color-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap">色の見方 ▾</span>' +
+  '  <div id="ka-color-body" style="display:none;position:absolute;top:100%;right:0;' +
+  '   padding:10px 14px;white-space:normal;width:440px;max-width:calc(100vw - 20px);box-sizing:border-box;' + PANEL + '"></div>' +
+  '</div>' : '') +
   '<div id="ka-filter-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
   '  <span id="ka-filter-btn" style="cursor:default;color:' + SUB + '">' + (narrow ? '種目 ▾' : '種目フィルタ ▾') + '</span>' +
   '  <div id="ka-body" style="display:none;position:absolute;top:100%;right:0;' +
@@ -715,6 +747,7 @@ if (allLoaded) finishPrefetch();  // 先読みがヘッダー生成より先に�
 // タッチ=ボタンタップでトグル・外側タップで閉じる
 var menus = [['ka-home-wrap', 'ka-home-body', 'ka-home-btn'],
              ['ka-help-wrap', 'ka-help-body', 'ka-help-btn']];
+if (M.colorLegend) menus.splice(1, 0, ['ka-color-wrap', 'ka-color-body', 'ka-color-btn']);
 if (!narrow) menus.splice(1, 0, ['ka-filter-wrap', 'ka-body', 'ka-filter-btn']);  // 狭幅の種目はボトムシート
 menus.forEach(function (m) {
   var wrap = document.getElementById(m[0]);
@@ -746,19 +779,29 @@ if (isTouch) {
 if (isGlobe) {  // 球面はトレースを大区分×組で束ねるため種目単位の表示切替ができない
   document.getElementById('ka-filter-wrap').style.display = 'none';
 }
-if (narrow) {  // 狭幅ではヘッダーに「操作」を置かず、羅針盤メニューの末尾から開く
-  var homeBody = document.getElementById('ka-home-body'), helpBody = document.getElementById('ka-help-body');
-  var item = document.createElement('div');
-  item.innerHTML = '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>' +
-    '<div id="ka-help-link" style="padding:6px 16px;color:' + INK + ';white-space:nowrap">操作の説明</div>';
-  homeBody.appendChild(item);
-  document.getElementById('ka-home-wrap').appendChild(helpBody);  // 外側タップで閉じる仕組みを共有
-  document.getElementById('ka-help-link').addEventListener('click', function (e) {
-    e.stopPropagation(); homeBody.style.display = 'none'; helpBody.style.display = 'block';
+if (narrow) {  // 狭幅ではヘッダーに「操作」「色の見方」を置かず、羅針盤メニューの末尾から開く
+  var homeBody = document.getElementById('ka-home-body'), homeWrap = document.getElementById('ka-home-wrap');
+  var subPanels = [['ka-color-body', '色の見方'], ['ka-help-body', '操作の説明']].filter(function (v) { return document.getElementById(v[0]); });
+  var sep = document.createElement('div');
+  sep.innerHTML = '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>';
+  homeBody.appendChild(sep);
+  subPanels.forEach(function (v) {
+    var body = document.getElementById(v[0]);
+    var link = document.createElement('div');
+    link.style.cssText = 'padding:6px 16px;color:' + INK + ';white-space:nowrap';
+    link.textContent = v[1];
+    homeBody.appendChild(link);
+    homeWrap.appendChild(body);  // 外側タップで閉じる仕組みを共有
+    link.addEventListener('click', function (e) {
+      e.stopPropagation(); homeBody.style.display = 'none';
+      subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = w[0] === v[0] ? 'block' : 'none'; });
+    });
   });
-  document.getElementById('ka-home-btn').addEventListener('click', function () { helpBody.style.display = 'none'; });
+  document.getElementById('ka-home-btn').addEventListener('click', function () {
+    subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = 'none'; });
+  });
   document.addEventListener('click', function (e) {
-    if (!document.getElementById('ka-home-wrap').contains(e.target)) helpBody.style.display = 'none';
+    if (!homeWrap.contains(e.target)) subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = 'none'; });
   });
 }
 document.getElementById('ka-help-body').innerHTML = isTouch
@@ -766,7 +809,8 @@ document.getElementById('ka-help-body').innerHTML = isTouch
           : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
             '<div>ダブルタップ: 全体表示に戻る</div>') +
     '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
-    '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>'
+    '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>' +
+    '<div>点の色: 羅針盤メニューの「色の見方」</div>'
   : is3d
   ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
     '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
@@ -777,6 +821,34 @@ document.getElementById('ka-help-body').innerHTML = isTouch
     '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
     '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
     '<div>Esc: 選択解除</div>';
+
+// ---- 色の見方（研究内容由来の連続色の凡例: 色相環 12 方位と、そこに集まる課題の特徴語） ----
+if (M.colorLegend) (function () {
+  var L = M.colorLegend, n = L.sectors.length;
+  var W = 440, H = 290, cx = W / 2, cy = H / 2, r0 = 58, r1 = 88, rt = 100;
+  function pt(r, a) { return (cx + r * Math.cos(a)).toFixed(1) + ',' + (cy - r * Math.sin(a)).toFixed(1); }
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="display:block;width:100%;height:auto;font:11px -apple-system,sans-serif">';
+  L.sectors.forEach(function (sc, i) {
+    var a0 = i / n * 2 * Math.PI, a1 = (i + 1) / n * 2 * Math.PI, am = (a0 + a1) / 2;
+    svg += '<path d="M' + pt(r0, a0) + ' L' + pt(r1, a0) + ' A' + r1 + ',' + r1 + ' 0 0 0 ' + pt(r1, a1) +
+      ' L' + pt(r0, a1) + ' A' + r0 + ',' + r0 + ' 0 0 1 ' + pt(r0, a0) + 'Z" fill="rgb(' + sc.rgb.join(',') + ')" stroke="#fcfcfb" stroke-width="1.2"/>';
+    var c = Math.cos(am), tx = cx + rt * c, ty = cy - rt * Math.sin(am);
+    var anchor = c > 0 ? 'start' : 'end';  // 真上・真下付近の隣り合う方位が重ならないよう左右に振り分ける
+    var words = sc.words.slice(0, 2).map(function (w) { return w.length > 11 ? w.slice(0, 10) + '…' : w; });
+    svg += '<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="' + anchor + '" fill="' + INK + '">' +
+      words.map(function (w, j) {
+        return '<tspan x="' + tx.toFixed(1) + '" dy="' + (j ? '1.2em' : (0.35 - 0.6 * (words.length - 1)).toFixed(2) + 'em') + '">' + esc(w) + '</tspan>';
+      }).join('') + '</text>';
+  });
+  svg += '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="' + SUB + '" font-size="10.5">色相＝研究内容の</text>' +
+    '<text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" fill="' + SUB + '" font-size="10.5">環の上の位置</text></svg>';
+  document.getElementById('ka-color-body').innerHTML = svg +
+    '<div style="font-size:11.5px;line-height:1.55;color:' + INK + ';margin-top:4px">' +
+    '点の色は<b>研究内容（採択時の概要）から連続的に</b>決めています。公式の審査区分の色ではありません。' +
+    '似た内容の課題は似た色になり、環の各方位には、そこに集まる課題に特徴的なキーワードを示しました。' +
+    '環の反対側どうしの中間にある課題（分野の狭間）はやや灰色寄りになります。<br>' +
+    '<span style="color:' + MUTED + '">大区分の凡例の色見本は、その区分に属する課題の平均色です（環境学のように内容が散在する区分は灰色寄りになります）。</span></div>';
+})();
 
 // ---- 点の詳細表示 ----
 // PC（マウス）: ホバーでプレビュー（カーソル追従・操作不可）、クリックで即 KAKEN ページを開く。
@@ -813,8 +885,9 @@ function gidOf(p) {
 }
 function kakenUrl(row) { return 'https://kaken.nii.ac.jp/ja/grant/' + kakenId(row) + '/'; }
 var ELL = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-function headerHtml(tr, closable) {
-  return '<div style="' + ELL + ';background:' + tr.color + ';color:#fff;font-weight:600;' +
+function pointColor(gid, tr) { return (colorOf && gid !== null && gid !== undefined) ? colorOf[gid] : tr.color; }
+function headerHtml(tr, closable, gid) {
+  return '<div style="' + ELL + ';background:' + pointColor(gid, tr) + ';color:#fff;font-weight:600;' +
     'margin:-6px -9px 4px -9px;padding:4px 9px;border-radius:4.5px 4.5px 0 0;position:relative">' +
     esc(tr.label) +
     (closable ? '<span data-close="1" style="position:absolute;right:0;top:0;padding:4px 12px;' +
@@ -838,11 +911,11 @@ function renderTip(gid, tr) {
   var title = row ? esc((row[2] || '（タイトルなし）').slice(0, 48))
                   : '<span style="color:' + MUTED + '">（読み込み中…）</span>';
   var tail = row ? esc(catOf(gid, row) + ' / ' + row[0]) : esc(catOf(gid, null));
-  tip.innerHTML = headerHtml(tr, false) +
+  tip.innerHTML = headerHtml(tr, false, gid) +
     '<div style="' + ELL + '">' + title + '</div>' +
     '<div style="' + ELL + '">' + tail + '</div>' +
     '<div style="color:' + MUTED + ';font-size:11px">クリックで詳細</div>';
-  tip.style.borderColor = tr.color;
+  tip.style.borderColor = pointColor(gid, tr);
   tip.style.display = 'block'; placeTip();
 }
 
@@ -1024,7 +1097,7 @@ function renderCard(gid, tr) {
     '</div>' +
     '<div style="' + ELL + ';color:' + SUB + '">' + esc(row ? catOf(gid, row) + ' / ' + row[0] : catOf(gid, null)) + '</div>' +
     '<div style="' + ELL + ';color:' + MUTED + ';font-size:11.5px;min-height:1.5em">' + esc(row ? row[3] : '') + '</div>';
-  var inner = headerHtml(tr, true) + body;
+  var inner = headerHtml(tr, true, gid) + body;
   var foot = row
     ? '<div style="display:flex;gap:4px;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid ' + LINE + '">' +
       '<a href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener" style="' + ELL + ';flex:1;color:#1c5cab;' +
@@ -1037,7 +1110,7 @@ function renderCard(gid, tr) {
     ? '<a data-open="1" href="' + esc(kakenUrl(row)) + '" target="_blank" rel="noopener"' +
       ' style="display:block;color:inherit;text-decoration:none;cursor:pointer">' + inner + '</a>' + foot
     : inner;
-  card.style.borderColor = tr.color;
+  card.style.borderColor = pointColor(gid, tr);
   card.style.display = 'block';
   // アドレスバーの URL をこの課題のものに（そのままコピーして共有できる）
   if (row && history.replaceState) history.replaceState(null, '', location.pathname + '?award=' + encodeURIComponent(row[0]));
