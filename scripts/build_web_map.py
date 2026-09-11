@@ -644,9 +644,15 @@ async function main() {
     layout.yaxis = { visible: false };
     layout.dragmode = 'pan';
   }
+  var lassoButton = {  // 自前のなげなわ（Plotly の選択機能は使わない。理由は「囲って集計」の節）
+    name: 'ka-lasso', title: '囲って集計（なげなわ）', icon: Plotly.Icons.lasso,
+    click: function () { if (window.kaToggleLasso) window.kaToggleLasso(); },
+  };
   await Plotly.newPlot(plot, data, layout,
     { scrollZoom: true, displaylogo: false, doubleClick: 'reset', responsive: true,
-      modeBarButtonsToRemove: isGlobe ? ['pan3d'] : [] });
+      modeBarButtonsToRemove: isGlobe ? ['pan3d'] : (is3d ? [] : ['select2d', 'lasso2d', 'zoom2d']),
+      modeBarButtonsToAdd: is3d ? [] : [lassoButton] });
+
   if (isGlobe) {  // 注視点が動いたら（右ドラッグの移動など）中心へ戻す。視点も同じだけ戻して見え方を保つ
     plot.on('plotly_relayout', function (ev) {
       var cam = plot._fullLayout.scene && plot._fullLayout.scene.camera;
@@ -862,7 +868,7 @@ document.getElementById('ka-help-body').innerHTML = isTouch
     '<div>ダブルクリック: 全体表示に戻る</div>' +
     '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
     '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
-    '<div>ツールバーのなげなわ/矩形: 囲って集計（囲い終えると移動モードに戻る）</div>' +
+    '<div>ツールバーのなげなわ: 囲って集計（囲い終えると移動モードに戻る）</div>' +
     '<div>Esc: 選択解除</div>';
 
 // ---- 色の見方（研究内容由来の連続色の凡例: 色相環 12 方位と、そこに集まる課題の特徴語） ----
@@ -1426,6 +1432,7 @@ if (isTouch && !is3d) {
   }, { capture: true, passive: true });
   plot.addEventListener('touchend', function (e) {
     if (!tapStart || e.touches.length) return;
+    if (lassoMode || Date.now() - lassoEndedAt < 500) { tapStart = null; return; }  // 囲いの操作はタップにしない
     var c = e.changedTouches[0];
     var moved = Math.abs(c.clientX - tapStart.x) > 10 || Math.abs(c.clientY - tapStart.y) > 10;
     var slow = Date.now() - tapStart.t > 500;
@@ -1665,40 +1672,116 @@ document.getElementById('ka-selnone').addEventListener('click', function (e) {
   boxes.forEach(function (cb, i) { cb.checked = false; setCategory(cats[i], false); });
 });
 
-// ---- 選択パネル（なげなわ/矩形で囲うと内訳・キーワード集計を即時表示） ----
+// ---- 囲って集計（自前のなげなわ） ----
+// Plotly の lasso/select は選択後に全トレースの選択状態を再計算する（点ごとの色配列では 20 万点 × 174 本で数秒。
+// スマホでは固まって見える。2026-09-11）。ここでは Plotly の選択機能を使わず、画面座標で多角形を描いて
+// 点の内外を自前で判定し（20 万点で数十 ms）、内訳とキーワードを集計する。強調表示はせず、輪郭線と集計パネルで示す。
 var selPanel = document.createElement('div');
 selPanel.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:999;display:none;' +
   (narrow ? 'right:14px;max-height:40vh;' : 'max-width:400px;max-height:55vh;') + 'overflow-y:auto;padding:10px 14px;' + PANEL;
 document.body.appendChild(selPanel);
-// 選択の後始末: パネルを閉じ、点の強調（selectedpoints）を解き、操作モードを移動に戻す
-function clearLassoHighlight() {
-  var idx = [];
-  plot.data.forEach(function (t, i) { if (t.selectedpoints != null) idx.push(i); });
-  if (idx.length) Plotly.restyle(plot, { selectedpoints: null }, idx);
+var lassoMode = false, lassoBtn = null, lassoSvg = null, lassoPath = null, lassoPts = null, lassoPointerId = null, lassoEndedAt = 0;
+window.kaToggleLasso = function () { setLassoMode(!lassoMode); };
+plot._dbgLasso = function () { return { mode: lassoMode, outline: !!(lassoPath && lassoPath.getAttribute('d')), panel: selPanel.style.display }; };  // 検証用
+if (!is3d) {
+  var mbBtns = plot.querySelectorAll('.modebar-btn');
+  for (var bi = 0; bi < mbBtns.length; bi++) if (mbBtns[bi].getAttribute('data-title') === '囲って集計（なげなわ）') lassoBtn = mbBtns[bi];
+  lassoSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  lassoSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:5;display:none;touch-action:none;cursor:crosshair';
+  lassoPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  lassoPath.setAttribute('fill', 'rgba(28,92,171,0.08)');
+  lassoPath.setAttribute('stroke', '#1c5cab');
+  lassoPath.setAttribute('stroke-width', '1.5');
+  lassoPath.setAttribute('stroke-dasharray', '5 4');
+  lassoSvg.appendChild(lassoPath);
+  plot.style.position = 'relative';
+  plot.appendChild(lassoSvg);
 }
-function closeSelPanel() {
-  selPanel.style.display = 'none';
-  clearLassoHighlight();
-  if (plot._fullLayout.dragmode !== 'pan') Plotly.relayout(plot, { selections: [], dragmode: 'pan' });
+function setLassoMode(on) {
+  lassoMode = !!on;
+  if (lassoSvg) lassoSvg.style.display = lassoMode ? 'block' : 'none';
+  if (lassoBtn) lassoBtn.classList.toggle('active', lassoMode);
+  if (lassoMode) { clearSelection(); hoverNone(); }
+}
+function lassoClearOutline() { if (lassoPath) lassoPath.setAttribute('d', ''); lassoPts = null; }
+function closeSelPanel() { selPanel.style.display = 'none'; lassoClearOutline(); setLassoMode(false); }
+function lassoLocal(e) {  // ポインタ位置 → plot 要素内の座標
+  var r = plot.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top];
+}
+function lassoDraw() {
+  if (!lassoPts || lassoPts.length < 2) return;
+  var d = 'M' + lassoPts[0][0].toFixed(1) + ',' + lassoPts[0][1].toFixed(1);
+  for (var i = 1; i < lassoPts.length; i++) d += 'L' + lassoPts[i][0].toFixed(1) + ',' + lassoPts[i][1].toFixed(1);
+  lassoPath.setAttribute('d', d + 'Z');
+}
+if (lassoSvg) {
+  lassoSvg.addEventListener('pointerdown', function (e) {
+    if (!lassoMode || lassoPointerId !== null) return;
+    e.preventDefault(); e.stopPropagation();
+    lassoPointerId = e.pointerId; lassoPts = [lassoLocal(e)];
+    try { lassoSvg.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  lassoSvg.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== lassoPointerId) return;
+    e.preventDefault();
+    var q = lassoLocal(e), last = lassoPts[lassoPts.length - 1];
+    if (Math.abs(q[0] - last[0]) + Math.abs(q[1] - last[1]) < 2) return;
+    lassoPts.push(q); lassoDraw();
+  });
+  function lassoEnd(e) {
+    if (e.pointerId !== lassoPointerId) return;
+    lassoPointerId = null; lassoEndedAt = Date.now();
+    var pts = lassoPts;
+    setLassoMode(false);  // 囲い終えたら移動モードへ（輪郭は残す）
+    if (!pts || pts.length < 3) { lassoClearOutline(); return; }
+    lassoPts = pts; lassoDraw();
+    summarizeGids(gidsInPolygon(pts));
+  }
+  lassoSvg.addEventListener('pointerup', lassoEnd);
+  lassoSvg.addEventListener('pointercancel', lassoEnd);
+  // 多角形の内側の点（表示中のトレースのみ）。画面座標で射線法
+  function gidsInPolygon(poly) {
+    var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
+    var sx = sz.w / (xr[1] - xr[0]), sy = sz.h / (yr[1] - yr[0]);
+    var n = poly.length, px = new Float64Array(n), py = new Float64Array(n);
+    var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+    for (var i = 0; i < n; i++) {
+      px[i] = poly[i][0]; py[i] = poly[i][1];
+      if (px[i] < minx) minx = px[i]; if (px[i] > maxx) maxx = px[i];
+      if (py[i] < miny) miny = py[i]; if (py[i] > maxy) maxy = py[i];
+    }
+    var vis = plot.data.map(function (t) { return t.visible === true || t.visible === undefined; });
+    var out = [];
+    for (var g = 0; g < M.n; g++) {
+      if (!vis[traceOf[g]]) continue;
+      var X = sz.l + (xs[g] - xr[0]) * sx, Y = sz.t + (yr[1] - ys[g]) * sy;
+      if (X < minx || X > maxx || Y < miny || Y > maxy) continue;
+      var inside = false;
+      for (var a = 0, b = n - 1; a < n; b = a++) {
+        if ((py[a] > Y) !== (py[b] > Y) && X < (px[b] - px[a]) * (Y - py[a]) / (py[b] - py[a]) + px[a]) inside = !inside;
+      }
+      if (inside) out.push(g);
+    }
+    return out;
+  }
+  // 地図を動かしたら輪郭は位置が合わなくなるので消す（パネルは残す）
+  plot.on('plotly_relayouting', lassoClearOutline);
+  plot.on('plotly_relayout', function () { if (lassoPts && lassoPointerId === null) lassoClearOutline(); });
 }
 
 function topEntries(obj, n) {
   return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, n);
 }
-var outlineClearedAt = 0;
-plot.on('plotly_selected', function (d) {
-  if (!d || !d.points || !d.points.length) {
-    if (Date.now() - outlineClearedAt < 800) return;
-    selPanel.style.display = 'none'; return;
-  }
-  var n = d.points.length, dais = {}, cts = {}, kws = {}, missing = 0;
-  d.points.forEach(function (p) {
-    var gid = gidOf(p);
-    if (gid === null) return;
+function summarizeGids(gids) {
+  if (!gids.length) { selPanel.style.display = 'none'; lassoClearOutline(); return; }
+  var n = gids.length, dais = {}, cts = {}, kws = {}, missing = 0;
+  gids.forEach(function (gid) {
     var tr = M.traces[traceOf[gid]];
     dais[tr.dai] = (dais[tr.dai] || 0) + 1;
-    cts[tr.cat] = (cts[tr.cat] || 0) + 1;
     var row = getRow(gid);
+    var cat = tr.cat || (row ? M.cats[row[4]] : null);
+    if (cat) cts[cat] = (cts[cat] || 0) + 1;
     if (!row) { missing++; return; }
     if (row[3]) {
       row[3].split('、').forEach(function (w) { if (w) kws[w] = (kws[w] || 0) + 1; });
@@ -1726,18 +1809,9 @@ plot.on('plotly_selected', function (d) {
   document.getElementById('ka-selclear').addEventListener('click', function (e) {
     e.preventDefault(); closeSelPanel();
   });
-  outlineClearedAt = Date.now();
-  // 囲い終えたら操作モードを移動に戻す（なげなわのままだと次のドラッグがまた囲いになり、スマホでは動けなくなる）
-  Plotly.relayout(plot, { selections: [], dragmode: 'pan' });
-});
-// 地図を動かし始めたら点の強調だけ解く（強調があると範囲変更のたびに全点の再計算が走って重い）。パネルは残す
-plot.on('plotly_relayouting', function () { clearLassoHighlight(); });
-plot.on('plotly_deselect', function () {
-  if (Date.now() - outlineClearedAt < 800) return;
-  selPanel.style.display = 'none';
-});
+}
 
-// Esc: 選択を解除してパン操作モードに戻る
+// Esc: 囲いと選択を解除
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   clearSelection();
