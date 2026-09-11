@@ -10,5 +10,8 @@
   "dependencies": {
     "pngjs": "^7.0.0",
     "puppeteer-core": "^23.11.1"
+  },
+  "devDependencies": {
+    "acorn": "^8.18.0"
   }
 }

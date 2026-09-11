@@ -386,177 +386,189 @@ function finishPrefetch() {
   setTimeout(function () { p2.style.display = 'none'; }, 2000);
 }
 
-// ==== UI一式（plot_map_interactive.py の POST_SCRIPT を移植） ====
-function setupUI() {
-// 読み込み時の範囲／カメラを「全体」として記録（カードの 全体⇄周辺 切替で戻る先）
-if (!is3d) homeRange = { x: plot._fullLayout.xaxis.range.slice(), y: plot._fullLayout.yaxis.range.slice() };
-else { homeCam = liveCamera(); adaptDepth(); }
+// ==== UI一式 ====
+// 構造（2026-09-12 に平坦化）: 状態変数と関数は script スコープ、節ごとの init 関数が DOM 生成とイベント登録を行い、
+// setupUI() が読み込み完了後に init を順に呼ぶ。以前は setupUI の 1,400 行の閉包で、その中の var 宣言が
+// main() の代入を巻き上げで上書きする罠があった（homeRange・initEyeDist で 2 回）。状態は必ずここで var 宣言し、
+// init 関数の中では代入だけにする。
+// ---- 読み込み時の範囲／カメラを「全体」として記録 ----
+function initHome() {
+  // 読み込み時の範囲／カメラを「全体」として記録（カードの 全体⇄周辺 切替で戻る先）
+  if (!is3d) homeRange = { x: plot._fullLayout.xaxis.range.slice(), y: plot._fullLayout.yaxis.range.slice() };
+  else { homeCam = liveCamera(); adaptDepth(); }
+}
 
 // ---- ヘッダーバー ----
-var bar = document.createElement('div');
-bar.id = 'ka-bar';
-bar.style.cssText = 'position:fixed;top:0;left:0;right:0;height:48px;z-index:998;' +
-  'display:flex;align-items:center;gap:14px;padding:0 18px;background:#fcfcfb;' +
-  'border-bottom:1px solid ' + LINE + ';font:13px -apple-system,sans-serif;color:' + INK;
-// 左端＝サイトメニュー（羅針盤アイコン。PC はタイトルも含めてホバー、スマホはアイコンのみタップ）:
-// トップページへ戻る＋他ビューへの直接移動。ウェブアプリ（standalone）モードには戻るボタンがないため必須
-var curView = isGlobe ? 'globe' : (is3d ? 'map3d' : 'map2d');
-var siteMenu = [['../', 'トップページ', ''], ['../map2d/', '2D 地図', 'map2d'],
-                ['../map3d/', '3D 地図', 'map3d'], ['../globe/', '球面地図', 'globe']].map(function (v, i) {
-  var item = v[2] === curView
-    ? '<div style="padding:6px 16px;color:' + MUTED + ';white-space:nowrap">' + v[1] + '<span style="font-size:11px">（表示中）</span></div>'
-    : '<a href="' + v[0] + '" style="display:block;padding:6px 16px;color:' + INK + ';text-decoration:none;white-space:nowrap">' + v[1] + '</a>';
-  return item + (i === 0 ? '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>' : '');
-}).join('');
-bar.innerHTML =
-  '<div id="ka-home-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
-  '  <span id="ka-home-btn" style="display:flex;align-items:center;gap:8px;cursor:default;white-space:nowrap">' +
-  '    <img src="../icon-192.png" width="24" height="24" alt="メニュー" style="display:block;border-radius:6px">' +
-  '    <span id="ka-title"><b style="font-size:14.5px">' + M.title + '</b>' +
-  '     <span class="ka-sub" style="color:' + MUTED + ';font-size:12px">' + M.sub + '</span>' +
-  '     <span style="color:' + SUB + ';font-size:11px"> ▾</span></span>' +
-  '  </span>' +
-  '  <div id="ka-home-body" style="display:none;position:absolute;top:100%;left:0;min-width:160px;padding:6px 0;' + PANEL + '">' +
-  siteMenu + '</div>' +
-  '</div>' +
-  '<div id="ka-q-wrap" style="position:relative;flex:0 1 300px;min-width:170px">' +
-  '  <input id="ka-q" type="search" placeholder="詳細データ読み込み中…" disabled' +
-  '   style="width:100%;box-sizing:border-box;padding:6px 30px 6px 12px;border:1px solid #cfcec7;' +
-  '   border-radius:15px;background:#fff;font:12.5px -apple-system,sans-serif;outline:none">' +
-  '  <span id="ka-q-clear" title="検索をクリア" style="display:none;position:absolute;right:6px;top:50%;' +
-  '   transform:translateY(-50%);width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;' +
-  '   background:#d8d7d0;color:#fff;font-size:14px;cursor:pointer;user-select:none">×</span>' +
-  '  <div id="ka-results" style="display:none;position:absolute;top:36px;left:0;width:380px;' +
-  '   max-height:55vh;overflow-y:auto;padding:8px 12px;' + PANEL + '"></div>' +
-  '</div>' +
-  '<div style="flex:1"></div>' +
-  '<div id="ka-dai-wrap" style="display:none;align-self:stretch;align-items:center">' +
-  '  <span id="ka-dai-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap;font-size:12px">大区分 ▾</span>' +
-  '</div>' +
-  (M.colorLegend ? '<div id="ka-color-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
-  '  <span id="ka-color-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap">色の見方 ▾</span>' +
-  '  <div id="ka-color-body" style="display:none;position:absolute;top:100%;right:0;' +
-  '   padding:10px 14px;white-space:normal;width:440px;max-width:calc(100vw - 20px);box-sizing:border-box;' + PANEL + '"></div>' +
-  '</div>' : '') +
-  '<div id="ka-filter-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
-  '  <span id="ka-filter-btn" style="cursor:default;color:' + SUB + '">' + (narrow ? '種目 ▾' : '種目フィルタ ▾') + '</span>' +
-  '  <div id="ka-body" style="display:none;position:absolute;top:100%;right:0;' +
-  '   max-height:70vh;overflow-y:auto;padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
-  '</div>' +
-  '<div id="ka-help-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
-  '  <span id="ka-help-btn" style="cursor:default;color:' + SUB + '">操作 ▾</span>' +
-  '  <div id="ka-help-body" style="display:none;position:absolute;top:100%;right:0;' +
-  '   padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
-  '</div>';
-document.body.insertBefore(bar, document.body.firstChild);
-if (allLoaded) finishPrefetch();  // 先読みがヘッダー生成より先に終わった場合の取りこぼし
-
-// メニュー開閉。マウス=ホバー（斜め移動で一瞬外に出ても閉じない350ms猶予）、
-// タッチ=ボタンタップでトグル・外側タップで閉じる
-var menus = [['ka-home-wrap', 'ka-home-body', 'ka-home-btn'],
-             ['ka-help-wrap', 'ka-help-body', 'ka-help-btn']];
-if (M.colorLegend) menus.splice(1, 0, ['ka-color-wrap', 'ka-color-body', 'ka-color-btn']);
-if (!narrow) menus.splice(1, 0, ['ka-filter-wrap', 'ka-body', 'ka-filter-btn']);  // 狭幅の種目はボトムシート
-menus.forEach(function (m) {
-  var wrap = document.getElementById(m[0]);
-  var body = document.getElementById(m[1]);
+var bar;
+var curView;
+var siteMenu;
+var menus;
+function initHeader() {
+  bar = document.createElement('div');
+  bar.id = 'ka-bar';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;height:48px;z-index:998;' +
+    'display:flex;align-items:center;gap:14px;padding:0 18px;background:#fcfcfb;' +
+    'border-bottom:1px solid ' + LINE + ';font:13px -apple-system,sans-serif;color:' + INK;
+  // 左端＝サイトメニュー（羅針盤アイコン。PC はタイトルも含めてホバー、スマホはアイコンのみタップ）:
+  // トップページへ戻る＋他ビューへの直接移動。ウェブアプリ（standalone）モードには戻るボタンがないため必須
+  curView = isGlobe ? 'globe' : (is3d ? 'map3d' : 'map2d');
+  siteMenu = [['../', 'トップページ', ''], ['../map2d/', '2D 地図', 'map2d'],
+                  ['../map3d/', '3D 地図', 'map3d'], ['../globe/', '球面地図', 'globe']].map(function (v, i) {
+    var item = v[2] === curView
+      ? '<div style="padding:6px 16px;color:' + MUTED + ';white-space:nowrap">' + v[1] + '<span style="font-size:11px">（表示中）</span></div>'
+      : '<a href="' + v[0] + '" style="display:block;padding:6px 16px;color:' + INK + ';text-decoration:none;white-space:nowrap">' + v[1] + '</a>';
+    return item + (i === 0 ? '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>' : '');
+  }).join('');
+  bar.innerHTML =
+    '<div id="ka-home-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
+    '  <span id="ka-home-btn" style="display:flex;align-items:center;gap:8px;cursor:default;white-space:nowrap">' +
+    '    <img src="../icon-192.png" width="24" height="24" alt="メニュー" style="display:block;border-radius:6px">' +
+    '    <span id="ka-title"><b style="font-size:14.5px">' + M.title + '</b>' +
+    '     <span class="ka-sub" style="color:' + MUTED + ';font-size:12px">' + M.sub + '</span>' +
+    '     <span style="color:' + SUB + ';font-size:11px"> ▾</span></span>' +
+    '  </span>' +
+    '  <div id="ka-home-body" style="display:none;position:absolute;top:100%;left:0;min-width:160px;padding:6px 0;' + PANEL + '">' +
+    siteMenu + '</div>' +
+    '</div>' +
+    '<div id="ka-q-wrap" style="position:relative;flex:0 1 300px;min-width:170px">' +
+    '  <input id="ka-q" type="search" placeholder="詳細データ読み込み中…" disabled' +
+    '   style="width:100%;box-sizing:border-box;padding:6px 30px 6px 12px;border:1px solid #cfcec7;' +
+    '   border-radius:15px;background:#fff;font:12.5px -apple-system,sans-serif;outline:none">' +
+    '  <span id="ka-q-clear" title="検索をクリア" style="display:none;position:absolute;right:6px;top:50%;' +
+    '   transform:translateY(-50%);width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;' +
+    '   background:#d8d7d0;color:#fff;font-size:14px;cursor:pointer;user-select:none">×</span>' +
+    '  <div id="ka-results" style="display:none;position:absolute;top:36px;left:0;width:380px;' +
+    '   max-height:55vh;overflow-y:auto;padding:8px 12px;' + PANEL + '"></div>' +
+    '</div>' +
+    '<div style="flex:1"></div>' +
+    '<div id="ka-dai-wrap" style="display:none;align-self:stretch;align-items:center">' +
+    '  <span id="ka-dai-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap;font-size:12px">大区分 ▾</span>' +
+    '</div>' +
+    (M.colorLegend ? '<div id="ka-color-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
+    '  <span id="ka-color-btn" style="cursor:default;color:' + SUB + ';white-space:nowrap">色の見方 ▾</span>' +
+    '  <div id="ka-color-body" style="display:none;position:absolute;top:100%;right:0;' +
+    '   padding:10px 14px;white-space:normal;width:440px;max-width:calc(100vw - 20px);box-sizing:border-box;' + PANEL + '"></div>' +
+    '</div>' : '') +
+    '<div id="ka-filter-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
+    '  <span id="ka-filter-btn" style="cursor:default;color:' + SUB + '">' + (narrow ? '種目 ▾' : '種目フィルタ ▾') + '</span>' +
+    '  <div id="ka-body" style="display:none;position:absolute;top:100%;right:0;' +
+    '   max-height:70vh;overflow-y:auto;padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
+    '</div>' +
+    '<div id="ka-help-wrap" style="position:relative;align-self:stretch;display:flex;align-items:center">' +
+    '  <span id="ka-help-btn" style="cursor:default;color:' + SUB + '">操作 ▾</span>' +
+    '  <div id="ka-help-body" style="display:none;position:absolute;top:100%;right:0;' +
+    '   padding:8px 14px;white-space:nowrap;' + PANEL + '"></div>' +
+    '</div>';
+  document.body.insertBefore(bar, document.body.firstChild);
+  if (allLoaded) finishPrefetch();  // 先読みがヘッダー生成より先に終わった場合の取りこぼし
+  // メニュー開閉。マウス=ホバー（斜め移動で一瞬外に出ても閉じない350ms猶予）、
+  // タッチ=ボタンタップでトグル・外側タップで閉じる
+  menus = [['ka-home-wrap', 'ka-home-body', 'ka-home-btn'],
+               ['ka-help-wrap', 'ka-help-body', 'ka-help-btn']];
+  if (M.colorLegend) menus.splice(1, 0, ['ka-color-wrap', 'ka-color-body', 'ka-color-btn']);
+  if (!narrow) menus.splice(1, 0, ['ka-filter-wrap', 'ka-body', 'ka-filter-btn']);  // 狭幅の種目はボトムシート
+  menus.forEach(function (m) {
+    var wrap = document.getElementById(m[0]);
+    var body = document.getElementById(m[1]);
+    if (isTouch) {
+      document.getElementById(m[2]).addEventListener('click', function () {
+        body.style.display = body.style.display === 'none' ? 'block' : 'none';
+      });
+      return;
+    }
+    var closeTimer = null;
+    wrap.addEventListener('mouseenter', function () {
+      if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+      body.style.display = 'block';
+    });
+    wrap.addEventListener('mouseleave', function () {
+      closeTimer = setTimeout(function () { body.style.display = 'none'; }, 350);
+    });
+  });
   if (isTouch) {
-    document.getElementById(m[2]).addEventListener('click', function () {
-      body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    document.addEventListener('click', function (e) {
+      menus.forEach(function (m) {
+        var wrap = document.getElementById(m[0]);
+        if (!wrap.contains(e.target)) document.getElementById(m[1]).style.display = 'none';
+      });
     });
-    return;
   }
-  var closeTimer = null;
-  wrap.addEventListener('mouseenter', function () {
-    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
-    body.style.display = 'block';
-  });
-  wrap.addEventListener('mouseleave', function () {
-    closeTimer = setTimeout(function () { body.style.display = 'none'; }, 350);
-  });
-});
-if (isTouch) {
-  document.addEventListener('click', function (e) {
-    menus.forEach(function (m) {
-      var wrap = document.getElementById(m[0]);
-      if (!wrap.contains(e.target)) document.getElementById(m[1]).style.display = 'none';
+  if (isGlobe) {  // 球面はトレースを大区分×組で束ねるため種目単位の表示切替ができない
+    document.getElementById('ka-filter-wrap').style.display = 'none';
+  }
+  if (narrow) {  // 狭幅ではヘッダーに「操作」「色の見方」を置かず、羅針盤メニューの末尾から開く
+    var homeBody = document.getElementById('ka-home-body'), homeWrap = document.getElementById('ka-home-wrap');
+    var subPanels = [['ka-color-body', '色の見方'], ['ka-help-body', '操作の説明']].filter(function (v) { return document.getElementById(v[0]); });
+    var sep = document.createElement('div');
+    sep.innerHTML = '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>';
+    homeBody.appendChild(sep);
+    subPanels.forEach(function (v) {
+      var body = document.getElementById(v[0]);
+      var link = document.createElement('div');
+      link.style.cssText = 'padding:6px 16px;color:' + INK + ';white-space:nowrap';
+      link.textContent = v[1];
+      homeBody.appendChild(link);
+      homeWrap.appendChild(body);  // 外側タップで閉じる仕組みを共有
+      link.addEventListener('click', function (e) {
+        e.stopPropagation(); homeBody.style.display = 'none';
+        subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = w[0] === v[0] ? 'block' : 'none'; });
+      });
     });
-  });
-}
-
-if (isGlobe) {  // 球面はトレースを大区分×組で束ねるため種目単位の表示切替ができない
-  document.getElementById('ka-filter-wrap').style.display = 'none';
-}
-if (narrow) {  // 狭幅ではヘッダーに「操作」「色の見方」を置かず、羅針盤メニューの末尾から開く
-  var homeBody = document.getElementById('ka-home-body'), homeWrap = document.getElementById('ka-home-wrap');
-  var subPanels = [['ka-color-body', '色の見方'], ['ka-help-body', '操作の説明']].filter(function (v) { return document.getElementById(v[0]); });
-  var sep = document.createElement('div');
-  sep.innerHTML = '<div style="border-top:1px solid ' + LINE + ';margin:4px 0"></div>';
-  homeBody.appendChild(sep);
-  subPanels.forEach(function (v) {
-    var body = document.getElementById(v[0]);
-    var link = document.createElement('div');
-    link.style.cssText = 'padding:6px 16px;color:' + INK + ';white-space:nowrap';
-    link.textContent = v[1];
-    homeBody.appendChild(link);
-    homeWrap.appendChild(body);  // 外側タップで閉じる仕組みを共有
-    link.addEventListener('click', function (e) {
-      e.stopPropagation(); homeBody.style.display = 'none';
-      subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = w[0] === v[0] ? 'block' : 'none'; });
+    document.getElementById('ka-home-btn').addEventListener('click', function () {
+      subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = 'none'; });
     });
-  });
-  document.getElementById('ka-home-btn').addEventListener('click', function () {
-    subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = 'none'; });
-  });
-  document.addEventListener('click', function (e) {
-    if (!homeWrap.contains(e.target)) subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = 'none'; });
-  });
+    document.addEventListener('click', function (e) {
+      if (!homeWrap.contains(e.target)) subPanels.forEach(function (w) { document.getElementById(w[0]).style.display = 'none'; });
+    });
+  }
+  document.getElementById('ka-help-body').innerHTML = isTouch
+    ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小' + (isGlobe ? '' : ' / 2本指ドラッグ: 移動') + '</div>'
+            : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
+              '<div>ダブルタップ: 全体表示に戻る</div>') +
+      '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
+      '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>' +
+      '<div>点の色: 羅針盤メニューの「色の見方」</div>'
+    : is3d
+    ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
+      '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
+      '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>'
+    : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
+      '<div>ダブルクリック: 全体表示に戻る</div>' +
+      '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
+      '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
+      '<div>ツールバーのなげなわ: 囲って集計（囲い終えると移動モードに戻る）</div>' +
+      '<div>Esc: 選択解除</div>';
 }
-document.getElementById('ka-help-body').innerHTML = isTouch
-  ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小' + (isGlobe ? '' : ' / 2本指ドラッグ: 移動') + '</div>'
-          : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
-            '<div>ダブルタップ: 全体表示に戻る</div>') +
-    '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
-    '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>' +
-    '<div>点の色: 羅針盤メニューの「色の見方」</div>'
-  : is3d
-  ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
-    '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
-    '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>'
-  : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
-    '<div>ダブルクリック: 全体表示に戻る</div>' +
-    '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
-    '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
-    '<div>ツールバーのなげなわ: 囲って集計（囲い終えると移動モードに戻る）</div>' +
-    '<div>Esc: 選択解除</div>';
 
 // ---- 色の見方（研究内容由来の連続色の凡例: 色相環 12 方位と、そこに集まる課題の特徴語） ----
-if (M.colorLegend) (function () {
-  var L = M.colorLegend, n = L.sectors.length;
-  var W = 440, H = 290, cx = W / 2, cy = H / 2, r0 = 58, r1 = 88, rt = 100;
-  function pt(r, a) { return (cx + r * Math.cos(a)).toFixed(1) + ',' + (cy - r * Math.sin(a)).toFixed(1); }
-  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="display:block;width:100%;height:auto;font:11px -apple-system,sans-serif">';
-  L.sectors.forEach(function (sc, i) {
-    var a0 = i / n * 2 * Math.PI, a1 = (i + 1) / n * 2 * Math.PI, am = (a0 + a1) / 2;
-    svg += '<path d="M' + pt(r0, a0) + ' L' + pt(r1, a0) + ' A' + r1 + ',' + r1 + ' 0 0 0 ' + pt(r1, a1) +
-      ' L' + pt(r0, a1) + ' A' + r0 + ',' + r0 + ' 0 0 1 ' + pt(r0, a0) + 'Z" fill="rgb(' + sc.rgb.join(',') + ')" stroke="#fcfcfb" stroke-width="1.2"/>';
-    var c = Math.cos(am), tx = cx + rt * c, ty = cy - rt * Math.sin(am);
-    var anchor = c > 0 ? 'start' : 'end';  // 真上・真下付近の隣り合う方位が重ならないよう左右に振り分ける
-    var words = sc.words.slice(0, 2).map(function (w) { return w.length > 11 ? w.slice(0, 10) + '…' : w; });
-    svg += '<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="' + anchor + '" fill="' + INK + '">' +
-      words.map(function (w, j) {
-        return '<tspan x="' + tx.toFixed(1) + '" dy="' + (j ? '1.2em' : (0.35 - 0.6 * (words.length - 1)).toFixed(2) + 'em') + '">' + esc(w) + '</tspan>';
-      }).join('') + '</text>';
-  });
-  svg += '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="' + SUB + '" font-size="10.5">色相＝研究内容の</text>' +
-    '<text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" fill="' + SUB + '" font-size="10.5">環の上の位置</text></svg>';
-  document.getElementById('ka-color-body').innerHTML = svg +
-    '<div style="font-size:11.5px;line-height:1.55;color:' + INK + ';margin-top:4px">' +
-    '点の色は<b>研究内容（採択時の概要）から連続的に</b>決めています。公式の審査区分の色ではありません。' +
-    '似た内容の課題は似た色になり、環の各方位には、そこに集まる課題に特徴的なキーワードを示しました。' +
-    '環の反対側どうしの中間にある課題（分野の狭間）はやや灰色寄りになります。<br>' +
-    '<span style="color:' + MUTED + '">大区分の凡例の色見本は、その区分に属する課題の平均色です（環境学のように内容が散在する区分は灰色寄りになります）。</span></div>';
-})();
+function initColorLegend() {
+  if (M.colorLegend) (function () {
+    var L = M.colorLegend, n = L.sectors.length;
+    var W = 440, H = 290, cx = W / 2, cy = H / 2, r0 = 58, r1 = 88, rt = 100;
+    function pt(r, a) { return (cx + r * Math.cos(a)).toFixed(1) + ',' + (cy - r * Math.sin(a)).toFixed(1); }
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="display:block;width:100%;height:auto;font:11px -apple-system,sans-serif">';
+    L.sectors.forEach(function (sc, i) {
+      var a0 = i / n * 2 * Math.PI, a1 = (i + 1) / n * 2 * Math.PI, am = (a0 + a1) / 2;
+      svg += '<path d="M' + pt(r0, a0) + ' L' + pt(r1, a0) + ' A' + r1 + ',' + r1 + ' 0 0 0 ' + pt(r1, a1) +
+        ' L' + pt(r0, a1) + ' A' + r0 + ',' + r0 + ' 0 0 1 ' + pt(r0, a0) + 'Z" fill="rgb(' + sc.rgb.join(',') + ')" stroke="#fcfcfb" stroke-width="1.2"/>';
+      var c = Math.cos(am), tx = cx + rt * c, ty = cy - rt * Math.sin(am);
+      var anchor = c > 0 ? 'start' : 'end';  // 真上・真下付近の隣り合う方位が重ならないよう左右に振り分ける
+      var words = sc.words.slice(0, 2).map(function (w) { return w.length > 11 ? w.slice(0, 10) + '…' : w; });
+      svg += '<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="' + anchor + '" fill="' + INK + '">' +
+        words.map(function (w, j) {
+          return '<tspan x="' + tx.toFixed(1) + '" dy="' + (j ? '1.2em' : (0.35 - 0.6 * (words.length - 1)).toFixed(2) + 'em') + '">' + esc(w) + '</tspan>';
+        }).join('') + '</text>';
+    });
+    svg += '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="' + SUB + '" font-size="10.5">色相＝研究内容の</text>' +
+      '<text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" fill="' + SUB + '" font-size="10.5">環の上の位置</text></svg>';
+    document.getElementById('ka-color-body').innerHTML = svg +
+      '<div style="font-size:11.5px;line-height:1.55;color:' + INK + ';margin-top:4px">' +
+      '点の色は<b>研究内容（採択時の概要）から連続的に</b>決めています。公式の審査区分の色ではありません。' +
+      '似た内容の課題は似た色になり、環の各方位には、そこに集まる課題に特徴的なキーワードを示しました。' +
+      '環の反対側どうしの中間にある課題（分野の狭間）はやや灰色寄りになります。<br>' +
+      '<span style="color:' + MUTED + '">大区分の凡例の色見本は、その区分に属する課題の平均色です（環境学のように内容が散在する区分は灰色寄りになります）。</span></div>';
+  })();
+}
 
 // ---- 点の詳細表示 ----
 // PC（マウス）: ホバーでプレビュー（カーソル追従・操作不可）、クリックで即 KAKEN ページを開く。
@@ -564,36 +576,35 @@ if (M.colorLegend) (function () {
 // タッチ端末: タップで詳細カード。カードは点と重ならない位置に置き、点はリングで強調する。
 //   カードのどこをタップしても KAKEN ページが開く（本物のリンク。スクリプトからの
 //   新規タブ起動は iOS で弾かれることがあるため）。× または点のない場所のタップで閉じる。
-var mx = 0, my = 0, hoveredGid = null, suppressUntil = 0;
-document.addEventListener('mousemove', function (e) {
-  mx = e.clientX; my = e.clientY;
-  if (tip.style.display !== 'none') placeTip();
-});
-// PC: 地図を動かし始めたら（ドラッグ／ホイール）プレビューを消し、操作が終わるまで再表示しない
-// （2026-09-07 ユーザ仕様。3D は回転中に hover が飛ばず古い吹き出しが残っていた）
-var tipMuteUntil = 0, dragFrom = null;
-if (!isTouch) {
-  plot.addEventListener('mousedown', function (e) { dragFrom = [e.clientX, e.clientY]; }, true);
-  document.addEventListener('mousemove', function (e) {
-    if (!dragFrom) return;
-    if (Math.abs(e.clientX - dragFrom[0]) > 3 || Math.abs(e.clientY - dragFrom[1]) > 3) {
-      tipMuteUntil = Infinity; hoverNone();
-    }
-  });
-  document.addEventListener('mouseup', function () {
-    if (tipMuteUntil === Infinity) tipMuteUntil = Date.now() + 250;
-    dragFrom = null;
-  });
-  plot.addEventListener('wheel', function () { tipMuteUntil = Date.now() + 350; hoverNone(); },
-                        { capture: true, passive: true });
-}
+var mx, my, hoveredGid, suppressUntil;
+var tipMuteUntil, dragFrom;
+var ELL;
+var tip;
+var card;
+var selGid, selXY;
+var ring;
+var RING;  // 直径(px)
+// 全体 ⇄ 周辺（カードのボタン）。読み込み時の範囲／カメラを「全体」とする
+var homeRange, homeCam;  // initHome で代入（読み込み時の範囲／カメラ）
+var ICON_BTN;
+var ICON_LINK;
+var ICON_SHARE;
+var ICON_ZOOM;
+var ICON_FIT;
+var ICON_CHECK;
+var safeProbe;
+var adaptSphere;  // 旧名（呼び出し箇所の互換）
+var followRaf, followTimer;
+var lastK, lastT;
 function gidOf(p) {
   if (!p || !(gidOffset[p.curveNumber] >= 0)) return null;  // 強調リング等の補助トレースは対象外
   return gidOffset[p.curveNumber] + p.pointNumber;
 }
+
 function kakenUrl(row) { return 'https://kaken.nii.ac.jp/ja/grant/' + kakenId(row) + '/'; }
-var ELL = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+
 function pointColor(gid, tr) { return (colorOf && gid !== null && gid !== undefined) ? colorOf[gid] : tr.color; }
+
 function headerHtml(tr, closable, gid) {
   return '<div style="' + ELL + ';background:' + pointColor(gid, tr) + ';color:#fff;font-weight:600;' +
     'margin:-6px -9px 4px -9px;padding:4px 9px;border-radius:4.5px 4.5px 0 0;position:relative">' +
@@ -602,17 +613,11 @@ function headerHtml(tr, closable, gid) {
                 'font-size:15px;line-height:1.4;cursor:pointer">×</span>' : '') + '</div>';
 }
 
-// ホバー用プレビュー（マウスのみ）
-var tip = document.createElement('div');
-tip.id = 'ka-tip';
-tip.style.cssText = 'position:fixed;display:none;z-index:1000;background:#fff;' +
-  'border:1.5px solid #999;border-radius:6px;padding:6px 9px;pointer-events:none;width:320px;' +
-  'font:12px/1.5 -apple-system,sans-serif;color:' + INK + ';box-shadow:0 2px 8px rgba(0,0,0,0.15)';
-document.body.appendChild(tip);
 function placeTip() {  // 画面外にはみ出さないようクランプ
   tip.style.left = Math.max(4, Math.min(mx + 16, window.innerWidth - 336)) + 'px';
   tip.style.top = Math.max(52, Math.min(my + 12, window.innerHeight - 100)) + 'px';
 }
+
 function renderTip(gid, tr) {
   if (Date.now() < tipMuteUntil) return;  // 地図の操作中は出さない
   var row = getRow(gid);
@@ -653,7 +658,7 @@ function proj3dSetup() {  // 現在のカメラの「データ座標→画面座
   }
   return { m: m, ds: ds, E: E, hw: rect.width / 2, hh: rect.height / 2, ox: rect.left + rect.width / 2, oy: rect.top + rect.height / 2 };
 }
-plot._project3d = function (g) { return project3d(g); };  // 検証用
+
 function project3d(g, P) {  // 1点の画面座標 [x, y]（裏側・カメラ後方なら null）
   P = P || proj3dSetup(); if (!P) return null;
   var m = P.m, x = xs[g] * P.ds[0], y = ys[g] * P.ds[1], z = zs[g] * P.ds[2];
@@ -663,6 +668,7 @@ function project3d(g, P) {  // 1点の画面座標 [x, y]（裏側・カメラ�
   return [P.ox + (m[0] * x + m[4] * y + m[8] * z + m[12]) / w * P.hw,
           P.oy - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * P.hh];
 }
+
 function nearestGid3d(cx, cy, tol) {
   var P = proj3dSetup(); if (!P) return null;
   var m = P.m, ds = P.ds, E = P.E;
@@ -685,6 +691,7 @@ function nearestGid3d(cx, cy, tol) {
   }
   return best;
 }
+
 function hoverGid(gid) {  // 点にホバーした（Plotly 判定 or 補完判定）
   hoveredGid = gid;
   if (resolveTap(gid)) return;
@@ -697,72 +704,22 @@ function hoverGid(gid) {  // 点にホバーした（Plotly 判定 or 補完判�
     }).catch(function () {});
   }
 }
+
 function hoverNone() { hoveredGid = null; tip.style.display = 'none'; }
+
 // 補完判定に使う位置: 待ち中のタップがあればその位置、タッチ端末は直前のタップ位置、PC はカーソル位置
 // （スマホは合成マウスイベントが来ない環境があり、mx/my が古いままのことがある）
 function pointerXY() {
   if (pendingTap) return [pendingTap.x, pendingTap.y];
   return [mx, my];
 }
-plot.on('plotly_hover', function (d) {
-  if (isTouch) return;  // タッチはタップの自前判定のみ
-  var gid = gidOf(d.points[0]);
-  if (gid === null) {  // 球面の下地など点以外: 3D は補完判定で最寄りの点を探し、なければ外れた扱い
-    var xy = is3d ? pointerXY() : null;
-    var g = xy ? nearestGid3d(xy[0], xy[1], isTouch ? 14 : 8) : null;
-    if (g !== null) hoverGid(g); else hoverNone();
-    return;
-  }
-  hoveredGid = gid;
-  if (resolveTap(gid)) return;      // タップ/クリック直後の遅れて届いた判定 → その点を選択
-  if (isTouch || selGid !== null) return;  // タッチ端末はプレビューなし。カード表示中もプレビューは出さない
-  var tr = M.traces[traceOf[gid]];
-  renderTip(gid, tr);
-  if (!getRow(gid)) {  // 未取得シャードはその場で取得し、まだ同じ点なら描き直す
-    ensureShard(shardOf(gid)).then(function () {
-      if (hoveredGid === gid && selGid === null) renderTip(gid, tr);
-    }).catch(function () {});
-  }
-});
-plot.on('plotly_unhover', function () {
-  if (isTouch) return;
-  // 3D の空白判定も補完（小さい点の隙間にカーソルが落ちたとき）。カーソルがプロット外なら外れ
-  if (is3d) {
-    var xy = pointerXY(), r = plot.getBoundingClientRect();
-    if (xy && xy[0] >= r.left && xy[0] <= r.right && xy[1] >= r.top && xy[1] <= r.bottom) {
-      var g = nearestGid3d(xy[0], xy[1], isTouch ? 14 : 8);
-      if (g !== null) { hoverGid(g); return; }
-    }
-  }
-  hoverNone();
-});
 
-// 詳細カード（選択中の点）
-var card = document.createElement('div');
-card.id = 'ka-card';
-card.style.cssText = 'position:fixed;display:none;z-index:1001;background:#fff;' +
-  'border:2px solid #999;border-radius:8px;padding:6px 9px;width:320px;box-sizing:border-box;' +
-  'font:12.5px/1.5 -apple-system,sans-serif;color:' + INK + ';box-shadow:0 4px 16px rgba(0,0,0,0.22)';
-if (narrow) card.style.cssText += ';left:8px;right:8px;width:auto;font-size:13px';
-document.body.appendChild(card);
-var selGid = null, selXY = null;
-
-// 強調リング: DOM 要素を点の画面位置に重ねる（Plotly のトレース更新は 20万点の再描画を伴い、
-// gl3d では極端に遅くなるため使わない）。2Dはパン・ズーム後に再投影して追随、3Dは回転で消す
-var ring = document.createElement('div');
-ring.id = 'ka-ring';
-var RING = 16;  // 直径(px)
-ring.style.cssText = 'position:fixed;display:none;z-index:997;width:' + RING + 'px;height:' + RING + 'px;' +
-  'border-radius:50%;box-sizing:border-box;border:2.5px solid ' + INK + ';' +
-  'box-shadow:0 0 0 1.5px #fff,inset 0 0 0 1.5px #fff;pointer-events:none';
-document.body.appendChild(ring);
 function showRing(x, y) {
   ring.style.left = (x - RING / 2) + 'px'; ring.style.top = (y - RING / 2) + 'px'; ring.style.display = 'block';
 }
+
 function hideRing() { ring.style.display = 'none'; }
 
-// 全体 ⇄ 周辺（カードのボタン）。読み込み時の範囲／カメラを「全体」とする
-var homeRange, homeCam;  // 初期化子を付けない（setupUI 冒頭で代入した値を var の巻き上げで上書きしないため）
 function isNearView() {
   if (is3d) {
     var c = liveCamera(); var d = Math.hypot(c.eye.x - c.ctr.x, c.eye.y - c.ctr.y, c.eye.z - c.ctr.z);
@@ -771,7 +728,7 @@ function isNearView() {
   }
   var xr = plot._fullLayout.xaxis.range; return (xr[1] - xr[0]) < (homeRange ? (homeRange.x[1] - homeRange.x[0]) * 0.5 : 1e9);
 }
-plot._dbgView = function () { return { homeRange: homeRange, homeCam: homeCam, near: isNearView(), sel: selGid, xr: plot._fullLayout.xaxis && plot._fullLayout.xaxis.range }; };  // 検証用
+
 function toggleView() {
   if (selGid === null) return;
   if (is3d) {
@@ -782,19 +739,7 @@ function toggleView() {
   if (isNearView()) { if (homeRange) animateRange(homeRange.x, homeRange.y, 1200); }
   else { var yh2 = yHalfSpanFor(NEAR_SPAN); animateRange([xs[selGid] - NEAR_SPAN, xs[selGid] + NEAR_SPAN], [ys[selGid] - yh2, ys[selGid] + yh2], 1200); }
 }
-// カード下段のアイコンボタン（文字ボタンは場所を取るのでアイコンに。2026-09-09 ユーザ判断。title で補足）
-var ICON_BTN = 'display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border:1px solid ' + LINE +
-  ';border-radius:8px;background:#fff;color:#1c5cab;cursor:pointer;user-select:none;-webkit-user-select:none';
-var ICON_LINK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
-  '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
-var ICON_SHARE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
-  '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
-var ICON_ZOOM = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
-  '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>';
-var ICON_FIT = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
-  '<path d="M3 9V5a2 2 0 0 1 2-2h4"/><path d="M15 3h4a2 2 0 0 1 2 2v4"/><path d="M21 15v4a2 2 0 0 1-2 2h-4"/><path d="M9 21H5a2 2 0 0 1-2-2v-4"/></svg>';
-var ICON_CHECK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
-  '<path d="M20 6L9 17l-5-5"/></svg>';
+
 function renderCard(gid, tr) {
   var row = getRow(gid);
   // タイトルは2行分の高さで固定（1行でもカードの高さが変わらない。3行以上は省略記号）
@@ -823,6 +768,7 @@ function renderCard(gid, tr) {
   // アドレスバーの URL をこの課題のものに（そのままコピーして共有できる）
   if (row && history.replaceState) history.replaceState(null, '', location.pathname + '?award=' + encodeURIComponent(row[0]));
 }
+
 function copyText(text) {
   function legacy() {  // clipboard API が使えない／拒否された場合の予備（選択して copy コマンド）
     return new Promise(function (res, rej) {
@@ -836,7 +782,7 @@ function copyText(text) {
   if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).catch(legacy);
   return legacy();
 }
-var safeProbe = null;
+
 function safeBottom() {  // iOS のホームバー分（env(safe-area-inset-bottom)）を px で
   if (!safeProbe) {
     safeProbe = document.createElement('div');
@@ -845,6 +791,7 @@ function safeBottom() {  // iOS のホームバー分（env(safe-area-inset-bott
   }
   return parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
 }
+
 function placeCard(cx, cy) {  // 点（画面座標）と重ならない位置に置く
   var W = window.innerWidth, H = window.innerHeight;
   if (narrow) {  // スマホ幅: 基本は画面の下端。点が下端のカードと重なる位置のときだけ上端
@@ -864,6 +811,7 @@ function placeCard(cx, cy) {  // 点（画面座標）と重ならない位置�
   card.style.left = left + 'px';
   card.style.top = Math.max(56, Math.min(cy - h / 2, H - h - 8)) + 'px';
 }
+
 function selectPoint(gid, cx, cy) {
   if (!is3d) { var pj = projected(gid); cx = pj[0]; cy = pj[1]; }  // 2Dは点の正確な位置に吸着
   selGid = gid; selXY = [cx, cy];
@@ -877,6 +825,7 @@ function selectPoint(gid, cx, cy) {
     }).catch(function () {});
   }
 }
+
 // 地図を動かしたら選択点の位置を置き直す（リングは追随。PC のカードは点に付いて動く、スマホのカードは下端／上端に固定。
 // 球面の裏側・カメラ後方なら隠す）。2026-09-09 ユーザ「動かしても黒円は消えない、追随する。カードも消えない」
 // 3D/球面: ブラウザの深度バッファは 16 ビットのことが多く（Chrome/Safari とも実測 16）、gl-plot3d の近クリップ面が
@@ -893,8 +842,7 @@ function adaptDepth() {
   var zn = Math.max(0.02, 0.4 * (d - margin));
   if (Math.abs(sc.glplot.zNear - zn) > zn * 0.05) { sc.glplot.zNear = zn; sc.glplot.zFar = Math.max(1000, d * 10); }
 }
-var adaptSphere = adaptDepth;  // 旧名（呼び出し箇所の互換）
-var followRaf = false, followTimer = null;
+
 function placeSelection() {
   if (selGid === null) return;
   var xy = is3d ? project3d(selGid) : projected(selGid);
@@ -902,6 +850,7 @@ function placeSelection() {
   selXY = xy; showRing(xy[0], xy[1]);
   if (!narrow) placeCard(xy[0], xy[1]);
 }
+
 function updateSelectionPos() {
   if (selGid === null) return;
   if (!followRaf) {
@@ -915,13 +864,13 @@ function updateSelectionPos() {
       followTimer = setTimeout(placeSelection, 400); }, 200); }, 80);
   }
 }
+
 function clearSelection() {
   if (selGid === null) return;
   selGid = null; selXY = null; card.style.display = 'none'; hideRing();
   if (history.replaceState && location.search) history.replaceState(null, '', location.pathname);
 }
-// PC: クリックで即 KAKEN ページ（新規タブ）。DOM click と plotly_click の両方から呼ばれ得るので 600ms で重複抑止
-var lastK = null, lastT = 0;
+
 function openKaken(gid) {
   var row = getRow(gid);
   if (!row) {  // 詳細未取得: 取得後、ユーザ操作の有効期間内（transient activation）なら開く。期限切れなら次のクリックで
@@ -938,122 +887,241 @@ function openKaken(gid) {
   a.href = kakenUrl(row); a.target = '_blank'; a.rel = 'noopener';
   document.body.appendChild(a); a.click(); a.remove();
 }
+
 // 点が確定したときの動作: PC は即オープン、タッチはカード
 function actOn(gid, cx, cy) { selectPoint(gid, cx, cy); }  // PC もカード（2026-09-09 決定。KAKEN はカードのクリックで）
-card.addEventListener('click', function (e) {
-  var t = e.target;
-  if (t.getAttribute('data-close')) { e.preventDefault(); clearSelection(); return; }
-  if (t.getAttribute('data-zoom')) {
-    e.preventDefault(); e.stopPropagation(); toggleView();
-    if (!isGlobe) setTimeout(function () { t.innerHTML = isNearView() ? ICON_FIT : ICON_ZOOM; }, 1300);
-    return;
-  }
-  if (t.getAttribute('data-copy') || t.getAttribute('data-share')) {
-    e.preventDefault(); e.stopPropagation();
-    var row = selGid !== null ? getRow(selGid) : null; if (!row) return;
-    var url = awardUrl(row);
-    if (t.getAttribute('data-share')) {
-      navigator.share({ title: row[2] || row[0], url: url }).catch(function () {});
-      return;
-    }
-    copyText(url).then(function () {  // 1.5 秒だけチェック印に
-      t.innerHTML = ICON_CHECK; t.title = 'コピーしました';
-      setTimeout(function () { t.innerHTML = ICON_LINK; t.title = 'リンクをコピー'; }, 1500);
-    }).catch(function () { t.title = 'コピーできませんでした'; });
-    return;
-  }
-  // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
-});
-plot._projected = function (g) { return projected(g); };  // 検証用
+
 function projected(gid) {  // 2D: データ座標→画面座標
   var fl = plot._fullLayout, rect = plot.getBoundingClientRect();
   var xr = fl.xaxis.range, yr = fl.yaxis.range;
   return [rect.left + fl._size.l + (xs[gid] - xr[0]) / (xr[1] - xr[0]) * fl._size.w,
           rect.top + fl._size.t + (yr[1] - ys[gid]) / (yr[1] - yr[0]) * fl._size.h];
 }
+function initPointDetail() {
+  mx = 0;
+  my = 0;
+  hoveredGid = null;
+  suppressUntil = 0;
+  document.addEventListener('mousemove', function (e) {
+    mx = e.clientX; my = e.clientY;
+    if (tip.style.display !== 'none') placeTip();
+  });
+  // PC: 地図を動かし始めたら（ドラッグ／ホイール）プレビューを消し、操作が終わるまで再表示しない
+  // （2026-09-07 ユーザ仕様。3D は回転中に hover が飛ばず古い吹き出しが残っていた）
+  tipMuteUntil = 0;
+  dragFrom = null;
+  if (!isTouch) {
+    plot.addEventListener('mousedown', function (e) { dragFrom = [e.clientX, e.clientY]; }, true);
+    document.addEventListener('mousemove', function (e) {
+      if (!dragFrom) return;
+      if (Math.abs(e.clientX - dragFrom[0]) > 3 || Math.abs(e.clientY - dragFrom[1]) > 3) {
+        tipMuteUntil = Infinity; hoverNone();
+      }
+    });
+    document.addEventListener('mouseup', function () {
+      if (tipMuteUntil === Infinity) tipMuteUntil = Date.now() + 250;
+      dragFrom = null;
+    });
+    plot.addEventListener('wheel', function () { tipMuteUntil = Date.now() + 350; hoverNone(); },
+                          { capture: true, passive: true });
+  }
+  ELL = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  // ホバー用プレビュー（マウスのみ）
+  tip = document.createElement('div');
+  tip.id = 'ka-tip';
+  tip.style.cssText = 'position:fixed;display:none;z-index:1000;background:#fff;' +
+    'border:1.5px solid #999;border-radius:6px;padding:6px 9px;pointer-events:none;width:320px;' +
+    'font:12px/1.5 -apple-system,sans-serif;color:' + INK + ';box-shadow:0 2px 8px rgba(0,0,0,0.15)';
+  document.body.appendChild(tip);
+  plot._project3d = function (g) { return project3d(g); };  // 検証用
+  plot.on('plotly_hover', function (d) {
+    if (isTouch) return;  // タッチはタップの自前判定のみ
+    var gid = gidOf(d.points[0]);
+    if (gid === null) {  // 球面の下地など点以外: 3D は補完判定で最寄りの点を探し、なければ外れた扱い
+      var xy = is3d ? pointerXY() : null;
+      var g = xy ? nearestGid3d(xy[0], xy[1], isTouch ? 14 : 8) : null;
+      if (g !== null) hoverGid(g); else hoverNone();
+      return;
+    }
+    hoveredGid = gid;
+    if (resolveTap(gid)) return;      // タップ/クリック直後の遅れて届いた判定 → その点を選択
+    if (isTouch || selGid !== null) return;  // タッチ端末はプレビューなし。カード表示中もプレビューは出さない
+    var tr = M.traces[traceOf[gid]];
+    renderTip(gid, tr);
+    if (!getRow(gid)) {  // 未取得シャードはその場で取得し、まだ同じ点なら描き直す
+      ensureShard(shardOf(gid)).then(function () {
+        if (hoveredGid === gid && selGid === null) renderTip(gid, tr);
+      }).catch(function () {});
+    }
+  });
+  plot.on('plotly_unhover', function () {
+    if (isTouch) return;
+    // 3D の空白判定も補完（小さい点の隙間にカーソルが落ちたとき）。カーソルがプロット外なら外れ
+    if (is3d) {
+      var xy = pointerXY(), r = plot.getBoundingClientRect();
+      if (xy && xy[0] >= r.left && xy[0] <= r.right && xy[1] >= r.top && xy[1] <= r.bottom) {
+        var g = nearestGid3d(xy[0], xy[1], isTouch ? 14 : 8);
+        if (g !== null) { hoverGid(g); return; }
+      }
+    }
+    hoverNone();
+  });
+  // 詳細カード（選択中の点）
+  card = document.createElement('div');
+  card.id = 'ka-card';
+  card.style.cssText = 'position:fixed;display:none;z-index:1001;background:#fff;' +
+    'border:2px solid #999;border-radius:8px;padding:6px 9px;width:320px;box-sizing:border-box;' +
+    'font:12.5px/1.5 -apple-system,sans-serif;color:' + INK + ';box-shadow:0 4px 16px rgba(0,0,0,0.22)';
+  if (narrow) card.style.cssText += ';left:8px;right:8px;width:auto;font-size:13px';
+  document.body.appendChild(card);
+  selGid = null;
+  selXY = null;
+  // 強調リング: DOM 要素を点の画面位置に重ねる（Plotly のトレース更新は 20万点の再描画を伴い、
+  // gl3d では極端に遅くなるため使わない）。2Dはパン・ズーム後に再投影して追随、3Dは回転で消す
+  ring = document.createElement('div');
+  ring.id = 'ka-ring';
+  RING = 16;
+  ring.style.cssText = 'position:fixed;display:none;z-index:997;width:' + RING + 'px;height:' + RING + 'px;' +
+    'border-radius:50%;box-sizing:border-box;border:2.5px solid ' + INK + ';' +
+    'box-shadow:0 0 0 1.5px #fff,inset 0 0 0 1.5px #fff;pointer-events:none';
+  document.body.appendChild(ring);
+  plot._dbgView = function () { return { homeRange: homeRange, homeCam: homeCam, near: isNearView(), sel: selGid, xr: plot._fullLayout.xaxis && plot._fullLayout.xaxis.range }; };  // 検証用
+  // カード下段のアイコンボタン（文字ボタンは場所を取るのでアイコンに。2026-09-09 ユーザ判断。title で補足）
+  ICON_BTN = 'display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border:1px solid ' + LINE +
+    ';border-radius:8px;background:#fff;color:#1c5cab;cursor:pointer;user-select:none;-webkit-user-select:none';
+  ICON_LINK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+    '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+  ICON_SHARE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+    '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
+  ICON_ZOOM = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+    '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M8 11h6"/><path d="M11 8v6"/></svg>';
+  ICON_FIT = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+    '<path d="M3 9V5a2 2 0 0 1 2-2h4"/><path d="M15 3h4a2 2 0 0 1 2 2v4"/><path d="M21 15v4a2 2 0 0 1-2 2h-4"/><path d="M9 21H5a2 2 0 0 1-2-2v-4"/></svg>';
+  ICON_CHECK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">' +
+    '<path d="M20 6L9 17l-5-5"/></svg>';
+  safeProbe = null;
+  adaptSphere = adaptDepth;
+  followRaf = false;
+  followTimer = null;
+  // PC: クリックで即 KAKEN ページ（新規タブ）。DOM click と plotly_click の両方から呼ばれ得るので 600ms で重複抑止
+  lastK = null;
+  lastT = 0;
+  card.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.getAttribute('data-close')) { e.preventDefault(); clearSelection(); return; }
+    if (t.getAttribute('data-zoom')) {
+      e.preventDefault(); e.stopPropagation(); toggleView();
+      if (!isGlobe) setTimeout(function () { t.innerHTML = isNearView() ? ICON_FIT : ICON_ZOOM; }, 1300);
+      return;
+    }
+    if (t.getAttribute('data-copy') || t.getAttribute('data-share')) {
+      e.preventDefault(); e.stopPropagation();
+      var row = selGid !== null ? getRow(selGid) : null; if (!row) return;
+      var url = awardUrl(row);
+      if (t.getAttribute('data-share')) {
+        navigator.share({ title: row[2] || row[0], url: url }).catch(function () {});
+        return;
+      }
+      copyText(url).then(function () {  // 1.5 秒だけチェック印に
+        t.innerHTML = ICON_CHECK; t.title = 'コピーしました';
+        setTimeout(function () { t.innerHTML = ICON_LINK; t.title = 'リンクをコピー'; }, 1500);
+      }).catch(function () { t.title = 'コピーできませんでした'; });
+      return;
+    }
+    // それ以外はアンカーの既定動作（新規タブで KAKEN ページ）
+  });
+  plot._projected = function (g) { return projected(g); };  // 検証用
+}
 
 // ---- クリック/タップ → 選択 ----
-plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
-// 2D: パン・ピンチ直後のクリック/タップは無視（relayout を合図に抑止）。選択中はカードを点に追随
-plot.on('plotly_relayout', function () {
-  updateSelectionPos(); adaptSphere();
-  if (is3d) return;
-  suppressUntil = Date.now() + 400;
-});
-plot.on('plotly_relayouting', function () { updateSelectionPos(); });  // 2D のドラッグ中（範囲が確定する前）
-// 3D: gl3d はただのクリック/タップでも relayout を出すため relayout は使えない。
-// 押下→離す間に実際に動かした（回転した）操作かどうかを記録し、その操作由来のクリックは無視する
-var lastTouchXY = null, lastTouchAt = 0;  // 3Dタッチ: plotly_click に座標が乗らないため直前のタッチ位置を使う
-var gestureMoved = false;                 // 直近の押下→離す操作で動いたか（3Dのみ更新）
-if (is3d) {
-  var down3 = null;
-  function down3End(x, y) {
-    gestureMoved = !!down3 && (Math.abs(x - down3[0]) > 10 || Math.abs(y - down3[1]) > 10);
-    // 回転しても選択は保つ（リングが追随する。2026-09-09）
-    down3 = null;
-  }
-  plot.addEventListener('mousedown', function (e) { down3 = [e.clientX, e.clientY]; }, true);
-  plot.addEventListener('mouseup', function (e) { down3End(e.clientX, e.clientY); }, true);
-  var down3At = 0;
-  plot.addEventListener('touchstart', function (e) {
-    down3 = (e.touches.length === 1) ? [e.touches[0].clientX, e.touches[0].clientY] : null;
-    down3At = Date.now();
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchend', function (e) {
-    if (e.touches.length || !e.changedTouches.length) return;
-    var c = e.changedTouches[0];
-    var wasTap = !!down3 && Date.now() - down3At < 500;
-    down3End(c.clientX, c.clientY);
-    lastTouchXY = [c.clientX, c.clientY]; lastTouchAt = Date.now();
-    // タッチ端末の 3D/球面: タップは Plotly の判定を使わず、タップ位置から自前で最寄りの点を決める
-    // （合成マウスイベントや判定バッファ、描画フレーム待ちに依存しないので実機で安定する）
-    if (wasTap && !gestureMoved && Date.now() >= suppressUntil) {
-      var g = nearestGid3d(c.clientX, c.clientY, 18);
-      if (g === null) clearSelection(); else selectPoint(g, c.clientX, c.clientY);
-    }
-  }, { capture: true, passive: true });
-}
-// 選択のトリガ（2Dタッチ以外）は DOM の click（押下→離すで動いていない操作）:
-//  (a) ホバー中の点があればその場で選択（PC はマウスが点の上で止まってからクリックされる）
-//  (b) なければ、遅れて届く plotly_click / plotly_hover を少し待ってその点を選択
-//      （gl3d の判定は描画フレーム後に届き、押下が短いと click 自体が出ないこともある）
-//  (c) 期限内に届かなければ点のない場所として選択解除
-// 古いカードは新しい判定が届くまで消さない（消えてから出る「ちらつき」を避ける）
-var pendingTap = null;
+var lastTouchXY, lastTouchAt;  // 3Dタッチ: plotly_click に座標が乗らないため直前のタッチ位置を使う
+var gestureMoved;  // 直近の押下→離す操作で動いたか（3Dのみ更新）
+var pendingTap;
 function resolveTap(gid) {
   if (!pendingTap) return false;
   var t = pendingTap; clearTimeout(t.timer); pendingTap = null;
   actOn(gid, t.x, t.y);
   return true;
 }
+
 function cancelTap(clear) {
   if (!pendingTap) return;
   clearTimeout(pendingTap.timer); pendingTap = null;
   if (clear) clearSelection();
 }
-plot.addEventListener('click', function (e) {
-  if (isTouch) return;  // タッチは 2D/3D とも自前のタップ処理
-  var now = Date.now();
-  if (gestureMoved || now < suppressUntil) return;
-  var xy = (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [e.clientX, e.clientY];
-  cancelTap(false);
-  if (!isTouch && hoveredGid !== null) { selectPoint(hoveredGid, xy[0], xy[1]); return; }
-  // 2D の plotly_click は DOM click より先に同期で届くので待ちは短くてよい。gl3d は描画フレーム後に届く
-  pendingTap = { x: xy[0], y: xy[1], timer: setTimeout(function () { cancelTap(true); }, is3d ? 700 : 60) };
-});
-plot.on('plotly_click', function (d) {
-  if (isTouch) return;
-  var gid = gidOf(d.points[0]);
-  if (gid === null) {  // 球面の下地など点以外: タップ位置の最寄りの点で補完し、なければ空白扱い
-    if (pendingTap) {
-      var g = nearestGid3d(pendingTap.x, pendingTap.y, isTouch ? 14 : 8);
-      if (g !== null) { resolveTap(g); return; }
+function initSelection() {
+  plot.on('plotly_doubleclick', function () { suppressUntil = Date.now() + 700; });
+  // 2D: パン・ピンチ直後のクリック/タップは無視（relayout を合図に抑止）。選択中はカードを点に追随
+  plot.on('plotly_relayout', function () {
+    updateSelectionPos(); adaptSphere();
+    if (is3d) return;
+    suppressUntil = Date.now() + 400;
+  });
+  plot.on('plotly_relayouting', function () { updateSelectionPos(); });  // 2D のドラッグ中（範囲が確定する前）
+  // 3D: gl3d はただのクリック/タップでも relayout を出すため relayout は使えない。
+  // 押下→離す間に実際に動かした（回転した）操作かどうかを記録し、その操作由来のクリックは無視する
+  lastTouchXY = null;
+  lastTouchAt = 0;
+  gestureMoved = false;
+  if (is3d) {
+    var down3 = null;
+    function down3End(x, y) {
+      gestureMoved = !!down3 && (Math.abs(x - down3[0]) > 10 || Math.abs(y - down3[1]) > 10);
+      // 回転しても選択は保つ（リングが追随する。2026-09-09）
+      down3 = null;
     }
-    cancelTap(true); return;
+    plot.addEventListener('mousedown', function (e) { down3 = [e.clientX, e.clientY]; }, true);
+    plot.addEventListener('mouseup', function (e) { down3End(e.clientX, e.clientY); }, true);
+    var down3At = 0;
+    plot.addEventListener('touchstart', function (e) {
+      down3 = (e.touches.length === 1) ? [e.touches[0].clientX, e.touches[0].clientY] : null;
+      down3At = Date.now();
+    }, { capture: true, passive: true });
+    plot.addEventListener('touchend', function (e) {
+      if (e.touches.length || !e.changedTouches.length) return;
+      var c = e.changedTouches[0];
+      var wasTap = !!down3 && Date.now() - down3At < 500;
+      down3End(c.clientX, c.clientY);
+      lastTouchXY = [c.clientX, c.clientY]; lastTouchAt = Date.now();
+      // タッチ端末の 3D/球面: タップは Plotly の判定を使わず、タップ位置から自前で最寄りの点を決める
+      // （合成マウスイベントや判定バッファ、描画フレーム待ちに依存しないので実機で安定する）
+      if (wasTap && !gestureMoved && Date.now() >= suppressUntil) {
+        var g = nearestGid3d(c.clientX, c.clientY, 18);
+        if (g === null) clearSelection(); else selectPoint(g, c.clientX, c.clientY);
+      }
+    }, { capture: true, passive: true });
   }
-  if (Date.now() < suppressUntil || gestureMoved) return;
-  resolveTap(gid);  // 待ちが無い（click より先に届いた等）場合は、直後の DOM click が開くので何もしない
-});
+  // 選択のトリガ（2Dタッチ以外）は DOM の click（押下→離すで動いていない操作）:
+  //  (a) ホバー中の点があればその場で選択（PC はマウスが点の上で止まってからクリックされる）
+  //  (b) なければ、遅れて届く plotly_click / plotly_hover を少し待ってその点を選択
+  //      （gl3d の判定は描画フレーム後に届き、押下が短いと click 自体が出ないこともある）
+  //  (c) 期限内に届かなければ点のない場所として選択解除
+  // 古いカードは新しい判定が届くまで消さない（消えてから出る「ちらつき」を避ける）
+  pendingTap = null;
+  plot.addEventListener('click', function (e) {
+    if (isTouch) return;  // タッチは 2D/3D とも自前のタップ処理
+    var now = Date.now();
+    if (gestureMoved || now < suppressUntil) return;
+    var xy = (isTouch && now - lastTouchAt < 1000) ? lastTouchXY : [e.clientX, e.clientY];
+    cancelTap(false);
+    if (!isTouch && hoveredGid !== null) { selectPoint(hoveredGid, xy[0], xy[1]); return; }
+    // 2D の plotly_click は DOM click より先に同期で届くので待ちは短くてよい。gl3d は描画フレーム後に届く
+    pendingTap = { x: xy[0], y: xy[1], timer: setTimeout(function () { cancelTap(true); }, is3d ? 700 : 60) };
+  });
+  plot.on('plotly_click', function (d) {
+    if (isTouch) return;
+    var gid = gidOf(d.points[0]);
+    if (gid === null) {  // 球面の下地など点以外: タップ位置の最寄りの点で補完し、なければ空白扱い
+      if (pendingTap) {
+        var g = nearestGid3d(pendingTap.x, pendingTap.y, isTouch ? 14 : 8);
+        if (g !== null) { resolveTap(g); return; }
+      }
+      cancelTap(true); return;
+    }
+    if (Date.now() < suppressUntil || gestureMoved) return;
+    resolveTap(gid);  // 待ちが無い（click より先に届いた等）場合は、直後の DOM click が開くので何もしない
+  });
+}
 
 // ---- タッチ端末: 地図を動かしても選択は閉じない ----
 // （2026-09-09 変更）タッチで地図を動かしても選択は保ち、リングが追随する。解除は空白のタップと × のみ
@@ -1077,42 +1145,50 @@ function nearestGid(cx, cy) {
   }
   return best;
 }
+
 function handleTap(cx, cy) {
   if (Date.now() < suppressUntil) return;
   var gid = nearestGid(cx, cy);
   if (gid === null) { clearSelection(); return; }
   selectPoint(gid, cx, cy);
 }
-if (isTouch && !is3d) {
-  var tapStart = null;
-  plot.addEventListener('touchstart', function (e) {
-    tapStart = (e.touches.length === 1)
-      ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchend', function (e) {
-    if (!tapStart || e.touches.length) return;
-    if (lassoMode || Date.now() - lassoEndedAt < 500) { tapStart = null; return; }  // 囲いの操作はタップにしない
-    var c = e.changedTouches[0];
-    var moved = Math.abs(c.clientX - tapStart.x) > 10 || Math.abs(c.clientY - tapStart.y) > 10;
-    var slow = Date.now() - tapStart.t > 500;
-    tapStart = null;
-    if (!moved && !slow) handleTap(c.clientX, c.clientY);
-  }, { capture: true, passive: true });
+function initTap2d() {
+  if (isTouch && !is3d) {
+    var tapStart = null;
+    plot.addEventListener('touchstart', function (e) {
+      tapStart = (e.touches.length === 1)
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+    }, { capture: true, passive: true });
+    plot.addEventListener('touchend', function (e) {
+      if (!tapStart || e.touches.length) return;
+      if (lassoMode || Date.now() - lassoEndedAt < 500) { tapStart = null; return; }  // 囲いの操作はタップにしない
+      var c = e.changedTouches[0];
+      var moved = Math.abs(c.clientX - tapStart.x) > 10 || Math.abs(c.clientY - tapStart.y) > 10;
+      var slow = Date.now() - tapStart.t > 500;
+      tapStart = null;
+      if (!moved && !slow) handleTap(c.clientX, c.clientY);
+    }, { capture: true, passive: true });
+  }
 }
 
 // ---- 検索（タイトル・キーワード・課題番号の部分一致 → ハイライト＋一覧） ----
-var qInput = document.getElementById('ka-q');
-var qResults = document.getElementById('ka-results');
-var hlIndex = null, qTimer = null;
-
+var qInput;
+var qResults;
+var hlIndex, qTimer;
+var camAnim;
+var NEAR_SPAN;  // 着地の半幅（データ座標）。周辺の島と隣接分野が見える程度
+var rangeAnim;
+var qClear;
 function clearHighlight() {
   if (hlIndex !== null) { Plotly.deleteTraces(plot, hlIndex); hlIndex = null; }
   qResults.style.display = 'none'; qResults.innerHTML = '';
 }
+
 function traceVisible(ti) {
   var v = plot.data[ti].visible;
   return v === undefined || v === true;
 }
+
 // 3D/球面: カメラをその点に向けてから（球面は点が正面に来る向き、3D は注視点を点に移して寄る）、
 // 描画後に点の画面座標を求めてタッチはリング＋カード。PC はカメラ移動のみ
 function focusPoint3d(gid) {
@@ -1146,8 +1222,7 @@ function focusPoint3d(gid) {
   selectPoint(gid, xy0[0], xy0[1]);
   animateCamera(upd, 1200);
 }
-// カメラの補間。球面は視線方向を球面補間（大円に沿って回る）、3D は eye/center を線形補間
-var camAnim = null;
+
 function animateCamera(target, ms) {
   var c0 = liveCamera();
   var e1 = target['scene.camera.eye'], c1 = target['scene.camera.center'], u1 = target['scene.camera.up'] || c0.up;
@@ -1174,23 +1249,21 @@ function animateCamera(target, ms) {
   }
   requestAnimationFrame(step);
 }
+
 function liveCamera() {
   var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
   var c = (sc && sc.getCamera) ? sc.getCamera() : (plot._fullLayout.scene.camera || {});
   var eye = c.eye || { x: 1.25, y: 1.25, z: 1.25 }, ctr = c.center || { x: 0, y: 0, z: 0 }, up = c.up || { x: 0, y: 0, z: 1 };
   return { eye: { x: eye.x, y: eye.y, z: eye.z }, ctr: { x: ctr.x, y: ctr.y, z: ctr.z }, up: { x: up.x, y: up.y, z: up.z } };
 }
-// その課題へ移動して選択（検索ヒットのクリック、URL の ?award= で共用）
-window.focusPoint = focusPoint;
-var NEAR_SPAN = 2.5;  // 着地の半幅（データ座標）。周辺の島と隣接分野が見える程度
+
 function focusPoint(gid) {
   if (is3d) { focusPoint3d(gid); return; }
   var xy = projected(gid); selectPoint(gid, xy[0], xy[1]);  // 先に選択（現在の倍率でリング＋カード）
   var yh = yHalfSpanFor(NEAR_SPAN);  // 縦横比を保った着地範囲（scaleanchor なし）
   animateRange([xs[gid] - NEAR_SPAN, xs[gid] + NEAR_SPAN], [ys[gid] - yh, ys[gid] + yh], 1200);
 }
-// 2D の範囲を補間（対数で、拡大率が一定の速さで変わるように）。リングは各フレームで追随
-var rangeAnim = null;
+
 function animateRange(xr1, yr1, ms) {
   var fl = plot._fullLayout, xr0 = fl.xaxis.range.slice(), yr0 = fl.yaxis.range.slice();
   var t0 = performance.now(), token = {};
@@ -1209,6 +1282,7 @@ function animateRange(xr1, yr1, ms) {
   }
   requestAnimationFrame(step);
 }
+
 function runSearch(q) {
   clearHighlight();
   q = q.trim().toLowerCase();
@@ -1259,49 +1333,49 @@ function runSearch(q) {
     });
   });
 }
-// 入力欄右端の × : 検索語・強調・結果窓をすべて消す。結果窓の外をクリック/タップ: 結果窓だけ閉じる
-// （地図上の強調は残す）。入力欄に戻れば結果窓を再表示する（2026-09-09 ユーザ仕様）
-var qClear = document.getElementById('ka-q-clear');
+
 function updateClearBtn() { qClear.style.display = qInput.value ? 'block' : 'none'; }
+
 function resetSearch() { qInput.value = ''; clearHighlight(); updateClearBtn(); }
-qClear.addEventListener('click', function (e) { e.preventDefault(); resetSearch(); if (!isTouch) qInput.focus(); });
-document.addEventListener('pointerdown', function (e) {
-  if (qResults.style.display === 'none') return;
-  var wrap = document.getElementById('ka-q-wrap');
-  if (!wrap.contains(e.target)) qResults.style.display = 'none';
-}, true);
-qInput.addEventListener('focus', function () {
-  if (qInput.value.trim().length >= 2 && qResults.innerHTML) qResults.style.display = 'block';
-});
-qInput.addEventListener('input', function () {
-  updateClearBtn();
-  if (qTimer) clearTimeout(qTimer);
-  qTimer = setTimeout(function () { runSearch(qInput.value); }, 300);
-});
-qInput.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') { resetSearch(); qInput.blur(); e.stopPropagation(); }
-});
+function initSearch() {
+  qInput = document.getElementById('ka-q');
+  qResults = document.getElementById('ka-results');
+  hlIndex = null;
+  qTimer = null;
+  // カメラの補間。球面は視線方向を球面補間（大円に沿って回る）、3D は eye/center を線形補間
+  camAnim = null;
+  // その課題へ移動して選択（検索ヒットのクリック、URL の ?award= で共用）
+  window.focusPoint = focusPoint;
+  NEAR_SPAN = 2.5;
+  // 2D の範囲を補間（対数で、拡大率が一定の速さで変わるように）。リングは各フレームで追随
+  rangeAnim = null;
+  // 入力欄右端の × : 検索語・強調・結果窓をすべて消す。結果窓の外をクリック/タップ: 結果窓だけ閉じる
+  // （地図上の強調は残す）。入力欄に戻れば結果窓を再表示する（2026-09-09 ユーザ仕様）
+  qClear = document.getElementById('ka-q-clear');
+  qClear.addEventListener('click', function (e) { e.preventDefault(); resetSearch(); if (!isTouch) qInput.focus(); });
+  document.addEventListener('pointerdown', function (e) {
+    if (qResults.style.display === 'none') return;
+    var wrap = document.getElementById('ka-q-wrap');
+    if (!wrap.contains(e.target)) qResults.style.display = 'none';
+  }, true);
+  qInput.addEventListener('focus', function () {
+    if (qInput.value.trim().length >= 2 && qResults.innerHTML) qResults.style.display = 'block';
+  });
+  qInput.addEventListener('input', function () {
+    updateClearBtn();
+    if (qTimer) clearTimeout(qTimer);
+    qTimer = setTimeout(function () { runSearch(qInput.value); }, 300);
+  });
+  qInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { resetSearch(); qInput.blur(); e.stopPropagation(); }
+  });
+}
 
 // ---- 種目フィルタ ----
-var counts = {};
-M.traces.forEach(function (t) {
-  if (t.k === 'd') counts[t.cat] = (counts[t.cat] || 0) + t.n;
-});
-var order = M.catOrder;
-var cats = order.filter(function (c) { return counts[c] !== undefined; }).concat(
-  Object.keys(counts).filter(function (c) { return order.indexOf(c) < 0; })
-    .sort(function (a, b) { return counts[b] - counts[a]; }));
-
-document.getElementById('ka-body').innerHTML =
-  '<a href="#" id="ka-selall" style="color:#1c5cab;text-decoration:none">全選択</a>&nbsp; ' +
-  '<a href="#" id="ka-selnone" style="color:#1c5cab;text-decoration:none">全解除</a>' +
-  cats.map(function (c) {
-    return '<label style="display:block;white-space:nowrap;cursor:pointer">' +
-      '<input type="checkbox" class="ka-cat" checked style="vertical-align:-2px"> ' +
-      esc(c) + ' <span style="color:' + MUTED + '">' + fmt(counts[c]) + '</span></label>';
-  }).join('');
-var boxes = document.querySelectorAll('.ka-cat');
-
+var counts;
+var order;
+var cats;
+var boxes;
 function setCategory(cat, on) {
   var idx = [], vis = [];
   plot.data.forEach(function (t, i) {
@@ -1319,50 +1393,43 @@ function setCategory(cat, on) {
   });
   if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
 }
-boxes.forEach(function (cb, i) {
-  cb.addEventListener('change', function () { setCategory(cats[i], cb.checked); });
-});
-document.getElementById('ka-selall').addEventListener('click', function (e) {
-  e.preventDefault();
-  boxes.forEach(function (cb, i) { cb.checked = true; setCategory(cats[i], true); });
-});
-document.getElementById('ka-selnone').addEventListener('click', function (e) {
-  e.preventDefault();
-  boxes.forEach(function (cb, i) { cb.checked = false; setCategory(cats[i], false); });
-});
+function initCategoryFilter() {
+  counts = {};
+  M.traces.forEach(function (t) {
+    if (t.k === 'd') counts[t.cat] = (counts[t.cat] || 0) + t.n;
+  });
+  order = M.catOrder;
+  cats = order.filter(function (c) { return counts[c] !== undefined; }).concat(
+    Object.keys(counts).filter(function (c) { return order.indexOf(c) < 0; })
+      .sort(function (a, b) { return counts[b] - counts[a]; }));
+  document.getElementById('ka-body').innerHTML =
+    '<a href="#" id="ka-selall" style="color:#1c5cab;text-decoration:none">全選択</a>&nbsp; ' +
+    '<a href="#" id="ka-selnone" style="color:#1c5cab;text-decoration:none">全解除</a>' +
+    cats.map(function (c) {
+      return '<label style="display:block;white-space:nowrap;cursor:pointer">' +
+        '<input type="checkbox" class="ka-cat" checked style="vertical-align:-2px"> ' +
+        esc(c) + ' <span style="color:' + MUTED + '">' + fmt(counts[c]) + '</span></label>';
+    }).join('');
+  boxes = document.querySelectorAll('.ka-cat');
+  boxes.forEach(function (cb, i) {
+    cb.addEventListener('change', function () { setCategory(cats[i], cb.checked); });
+  });
+  document.getElementById('ka-selall').addEventListener('click', function (e) {
+    e.preventDefault();
+    boxes.forEach(function (cb, i) { cb.checked = true; setCategory(cats[i], true); });
+  });
+  document.getElementById('ka-selnone').addEventListener('click', function (e) {
+    e.preventDefault();
+    boxes.forEach(function (cb, i) { cb.checked = false; setCategory(cats[i], false); });
+  });
+}
 
 // ---- 囲って集計（自前のなげなわ） ----
 // Plotly の lasso/select は選択後に全トレースの選択状態を再計算する（点ごとの色配列では 20 万点 × 174 本で数秒。
 // スマホでは固まって見える。2026-09-11）。ここでは Plotly の選択機能を使わず、画面座標で多角形を描いて
 // 点の内外を自前で判定し（20 万点で数十 ms）、内訳とキーワードを集計する。強調表示はせず、輪郭線と集計パネルで示す。
-var selPanel = document.createElement('div');
-selPanel.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:999;display:none;' +
-  (narrow ? 'right:14px;max-height:40vh;' : 'max-width:400px;max-height:55vh;') + 'overflow-y:auto;padding:10px 14px;' + PANEL;
-document.body.appendChild(selPanel);
-var lassoMode = false, lassoBtn = null, lassoSvg = null, lassoPath = null, lassoVeil = null, lassoPts = null, lassoData = null,
-    lassoPointerId = null, lassoEndedAt = 0;
-window.kaToggleLasso = function () { setLassoMode(!lassoMode); };
-plot._dbgLasso = function () { return { mode: lassoMode, outline: !!(lassoPath && lassoPath.getAttribute('d')), veil: !!(lassoVeil && lassoVeil.getAttribute('d')), data: lassoData ? lassoData.length : 0, panel: selPanel.style.display }; };  // 検証用
-if (!is3d) {
-  var mbBtns = plot.querySelectorAll('.modebar-btn');
-  for (var bi = 0; bi < mbBtns.length; bi++) if (mbBtns[bi].getAttribute('data-title') === '囲って集計（なげなわ）') lassoBtn = mbBtns[bi];
-  lassoSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  lassoSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:5;display:none;touch-action:none;cursor:crosshair';
-  // 囲い終えた後は、囲いの外側に薄い膜をかけて内側だけ鮮やかに残す（evenodd の穴あき矩形。Plotly には触らないので軽い）
-  lassoVeil = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  lassoVeil.setAttribute('fill', 'rgba(252,252,251,0.62)');
-  lassoVeil.setAttribute('fill-rule', 'evenodd');
-  lassoVeil.setAttribute('stroke', 'none');
-  lassoSvg.appendChild(lassoVeil);
-  lassoPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  lassoPath.setAttribute('fill', 'rgba(28,92,171,0.08)');
-  lassoPath.setAttribute('stroke', '#1c5cab');
-  lassoPath.setAttribute('stroke-width', '1.5');
-  lassoPath.setAttribute('stroke-dasharray', '5 4');
-  lassoSvg.appendChild(lassoPath);
-  plot.style.position = 'relative';
-  plot.appendChild(lassoSvg);
-}
+var selPanel;
+var lassoMode, lassoBtn, lassoSvg, lassoPath, lassoVeil, lassoPts, lassoData, lassoPointerId, lassoEndedAt;
 function setLassoMode(on) {
   lassoMode = !!on;
   if (lassoSvg) {
@@ -1373,17 +1440,20 @@ function setLassoMode(on) {
   if (lassoBtn) lassoBtn.classList.toggle('active', lassoMode);
   if (lassoMode) { lassoClearOutline(); clearSelection(); hoverNone(); }
 }
+
 function lassoClearOutline() {
   if (lassoPath) lassoPath.setAttribute('d', '');
   if (lassoVeil) lassoVeil.setAttribute('d', '');
   lassoPts = null; lassoData = null;
   if (lassoSvg && !lassoMode) lassoSvg.style.display = 'none';
 }
+
 function pathOf(pts) {
   var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
   for (var i = 1; i < pts.length; i++) d += 'L' + pts[i][0].toFixed(1) + ',' + pts[i][1].toFixed(1);
   return d + 'Z';
 }
+
 // 囲った多角形（データ座標）を現在の範囲で描き直す。地図を動かしても囲いが追随する
 function lassoRender() {
   if (!lassoData || !lassoPath) return;
@@ -1395,77 +1465,23 @@ function lassoRender() {
   lassoPath.setAttribute('d', pathOf(pts));
   lassoVeil.setAttribute('d', 'M' + x0 + ',' + y0 + 'H' + x1 + 'V' + y1 + 'H' + x0 + 'Z ' + pathOf(pts));
 }
+
 function closeSelPanel() { selPanel.style.display = 'none'; lassoClearOutline(); setLassoMode(false); }
+
 function lassoLocal(e) {  // ポインタ位置 → plot 要素内の座標
   var r = plot.getBoundingClientRect();
   return [e.clientX - r.left, e.clientY - r.top];
 }
+
 function lassoDraw() {
   if (!lassoPts || lassoPts.length < 2) return;
   lassoPath.setAttribute('d', pathOf(lassoPts));
-}
-if (lassoSvg) {
-  lassoSvg.addEventListener('pointerdown', function (e) {
-    if (!lassoMode || lassoPointerId !== null) return;
-    e.preventDefault(); e.stopPropagation();
-    lassoPointerId = e.pointerId; lassoPts = [lassoLocal(e)];
-    try { lassoSvg.setPointerCapture(e.pointerId); } catch (_) {}
-  });
-  lassoSvg.addEventListener('pointermove', function (e) {
-    if (e.pointerId !== lassoPointerId) return;
-    e.preventDefault();
-    var q = lassoLocal(e), last = lassoPts[lassoPts.length - 1];
-    if (Math.abs(q[0] - last[0]) + Math.abs(q[1] - last[1]) < 2) return;
-    lassoPts.push(q); lassoDraw();
-  });
-  function lassoEnd(e) {
-    if (e.pointerId !== lassoPointerId) return;
-    lassoPointerId = null; lassoEndedAt = Date.now();
-    var pts = lassoPts;
-    if (!pts || pts.length < 3) { lassoClearOutline(); setLassoMode(false); return; }
-    // 多角形をデータ座標で保持し、囲い終えたら移動モードへ（囲いは追随表示）
-    var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
-    lassoData = pts.map(function (q) { return [xr[0] + (q[0] - sz.l) / sz.w * (xr[1] - xr[0]), yr[1] - (q[1] - sz.t) / sz.h * (yr[1] - yr[0])]; });
-    setLassoMode(false);
-    lassoRender();
-    summarizeGids(gidsInPolygon(pts));
-  }
-  lassoSvg.addEventListener('pointerup', lassoEnd);
-  lassoSvg.addEventListener('pointercancel', lassoEnd);
-  // 多角形の内側の点（表示中のトレースのみ）。画面座標で射線法
-  function gidsInPolygon(poly) {
-    var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
-    var sx = sz.w / (xr[1] - xr[0]), sy = sz.h / (yr[1] - yr[0]);
-    var n = poly.length, px = new Float64Array(n), py = new Float64Array(n);
-    var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
-    for (var i = 0; i < n; i++) {
-      px[i] = poly[i][0]; py[i] = poly[i][1];
-      if (px[i] < minx) minx = px[i]; if (px[i] > maxx) maxx = px[i];
-      if (py[i] < miny) miny = py[i]; if (py[i] > maxy) maxy = py[i];
-    }
-    var vis = plot.data.map(function (t) { return t.visible === true || t.visible === undefined; });
-    var out = [];
-    for (var g = 0; g < M.n; g++) {
-      if (!vis[traceOf[g]]) continue;
-      var X = sz.l + (xs[g] - xr[0]) * sx, Y = sz.t + (yr[1] - ys[g]) * sy;
-      if (X < minx || X > maxx || Y < miny || Y > maxy) continue;
-      var inside = false;
-      for (var a = 0, b = n - 1; a < n; b = a++) {
-        if ((py[a] > Y) !== (py[b] > Y) && X < (px[b] - px[a]) * (Y - py[a]) / (py[b] - py[a]) + px[a]) inside = !inside;
-      }
-      if (inside) out.push(g);
-    }
-    return out;
-  }
-  // 地図を動かしたら囲いを描き直す（パネルも残す）
-  plot.on('plotly_relayouting', lassoRender);
-  plot.on('plotly_relayout', lassoRender);
-  window.addEventListener('resize', function () { setTimeout(lassoRender, 100); });
 }
 
 function topEntries(obj, n) {
   return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, n);
 }
+
 function summarizeGids(gids) {
   if (!gids.length) { selPanel.style.display = 'none'; lassoClearOutline(); return; }
   var n = gids.length, dais = {}, cts = {}, kws = {}, missing = 0;
@@ -1503,19 +1519,113 @@ function summarizeGids(gids) {
     e.preventDefault(); closeSelPanel();
   });
 }
-
-// Esc: 囲いと選択を解除
-document.addEventListener('keydown', function (e) {
-  if (e.key !== 'Escape') return;
-  clearSelection();
-  closeSelPanel();
-});
+function initLasso() {
+  selPanel = document.createElement('div');
+  selPanel.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:999;display:none;' +
+    (narrow ? 'right:14px;max-height:40vh;' : 'max-width:400px;max-height:55vh;') + 'overflow-y:auto;padding:10px 14px;' + PANEL;
+  document.body.appendChild(selPanel);
+  lassoMode = false;
+  lassoBtn = null;
+  lassoSvg = null;
+  lassoPath = null;
+  lassoVeil = null;
+  lassoPts = null;
+  lassoData = null;
+  lassoPointerId = null;
+  lassoEndedAt = 0;
+  window.kaToggleLasso = function () { setLassoMode(!lassoMode); };
+  plot._dbgLasso = function () { return { mode: lassoMode, outline: !!(lassoPath && lassoPath.getAttribute('d')), veil: !!(lassoVeil && lassoVeil.getAttribute('d')), data: lassoData ? lassoData.length : 0, panel: selPanel.style.display }; };  // 検証用
+  if (!is3d) {
+    var mbBtns = plot.querySelectorAll('.modebar-btn');
+    for (var bi = 0; bi < mbBtns.length; bi++) if (mbBtns[bi].getAttribute('data-title') === '囲って集計（なげなわ）') lassoBtn = mbBtns[bi];
+    lassoSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    lassoSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:5;display:none;touch-action:none;cursor:crosshair';
+    // 囲い終えた後は、囲いの外側に薄い膜をかけて内側だけ鮮やかに残す（evenodd の穴あき矩形。Plotly には触らないので軽い）
+    lassoVeil = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    lassoVeil.setAttribute('fill', 'rgba(252,252,251,0.62)');
+    lassoVeil.setAttribute('fill-rule', 'evenodd');
+    lassoVeil.setAttribute('stroke', 'none');
+    lassoSvg.appendChild(lassoVeil);
+    lassoPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    lassoPath.setAttribute('fill', 'rgba(28,92,171,0.08)');
+    lassoPath.setAttribute('stroke', '#1c5cab');
+    lassoPath.setAttribute('stroke-width', '1.5');
+    lassoPath.setAttribute('stroke-dasharray', '5 4');
+    lassoSvg.appendChild(lassoPath);
+    plot.style.position = 'relative';
+    plot.appendChild(lassoSvg);
+  }
+  if (lassoSvg) {
+    lassoSvg.addEventListener('pointerdown', function (e) {
+      if (!lassoMode || lassoPointerId !== null) return;
+      e.preventDefault(); e.stopPropagation();
+      lassoPointerId = e.pointerId; lassoPts = [lassoLocal(e)];
+      try { lassoSvg.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    lassoSvg.addEventListener('pointermove', function (e) {
+      if (e.pointerId !== lassoPointerId) return;
+      e.preventDefault();
+      var q = lassoLocal(e), last = lassoPts[lassoPts.length - 1];
+      if (Math.abs(q[0] - last[0]) + Math.abs(q[1] - last[1]) < 2) return;
+      lassoPts.push(q); lassoDraw();
+    });
+    function lassoEnd(e) {
+      if (e.pointerId !== lassoPointerId) return;
+      lassoPointerId = null; lassoEndedAt = Date.now();
+      var pts = lassoPts;
+      if (!pts || pts.length < 3) { lassoClearOutline(); setLassoMode(false); return; }
+      // 多角形をデータ座標で保持し、囲い終えたら移動モードへ（囲いは追随表示）
+      var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
+      lassoData = pts.map(function (q) { return [xr[0] + (q[0] - sz.l) / sz.w * (xr[1] - xr[0]), yr[1] - (q[1] - sz.t) / sz.h * (yr[1] - yr[0])]; });
+      setLassoMode(false);
+      lassoRender();
+      summarizeGids(gidsInPolygon(pts));
+    }
+    lassoSvg.addEventListener('pointerup', lassoEnd);
+    lassoSvg.addEventListener('pointercancel', lassoEnd);
+    // 多角形の内側の点（表示中のトレースのみ）。画面座標で射線法
+    function gidsInPolygon(poly) {
+      var fl = plot._fullLayout, xr = fl.xaxis.range, yr = fl.yaxis.range, sz = fl._size;
+      var sx = sz.w / (xr[1] - xr[0]), sy = sz.h / (yr[1] - yr[0]);
+      var n = poly.length, px = new Float64Array(n), py = new Float64Array(n);
+      var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+      for (var i = 0; i < n; i++) {
+        px[i] = poly[i][0]; py[i] = poly[i][1];
+        if (px[i] < minx) minx = px[i]; if (px[i] > maxx) maxx = px[i];
+        if (py[i] < miny) miny = py[i]; if (py[i] > maxy) maxy = py[i];
+      }
+      var vis = plot.data.map(function (t) { return t.visible === true || t.visible === undefined; });
+      var out = [];
+      for (var g = 0; g < M.n; g++) {
+        if (!vis[traceOf[g]]) continue;
+        var X = sz.l + (xs[g] - xr[0]) * sx, Y = sz.t + (yr[1] - ys[g]) * sy;
+        if (X < minx || X > maxx || Y < miny || Y > maxy) continue;
+        var inside = false;
+        for (var a = 0, b = n - 1; a < n; b = a++) {
+          if ((py[a] > Y) !== (py[b] > Y) && X < (px[b] - px[a]) * (Y - py[a]) / (py[b] - py[a]) + px[a]) inside = !inside;
+        }
+        if (inside) out.push(g);
+      }
+      return out;
+    }
+    // 地図を動かしたら囲いを描き直す（パネルも残す）
+    plot.on('plotly_relayouting', lassoRender);
+    plot.on('plotly_relayout', lassoRender);
+    window.addEventListener('resize', function () { setTimeout(lassoRender, 100); });
+  }
+  // Esc: 囲いと選択を解除
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    clearSelection();
+    closeSelPanel();
+  });
+}
 
 // ---- ボトムシート（スマホ幅のみ）: 大区分と種目で同じ部品を使う ----
 // 行＝（色の丸）名前・件数。行タップで表示切替（状態は濃淡）。上部に「すべて表示／すべて非表示」。
 // 「のみ」ボタンは廃止（一度すべて非表示にしてから必要なものを表示する方式。2026-09-09 ユーザ判断）。
 // 大区分は Plotly 凡例の代替、種目は PC のチェックボックス一覧の代替（同じ操作は同じ形にする。2026-09-09）
-var sheetBackdrop = null, openSheetEl = null;
+var sheetBackdrop, openSheetEl;
 function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], isOn(i), toggle(i), all(on)}
   if (!sheetBackdrop) {
     sheetBackdrop = document.createElement('div');
@@ -1569,58 +1679,61 @@ function buildSheet(cfg) {  // cfg: {id, title, hint, items:[{label,color?,n}], 
   refresh();
   return api;
 }
-
-if (narrow) {
-  // 大区分シート
-  var anchors = M.traces.filter(function (t) { return t.k === 'a'; })
-    .sort(function (a, b) { return a.rank - b.rank; });  // 凡例順（A〜K→複数→区分なし）
-  var daiOn = {};
-  anchors.forEach(function (t) { daiOn[t.dai] = t.vis; });
-  // 表示状態 daiOn をまとめて反映（1回の restyle。3D では restyle ごとに再アップロードが走るため）
-  function applyDai() {
-    var idx = [], vis = [];
-    plot.data.forEach(function (t, i) {
-      if (!t.legendgroup || !(t.legendgroup in daiOn)) return;
-      var on = daiOn[t.legendgroup];
-      if (on) { if (t.visible === 'legendonly') { idx.push(i); vis.push(true); } }
-      else if (t.visible !== false) { idx.push(i); vis.push('legendonly'); }
-    });
-    if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
-  }
-  document.getElementById('ka-dai-wrap').style.display = 'flex';
-  var daiSheet = buildSheet({
-    id: 'ka-dai-drawer', title: '大区分', hint: 'タップ: 表示切替',
-    items: anchors.map(function (t) { return { label: t.label, color: t.color, n: t.n }; }),
-    isOn: function (i) { return !!daiOn[anchors[i].dai]; },
-    toggle: function (i) { daiOn[anchors[i].dai] = !daiOn[anchors[i].dai]; applyDai(); },
-    all: function (on) { anchors.forEach(function (a) { daiOn[a.dai] = on; }); applyDai(); },
-  });
-  document.getElementById('ka-dai-btn').addEventListener('click', daiSheet.open);
-
-  // 種目シート（球面は種目フィルタなし）
-  if (!isGlobe) {
-    var catOn = {};
-    cats.forEach(function (c) { catOn[c] = true; });
-    function applyCats() {  // 全種目の表示状態を 1 回の restyle で反映（大区分の非表示 legendonly は尊重）
+function initSheets() {
+  sheetBackdrop = null;
+  openSheetEl = null;
+  if (narrow) {
+    // 大区分シート
+    var anchors = M.traces.filter(function (t) { return t.k === 'a'; })
+      .sort(function (a, b) { return a.rank - b.rank; });  // 凡例順（A〜K→複数→区分なし）
+    var daiOn = {};
+    anchors.forEach(function (t) { daiOn[t.dai] = t.vis; });
+    // 表示状態 daiOn をまとめて反映（1回の restyle。3D では restyle ごとに再アップロードが走るため）
+    function applyDai() {
       var idx = [], vis = [];
       plot.data.forEach(function (t, i) {
-        if (!(t.meta in catOn)) return;
-        if (!catOn[t.meta]) { idx.push(i); vis.push(false); return; }
-        var v = (t.legendgroup in daiOn) ? (daiOn[t.legendgroup] ? true : 'legendonly') : true;
-        idx.push(i); vis.push(v);
+        if (!t.legendgroup || !(t.legendgroup in daiOn)) return;
+        var on = daiOn[t.legendgroup];
+        if (on) { if (t.visible === 'legendonly') { idx.push(i); vis.push(true); } }
+        else if (t.visible !== false) { idx.push(i); vis.push('legendonly'); }
       });
       if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
-      boxes.forEach(function (cb, i) { cb.checked = !!catOn[cats[i]]; });  // PC 用一覧とも同期
     }
-    var catSheet = buildSheet({
-      id: 'ka-cat-drawer', title: '種目', hint: 'タップ: 表示切替',
-      items: cats.map(function (c) { return { label: c, n: counts[c] }; }),
-      isOn: function (i) { return !!catOn[cats[i]]; },
-      toggle: function (i) { catOn[cats[i]] = !catOn[cats[i]]; applyCats(); },
-      all: function (on) { cats.forEach(function (c) { catOn[c] = on; }); applyCats(); },
+    document.getElementById('ka-dai-wrap').style.display = 'flex';
+    var daiSheet = buildSheet({
+      id: 'ka-dai-drawer', title: '大区分', hint: 'タップ: 表示切替',
+      items: anchors.map(function (t) { return { label: t.label, color: t.color, n: t.n }; }),
+      isOn: function (i) { return !!daiOn[anchors[i].dai]; },
+      toggle: function (i) { daiOn[anchors[i].dai] = !daiOn[anchors[i].dai]; applyDai(); },
+      all: function (on) { anchors.forEach(function (a) { daiOn[a.dai] = on; }); applyDai(); },
     });
-    document.getElementById('ka-filter-btn').addEventListener('click', catSheet.open);
-    document.getElementById('ka-body').style.display = 'none';
+    document.getElementById('ka-dai-btn').addEventListener('click', daiSheet.open);
+
+    // 種目シート（球面は種目フィルタなし）
+    if (!isGlobe) {
+      var catOn = {};
+      cats.forEach(function (c) { catOn[c] = true; });
+      function applyCats() {  // 全種目の表示状態を 1 回の restyle で反映（大区分の非表示 legendonly は尊重）
+        var idx = [], vis = [];
+        plot.data.forEach(function (t, i) {
+          if (!(t.meta in catOn)) return;
+          if (!catOn[t.meta]) { idx.push(i); vis.push(false); return; }
+          var v = (t.legendgroup in daiOn) ? (daiOn[t.legendgroup] ? true : 'legendonly') : true;
+          idx.push(i); vis.push(v);
+        });
+        if (idx.length) Plotly.restyle(plot, { visible: vis }, idx);
+        boxes.forEach(function (cb, i) { cb.checked = !!catOn[cats[i]]; });  // PC 用一覧とも同期
+      }
+      var catSheet = buildSheet({
+        id: 'ka-cat-drawer', title: '種目', hint: 'タップ: 表示切替',
+        items: cats.map(function (c) { return { label: c, n: counts[c] }; }),
+        isOn: function (i) { return !!catOn[cats[i]]; },
+        toggle: function (i) { catOn[cats[i]] = !catOn[cats[i]]; applyCats(); },
+        all: function (on) { cats.forEach(function (c) { catOn[c] = on; }); applyCats(); },
+      });
+      document.getElementById('ka-filter-btn').addEventListener('click', catSheet.open);
+      document.getElementById('ka-body').style.display = 'none';
+    }
   }
 }
 
@@ -1630,43 +1743,45 @@ function tDist(t) {
   var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
   return Math.sqrt(dx * dx + dy * dy);
 }
-if (isTouch && !is3d) {
-  var pinch = null, pinchRaf = false;
-  plot.addEventListener('touchstart', function (e) {
-    if (e.touches.length !== 2) return;
-    e.stopPropagation();  // Plotlyのパン処理に2本指を渡さない
-    var fl = plot._fullLayout;
-    pinch = {
-      d0: tDist(e.touches),
-      cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-      cy: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-      xr: fl.xaxis.range.slice(), yr: fl.yaxis.range.slice(),
-      rect: plot.getBoundingClientRect(),
-      sz: { l: fl._size.l, t: fl._size.t, w: fl._size.w, h: fl._size.h },
-    };
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchmove', function (e) {
-    if (!pinch || e.touches.length !== 2) return;
-    e.preventDefault(); e.stopPropagation();
-    if (pinchRaf) return;
-    pinchRaf = true;
-    var s = pinch.d0 / tDist(e.touches);  // 指を広げる=s<1=ズームイン
-    requestAnimationFrame(function () {
-      pinchRaf = false;
-      if (!pinch) return;
-      var fx = (pinch.cx - pinch.rect.left - pinch.sz.l) / pinch.sz.w;
-      var fy = (pinch.cy - pinch.rect.top - pinch.sz.t) / pinch.sz.h;
-      var xc = pinch.xr[0] + (pinch.xr[1] - pinch.xr[0]) * fx;
-      var yc = pinch.yr[1] - (pinch.yr[1] - pinch.yr[0]) * fy;  // 画面yは下向き
-      Plotly.relayout(plot, {
-        'xaxis.range': [xc - (xc - pinch.xr[0]) * s, xc + (pinch.xr[1] - xc) * s],
-        'yaxis.range': [yc - (yc - pinch.yr[0]) * s, yc + (pinch.yr[1] - yc) * s],
+function initPinch2d() {
+  if (isTouch && !is3d) {
+    var pinch = null, pinchRaf = false;
+    plot.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 2) return;
+      e.stopPropagation();  // Plotlyのパン処理に2本指を渡さない
+      var fl = plot._fullLayout;
+      pinch = {
+        d0: tDist(e.touches),
+        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        cy: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        xr: fl.xaxis.range.slice(), yr: fl.yaxis.range.slice(),
+        rect: plot.getBoundingClientRect(),
+        sz: { l: fl._size.l, t: fl._size.t, w: fl._size.w, h: fl._size.h },
+      };
+    }, { capture: true, passive: true });
+    plot.addEventListener('touchmove', function (e) {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault(); e.stopPropagation();
+      if (pinchRaf) return;
+      pinchRaf = true;
+      var s = pinch.d0 / tDist(e.touches);  // 指を広げる=s<1=ズームイン
+      requestAnimationFrame(function () {
+        pinchRaf = false;
+        if (!pinch) return;
+        var fx = (pinch.cx - pinch.rect.left - pinch.sz.l) / pinch.sz.w;
+        var fy = (pinch.cy - pinch.rect.top - pinch.sz.t) / pinch.sz.h;
+        var xc = pinch.xr[0] + (pinch.xr[1] - pinch.xr[0]) * fx;
+        var yc = pinch.yr[1] - (pinch.yr[1] - pinch.yr[0]) * fy;  // 画面yは下向き
+        Plotly.relayout(plot, {
+          'xaxis.range': [xc - (xc - pinch.xr[0]) * s, xc + (pinch.xr[1] - xc) * s],
+          'yaxis.range': [yc - (yc - pinch.yr[0]) * s, yc + (pinch.yr[1] - yc) * s],
+        });
       });
-    });
-  }, { capture: true, passive: false });
-  plot.addEventListener('touchend', function (e) {
-    if (e.touches.length < 2) pinch = null;
-  }, { capture: true, passive: true });
+    }, { capture: true, passive: false });
+    plot.addEventListener('touchend', function (e) {
+      if (e.touches.length < 2) pinch = null;
+    }, { capture: true, passive: true });
+  }
 }
 
 // ---- 3D/球面のタッチ操作（自前のカメラ制御）----
@@ -1675,150 +1790,175 @@ if (isTouch && !is3d) {
 // タッチイベントを一切渡さず（capture で stopPropagation）、1本指=回転、2本指=拡大縮小（+3Dは移動）を
 // すべて自前のカメラ状態から計算して relayout で渡す。
 function v3(x, y, z) { return { x: x, y: y, z: z }; }
+
 function vsub(a, b) { return v3(a.x - b.x, a.y - b.y, a.z - b.z); }
+
 function vadd(a, b) { return v3(a.x + b.x, a.y + b.y, a.z + b.z); }
+
 function vmul(a, k) { return v3(a.x * k, a.y * k, a.z * k); }
+
 function vdot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+
 function vcross(a, b) { return v3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
+
 function vlen(a) { return Math.sqrt(vdot(a, a)); }
+
 function vnorm(a) { var l = vlen(a) || 1; return vmul(a, 1 / l); }
+
 function vrot(v, axis, ang) {  // ロドリゲスの回転公式（axis は単位ベクトル）
   var c = Math.cos(ang), sn = Math.sin(ang);
   return vadd(vadd(vmul(v, c), vmul(vcross(axis, v), sn)), vmul(axis, vdot(axis, v) * (1 - c)));
 }
+
 function tCenter(t) { return [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]; }
-if (isTouch && is3d) {
-  var g3 = null, raf3 = false, pendingCam = null, lastCam = null;
-  // 慣性（3D・球面）: 1本指回転の直近の指速度を離した後も減衰させながら回し続ける。
-  // 次のタッチ開始で止める。速度は touchend 直前 ~150ms の touchmove から求める
-  // （指を止めてから離した場合は速度ゼロ→慣性なし）。
-  var INERTIA = true, inert = null, samples = [];
-  function sampleTouch(t, x, y) {
-    samples.push({ t: t, x: x, y: y });
-    // 直近 ~150ms、ただし描画が重くイベントが間引かれても速度が取れるよう最低3点は残す
-    while (samples.length > 3 && t - samples[0].t > 150) samples.shift();
-  }
-  function stepInertia(now) {
-    if (!inert) return;
-    var dt = Math.min(50, now - inert.t); inert.t = now;
-    var c = inert.cam, bs = basis(c);
-    var f1 = vrot(vsub(c.eye, c.ctr), bs.u, -inert.wx * dt), up1 = c.up;
-    f1 = vrot(f1, bs.r, -inert.wy * dt); up1 = vrot(up1, bs.r, -inert.wy * dt);
-    c = { eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 };
-    inert.cam = c; applyCam(c);
-    var decay = Math.exp(-dt / 500);  // 時定数 500ms（60fps なら約 2〜3 秒で止まる）
-    inert.wx *= decay; inert.wy *= decay;
-    if (Math.hypot(inert.wx, inert.wy) < 2e-5) { inert = null; return; }
-    requestAnimationFrame(stepInertia);
-  }
-  function startInertia(endTime) {
-    if (!INERTIA || samples.length < 2) return;
-    var a = samples[0], b = samples[samples.length - 1], dt = b.t - a.t;
-    if (dt <= 0 || dt > 400 || endTime - b.t > 100) return;  // 止めてから離した／描画が重く速度が測れない
-    var vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt, sp = Math.hypot(vx, vy);  // px/ms
-    if (sp < 0.05) return;
-    if (sp > 2) { vx *= 2 / sp; vy *= 2 / sp; }
-    // 指速度の半分から始める（全速だと最大 1 周近く回ってしまう。上限 2px/ms で約 0.6 周、1px/ms で約 1/3 周）
-    var k = 0.5 * lastRotK;  // 慣性も直前の回転ゲインに合わせる
-    inert = { wx: vx * k, wy: vy * k, t: performance.now(), cam: lastCam || liveCam() };
-    requestAnimationFrame(stepInertia);
-  }
-  function liveCam() {  // 実際のカメラ（レイアウト上の値は更新が遅れることがある）
-    var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
-    var c = (sc && sc.getCamera) ? sc.getCamera() : (plot._fullLayout.scene.camera || {});
-    var eye = c.eye || v3(1.25, 1.25, 1.25), ctr = c.center || v3(0, 0, 0), up = c.up || v3(0, 0, 1);
-    return { eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), up: v3(up.x, up.y, up.z) };
-  }
-  function basis(c) {  // 視線 f、画面右 r、画面上 u
-    var f = vnorm(vsub(c.ctr, c.eye));
-    var r = vnorm(vcross(f, c.up));
-    return { f: f, r: r, u: vcross(r, f) };
-  }
-  function applyCam(c) {
-    lastCam = c;
-    pendingCam = c;
-    if (raf3) return;
-    raf3 = true;
-    requestAnimationFrame(function () {
-      raf3 = false;
-      if (!pendingCam) return;
-      var pc = pendingCam; pendingCam = null;
-      Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
-        .then(function () { updateSelectionPos(); adaptSphere(); });
-    });
-  }
-  // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
-  // 「視点から面までの距離」に比例して弱める（拡大時に指の動き以上に球が回ってしまう問題。2026-09-09 ユーザ指摘）
-  var initCam0 = liveCam(), initDist = vlen(vsub(initCam0.eye, initCam0.ctr));  // 読み込み時の視距離を基準
-  var rotK0 = null, lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1);
-  function surfaceR() {  // 球面: 球の半径（カメラ座標系）。3D: 0（注視点までの距離で代用）
-    if (!isGlobe) return 0;
-    var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
-    var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
-    var x = ds[0], y = 0, z = 0;
-    return mm ? Math.hypot(mm[0] * x, mm[1] * x, mm[2] * x) : x;
-  }
-  function rotGain(c) {
-    var R = surfaceR(), d = vlen(vsub(c.eye, c.ctr)) - R;
-    if (rotK0 === null) rotK0 = Math.max(initDist - R, 1e-3);  // 基準＝読み込み時の視距離（面までの距離）
-    var ratio = Math.min(1.5, Math.max(0.02, d / rotK0));
-    lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1) * ratio;
-    return lastRotK;
-  }
-  function startGesture(touches) {
-    samples = [];
-    // 慣性で回転中は relayout が追いつかず liveCam が古いことがあるので、自前の最新カメラを使う
-    var c = inert ? inert.cam : liveCam(), bs = basis(c);
-    inert = null;
-    if (touches.length === 1) {
-      g3 = { mode: 'rot', x: touches[0].clientX, y: touches[0].clientY, cam: c, bs: bs,
-             k: rotGain(c) };  // 既定の視距離で画面幅のドラッグ＝半回転、拡大時はその分弱める
-    } else if (touches.length === 2) {
-      var c0 = tCenter(touches);
-      g3 = { mode: 'two', d0: tDist(touches), cx: c0[0], cy: c0[1], cam: c, bs: bs,
-             // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
-             k: 2 * vlen(vsub(c.eye, c.ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
-    } else g3 = null;
-  }
-  plot.addEventListener('touchstart', function (e) {
-    e.stopPropagation();
-    startGesture(e.touches);
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchmove', function (e) {
-    e.preventDefault(); e.stopPropagation();
-    // 指の本数がジェスチャ開始時と違えば（2本→1本など）現在の指で始め直す
-    if (!g3 || (g3.mode === 'rot') !== (e.touches.length === 1)) startGesture(e.touches);
-    if (!g3) return;
-    var c = g3.cam, bs = g3.bs;
-    if (g3.mode === 'rot' && e.touches.length === 1) {
-      // 指の動きに場面が付いてくる向き: 右へ動かす→場面が右へ→カメラは上方向軸まわりに逆回転。
-      // 自由回転（固定軸なし）: 回転軸はジェスチャ開始時のカメラの上・右ベクトル
-      var dx = e.touches[0].clientX - g3.x, dy = e.touches[0].clientY - g3.y;
-      sampleTouch(e.timeStamp, e.touches[0].clientX, e.touches[0].clientY);
-      var f = vsub(c.eye, c.ctr);
-      var f1 = vrot(f, bs.u, -dx * g3.k), up1 = c.up;
-      f1 = vrot(f1, bs.r, -dy * g3.k); up1 = vrot(up1, bs.r, -dy * g3.k);
-      applyCam({ eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 });
-    } else if (g3.mode === 'two' && e.touches.length === 2) {
-      var s = Math.max(0.05, g3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
-      var cc = tCenter(e.touches), mx = cc[0] - g3.cx, my = cc[1] - g3.cy;
-      // 球面は並行移動なし（球の中心を固定し、拡大縮小のみ）。3D は重心の移動で視点・注視点を平行移動
-      var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(bs.r, -mx * g3.k), vmul(bs.u, my * g3.k));
-      applyCam({ eye: vadd(vadd(c.ctr, vmul(vsub(c.eye, c.ctr), s)), T), ctr: vadd(c.ctr, T), up: c.up });
+function initTouch3d() {
+  if (isTouch && is3d) {
+    var g3 = null, raf3 = false, pendingCam = null, lastCam = null;
+    // 慣性（3D・球面）: 1本指回転の直近の指速度を離した後も減衰させながら回し続ける。
+    // 次のタッチ開始で止める。速度は touchend 直前 ~150ms の touchmove から求める
+    // （指を止めてから離した場合は速度ゼロ→慣性なし）。
+    var INERTIA = true, inert = null, samples = [];
+    function sampleTouch(t, x, y) {
+      samples.push({ t: t, x: x, y: y });
+      // 直近 ~150ms、ただし描画が重くイベントが間引かれても速度が取れるよう最低3点は残す
+      while (samples.length > 3 && t - samples[0].t > 150) samples.shift();
     }
-  }, { capture: true, passive: false });
-  plot.addEventListener('touchend', function (e) {
-    e.stopPropagation();
-    if (e.touches.length > 0) startGesture(e.touches);  // 2本→1本: 残った指で回転を続ける
-    else {
-      if (g3 && g3.mode === 'rot') startInertia(e.timeStamp);
-      g3 = null;
+    function stepInertia(now) {
+      if (!inert) return;
+      var dt = Math.min(50, now - inert.t); inert.t = now;
+      var c = inert.cam, bs = basis(c);
+      var f1 = vrot(vsub(c.eye, c.ctr), bs.u, -inert.wx * dt), up1 = c.up;
+      f1 = vrot(f1, bs.r, -inert.wy * dt); up1 = vrot(up1, bs.r, -inert.wy * dt);
+      c = { eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 };
+      inert.cam = c; applyCam(c);
+      var decay = Math.exp(-dt / 500);  // 時定数 500ms（60fps なら約 2〜3 秒で止まる）
+      inert.wx *= decay; inert.wy *= decay;
+      if (Math.hypot(inert.wx, inert.wy) < 2e-5) { inert = null; return; }
+      requestAnimationFrame(stepInertia);
     }
-  }, { capture: true, passive: true });
-  plot.addEventListener('touchcancel', function () { g3 = null; samples = []; }, { capture: true, passive: true });
+    function startInertia(endTime) {
+      if (!INERTIA || samples.length < 2) return;
+      var a = samples[0], b = samples[samples.length - 1], dt = b.t - a.t;
+      if (dt <= 0 || dt > 400 || endTime - b.t > 100) return;  // 止めてから離した／描画が重く速度が測れない
+      var vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt, sp = Math.hypot(vx, vy);  // px/ms
+      if (sp < 0.05) return;
+      if (sp > 2) { vx *= 2 / sp; vy *= 2 / sp; }
+      // 指速度の半分から始める（全速だと最大 1 周近く回ってしまう。上限 2px/ms で約 0.6 周、1px/ms で約 1/3 周）
+      var k = 0.5 * lastRotK;  // 慣性も直前の回転ゲインに合わせる
+      inert = { wx: vx * k, wy: vy * k, t: performance.now(), cam: lastCam || liveCam() };
+      requestAnimationFrame(stepInertia);
+    }
+    function liveCam() {  // 実際のカメラ（レイアウト上の値は更新が遅れることがある）
+      var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
+      var c = (sc && sc.getCamera) ? sc.getCamera() : (plot._fullLayout.scene.camera || {});
+      var eye = c.eye || v3(1.25, 1.25, 1.25), ctr = c.center || v3(0, 0, 0), up = c.up || v3(0, 0, 1);
+      return { eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), up: v3(up.x, up.y, up.z) };
+    }
+    function basis(c) {  // 視線 f、画面右 r、画面上 u
+      var f = vnorm(vsub(c.ctr, c.eye));
+      var r = vnorm(vcross(f, c.up));
+      return { f: f, r: r, u: vcross(r, f) };
+    }
+    function applyCam(c) {
+      lastCam = c;
+      pendingCam = c;
+      if (raf3) return;
+      raf3 = true;
+      requestAnimationFrame(function () {
+        raf3 = false;
+        if (!pendingCam) return;
+        var pc = pendingCam; pendingCam = null;
+        Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
+          .then(function () { updateSelectionPos(); adaptSphere(); });
+      });
+    }
+    // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
+    // 「視点から面までの距離」に比例して弱める（拡大時に指の動き以上に球が回ってしまう問題。2026-09-09 ユーザ指摘）
+    var initCam0 = liveCam(), initDist = vlen(vsub(initCam0.eye, initCam0.ctr));  // 読み込み時の視距離を基準
+    var rotK0 = null, lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1);
+    function surfaceR() {  // 球面: 球の半径（カメラ座標系）。3D: 0（注視点までの距離で代用）
+      if (!isGlobe) return 0;
+      var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
+      var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
+      var x = ds[0], y = 0, z = 0;
+      return mm ? Math.hypot(mm[0] * x, mm[1] * x, mm[2] * x) : x;
+    }
+    function rotGain(c) {
+      var R = surfaceR(), d = vlen(vsub(c.eye, c.ctr)) - R;
+      if (rotK0 === null) rotK0 = Math.max(initDist - R, 1e-3);  // 基準＝読み込み時の視距離（面までの距離）
+      var ratio = Math.min(1.5, Math.max(0.02, d / rotK0));
+      lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1) * ratio;
+      return lastRotK;
+    }
+    function startGesture(touches) {
+      samples = [];
+      // 慣性で回転中は relayout が追いつかず liveCam が古いことがあるので、自前の最新カメラを使う
+      var c = inert ? inert.cam : liveCam(), bs = basis(c);
+      inert = null;
+      if (touches.length === 1) {
+        g3 = { mode: 'rot', x: touches[0].clientX, y: touches[0].clientY, cam: c, bs: bs,
+               k: rotGain(c) };  // 既定の視距離で画面幅のドラッグ＝半回転、拡大時はその分弱める
+      } else if (touches.length === 2) {
+        var c0 = tCenter(touches);
+        g3 = { mode: 'two', d0: tDist(touches), cx: c0[0], cy: c0[1], cam: c, bs: bs,
+               // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
+               k: 2 * vlen(vsub(c.eye, c.ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
+      } else g3 = null;
+    }
+    plot.addEventListener('touchstart', function (e) {
+      e.stopPropagation();
+      startGesture(e.touches);
+    }, { capture: true, passive: true });
+    plot.addEventListener('touchmove', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      // 指の本数がジェスチャ開始時と違えば（2本→1本など）現在の指で始め直す
+      if (!g3 || (g3.mode === 'rot') !== (e.touches.length === 1)) startGesture(e.touches);
+      if (!g3) return;
+      var c = g3.cam, bs = g3.bs;
+      if (g3.mode === 'rot' && e.touches.length === 1) {
+        // 指の動きに場面が付いてくる向き: 右へ動かす→場面が右へ→カメラは上方向軸まわりに逆回転。
+        // 自由回転（固定軸なし）: 回転軸はジェスチャ開始時のカメラの上・右ベクトル
+        var dx = e.touches[0].clientX - g3.x, dy = e.touches[0].clientY - g3.y;
+        sampleTouch(e.timeStamp, e.touches[0].clientX, e.touches[0].clientY);
+        var f = vsub(c.eye, c.ctr);
+        var f1 = vrot(f, bs.u, -dx * g3.k), up1 = c.up;
+        f1 = vrot(f1, bs.r, -dy * g3.k); up1 = vrot(up1, bs.r, -dy * g3.k);
+        applyCam({ eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 });
+      } else if (g3.mode === 'two' && e.touches.length === 2) {
+        var s = Math.max(0.05, g3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
+        var cc = tCenter(e.touches), mx = cc[0] - g3.cx, my = cc[1] - g3.cy;
+        // 球面は並行移動なし（球の中心を固定し、拡大縮小のみ）。3D は重心の移動で視点・注視点を平行移動
+        var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(bs.r, -mx * g3.k), vmul(bs.u, my * g3.k));
+        applyCam({ eye: vadd(vadd(c.ctr, vmul(vsub(c.eye, c.ctr), s)), T), ctr: vadd(c.ctr, T), up: c.up });
+      }
+    }, { capture: true, passive: false });
+    plot.addEventListener('touchend', function (e) {
+      e.stopPropagation();
+      if (e.touches.length > 0) startGesture(e.touches);  // 2本→1本: 残った指で回転を続ける
+      else {
+        if (g3 && g3.mode === 'rot') startInertia(e.timeStamp);
+        g3 = null;
+      }
+    }, { capture: true, passive: true });
+    plot.addEventListener('touchcancel', function () { g3 = null; samples = []; }, { capture: true, passive: true });
+  }
 }
 
-}  // setupUI
+function setupUI() {
+  initHome();
+  initHeader();
+  initColorLegend();
+  initPointDetail();
+  initSelection();
+  initTap2d();
+  initSearch();
+  initCategoryFilter();
+  initLasso();
+  initSheets();
+  initPinch2d();
+  initTouch3d();
+}
+  // setupUI
 </script>
 </body>
 </html>

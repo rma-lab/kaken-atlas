@@ -153,8 +153,10 @@ UI 変更は **ヘッドレス Chrome（puppeteer-core）で回帰確認**して
 - **Search Console**: ルート `https://rma-lab.github.io/` を URL プレフィックスで登録済み（確認ファイルは玄関ページのリポジトリ）。
 - **地図の HTML/CSS/JS は `scripts/web/index.template.html`、Service Worker は `scripts/web/sw.template.js`**（`build_web_map.py` が
   置換記号を埋めて出力する。2026-09-12 に .py 内の文字列から実ファイルへ分離）。
-- **生成スクリプトの JS の注意**: `setupUI` 関数内で `var x = null;` と宣言した変数は、それより前（main や setupUI 冒頭）の代入を
-  巻き上げで上書きする。setupUI 内で使う状態はトップレベルで宣言するか、初期化子なしの `var` にする。
+- **JS の構造**（2026-09-12 に平坦化）: 状態変数と関数は script スコープ、節ごとの `init*()` が DOM 生成とイベント登録を行い、
+  `setupUI()` が読み込み完了後に順に呼ぶ。以前は setupUI の 1,400 行の閉包で、その中の `var x = null;` が main の代入を
+  巻き上げで上書きする罠があった。**状態は script スコープで `var` 宣言し、init の中では代入だけにする**。
+  平坦化は `tests/web/tools/flatten_setupui.js`（acorn で構文木を取り、宣言と文を機械的に振り分けた）で行った。
 
 ## 10. 既知の制約
 
