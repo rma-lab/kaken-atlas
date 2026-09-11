@@ -23,7 +23,9 @@ HTML/CSS/JS の本体は scripts/web/index.template.html、Service Worker は sc
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -32,13 +34,13 @@ import polars as pl
 
 sys.path.insert(0, "src")
 sys.path.insert(0, "scripts")
-from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, load_dai_labels  # noqa: E402
 from plot_map_interactive import CATEGORY_ORDER, FOOTER  # noqa: E402
+
+from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, load_dai_labels  # noqa: E402
 
 SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使う）
 # 球面ビュー: 点の半径の散らし（σ, クリップ）と、裏側を隠す不透明球の半径。点と球の隙間が小さいと、縮小時に
 # 深度バッファの分解能が足りず z-fighting の縞が出る（2026-09-10 ユーザ報告）。隙間 ≥ 0.02 を確保する
-import os
 GLOBE_JITTER_SIGMA = float(os.environ.get("GLOBE_JITTER_SIGMA", "0.002"))
 GLOBE_JITTER_CLIP = float(os.environ.get("GLOBE_JITTER_CLIP", "0.005"))
 GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の視距離での半径。縮小時は JS 側で距離に応じて小さくする
@@ -134,8 +136,8 @@ def globe_params(path: Path) -> str:
     return ", " + ", ".join(parts)
 
 
-def main() -> None:
-    coords_path = Path(sys.argv[1])
+def load_frame(coords_path: Path) -> tuple[pl.DataFrame, bool, bool]:
+    """座標 parquet に課題の属性（種目・種別・タイトル・キーワード・大区分）を結合する。戻り値: (df, is_3d, is_globe)"""
     coords = pl.read_parquet(coords_path)
     is_3d = "c2" in coords.columns
     is_globe = "theta" in coords.columns  # 球面 UMAP（reduce --sphere）: 単位球面上の xyz
@@ -151,63 +153,71 @@ def main() -> None:
     df = df.with_columns(
         pl.col("kaken_id").str.extract(r"^KAKENHI-([A-Z]+)-", 1).alias("ktype")
     )
-    ktypes = sorted(df["ktype"].unique().to_list())
     # kaken_id が「KAKENHI-<種別>-<課題番号>」で復元できることを保証（JS側で組み立てる）
     bad = df.filter(
         pl.col("kaken_id") != "KAKENHI-" + pl.col("ktype") + "-" + pl.col("award_number")
     )
     assert bad.height == 0, f"kaken_id を分解できない行が {bad.height} 件"
+    return df, is_3d, is_globe
 
-    big, traces = build_order(df, parts=16 if is_globe else 1, merge_categories=is_globe)
-    color_legend = None
-    if POINT_COLOR == "text":  # 大区分の色見本を所属課題の平均色に差し替える（K のように散在する区分は灰色寄りになる）
-        color_legend = json.loads(TEXTCOLOR_LEGEND.read_text(encoding="utf-8"))
-        for t in traces:
-            if t["dai"] in color_legend["dai"]:
-                t["color"] = "rgb(%d,%d,%d)" % tuple(color_legend["dai"][t["dai"]]["rgb"])
-    n_point_traces = sum(1 for t in traces if t["k"] == "d")
-    assert len(traces) + 2 <= 255, f"トレース数 {len(traces)} が Plotly 3D の判定上限(255)を超える"
-    n = big.height
-    dims = ["c0", "c1"] + (["c2"] if is_3d else [])
-    if is_globe:
-        # 半径に微小な乱数を与える（不透明描画では奥行きで勝者が決まり色の偏りを防ぐ。
-        # 半透明描画では効かないため、build_order の交互描画で偏りを平均化する。再現性のため seed 固定）
-        rng = np.random.default_rng(42)
-        r = 1.0 + np.clip(rng.normal(0.0, GLOBE_JITTER_SIGMA, n), -GLOBE_JITTER_CLIP, GLOBE_JITTER_CLIP)
-        big = big.with_columns([(pl.col(c) * pl.Series(r)).alias(c) for c in dims])
 
-    # 座標の量子化: 各軸を int16 全域に線形写像（分解能=値域/65535、1ピクセル未満）
-    quant = []
-    qarrs = []
+def apply_text_colors(traces: list[dict]) -> dict | None:
+    """POINT_COLOR=text のとき、大区分の色見本を所属課題の平均色に差し替える（K のように散在する区分は灰色寄りになる）。
+    戻り値は凡例データ（sectors, dai）。dai モードでは None。"""
+    if POINT_COLOR != "text":
+        return None
+    color_legend = json.loads(TEXTCOLOR_LEGEND.read_text(encoding="utf-8"))
+    for t in traces:
+        if t["dai"] in color_legend["dai"]:
+            r, g, b = color_legend["dai"][t["dai"]]["rgb"]
+            t["color"] = f"rgb({r},{g},{b})"
+    return color_legend
+
+
+def jitter_globe(big: pl.DataFrame, dims: list[str]) -> pl.DataFrame:
+    """球面: 半径に微小な乱数を与える（不透明描画では奥行きで勝者が決まり色の偏りを防ぐ。
+    半透明描画では効かないため、build_order の交互描画で偏りを平均化する。再現性のため seed 固定）"""
+    rng = np.random.default_rng(42)
+    r = 1.0 + np.clip(rng.normal(0.0, GLOBE_JITTER_SIGMA, big.height), -GLOBE_JITTER_CLIP, GLOBE_JITTER_CLIP)
+    return big.with_columns([(pl.col(c) * pl.Series(r)).alias(c) for c in dims])
+
+
+def quantize(big: pl.DataFrame, dims: list[str]) -> tuple[list[dict], list[np.ndarray]]:
+    """座標の量子化: 各軸を int16 全域に線形写像（分解能=値域/65535、1ピクセル未満）。戻り値: (各軸の lo/hi, int16 配列)"""
+    quant, qarrs = [], []
     for c in dims:
         v = big[c].to_numpy()
         lo, hi = float(v.min()), float(v.max())
         qarrs.append(np.round((v - lo) / (hi - lo) * 65535 - 32768).astype("<i2"))
         quant.append(dict(lo=lo, hi=hi))
-    # 詳細データ（シャード）は描画順でなく **課題番号順（uid）** で 1 セットだけ持ち、3 ビューで共有する
-    # （docs/shards/）。各ビューは gid（描画順）→ uid の対応表（uint32）を points.bin の末尾に同梱する。
-    # 同じ URL になるのでブラウザキャッシュがビュー間で効き、切り替え時に再読み込みしない（2026-09-09）。
+    return quant, qarrs
+
+
+def build_points_bin(big: pl.DataFrame, qarrs: list[np.ndarray]) -> bytes:
+    """points.bin = 量子化座標（軸ごとに連続）＋ gid→uid 対応表（uint32）＋（text モード）点ごとの sRGB 各 1 バイト。
+
+    詳細データ（シャード）は描画順でなく **課題番号順（uid）** で 1 セットだけ持ち、3 ビューで共有する（docs/shards/）。
+    各ビューは gid（描画順）→ uid の対応表を points.bin の末尾に同梱する。同じ URL になるのでブラウザキャッシュが
+    ビュー間で効き、切り替え時に再読み込みしない（2026-09-09）。"""
     uid_of = {a: i for i, a in enumerate(sorted(big["award_number"].to_list()))}
     uids = np.array([uid_of[a] for a in big["award_number"]], dtype="<u4")
     points_bin = b"".join(a.tobytes() for a in qarrs) + uids.tobytes()
-    if POINT_COLOR == "text":  # 点ごとの色（sRGB 各 1 バイト、描画順）
+    if POINT_COLOR == "text":
         tc = pl.read_parquet(TEXTCOLOR_PARQUET, columns=["award_number", "r", "g", "b"])
         tcj = big.select("award_number").join(tc, on="award_number", how="left")
         assert tcj["r"].null_count() == 0, "色表に無い課題がある"
         rgb = np.stack([tcj[c].to_numpy() for c in ("r", "g", "b")], axis=1).astype(np.uint8)
         points_bin += rgb.tobytes()
+    return points_bin
 
-    out_dir = Path("docs/globe" if is_globe else f"docs/map{'3d' if is_3d else '2d'}")
-    if len(sys.argv) > 2:  # 比較実験用に出力先を変えられる（例: reports/globe_compare/sp0.45）
-        out_dir = Path(sys.argv[2])
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "points.bin").write_bytes(points_bin)
 
+def write_shards(big: pl.DataFrame, ktypes: list[str], cats: list[str], shard_dir: Path) -> tuple[list[str], str]:
+    """共有シャード docs/shards/NNN.json（課題番号順、SHARD_SIZE 件ずつ）を書く。
+    行 = [課題番号, 種別idx, タイトル, キーワード, 種目idx]。戻り値: (各片の先頭課題番号, 内容ハッシュの版)"""
     ktype_idx = {t: i for i, t in enumerate(ktypes)}
-    cats = sorted(big["category"].unique().to_list())
     cat_idx = {c: i for i, c in enumerate(cats)}
     master = big.sort("award_number")  # uid 順
-    rows = list(zip(  # [課題番号, 種別idx, タイトル, キーワード, 種目idx]
+    rows = list(zip(
         master["award_number"],
         (ktype_idx[t] for t in master["ktype"]),
         master["title"],
@@ -215,35 +225,20 @@ def main() -> None:
         (cat_idx[c] for c in master["category"]),
         strict=False,
     ))
-    n_shards = (n + SHARD_SIZE - 1) // SHARD_SIZE
-    shard_dir = out_dir.parent / "shards"  # docs/shards（3 ビュー共有。内容はビューに依らず同一）
+    n_shards = (len(rows) + SHARD_SIZE - 1) // SHARD_SIZE
     shard_dir.mkdir(parents=True, exist_ok=True)
-    import hashlib
     shard_hash = hashlib.sha1()
     for s in range(n_shards):
         chunk = rows[s * SHARD_SIZE:(s + 1) * SHARD_SIZE]
         payload = json.dumps([list(r) for r in chunk], ensure_ascii=False, separators=(",", ":"))
         shard_hash.update(payload.encode("utf-8"))
         (shard_dir / f"{s:03d}.json").write_text(payload, encoding="utf-8")
-    # データ URL の版（?v=）。HTML はネットワーク優先・データはキャッシュ優先で配信するため、更新直後は
-    # 新しい HTML と古い Service Worker の組み合わせが一度だけ起こり、古い points.bin が返ってくる
-    # （2026-09-11、v1.3 公開直後にスマホの 2D で "Length out of range of buffer"）。URL に内容ハッシュを付ければ
-    # 古いキャッシュには当たらない
-    points_ver = hashlib.sha1(points_bin).hexdigest()[:10]
-    shard_ver = shard_hash.hexdigest()[:10]
+    shard_first = [rows[s * SHARD_SIZE][0] for s in range(n_shards)]  # 課題番号→シャードの二分探索用
+    return shard_first, shard_hash.hexdigest()[:10]
 
-    manifest = dict(
-        n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
-        pointsBytes=len(points_bin), pointsVer=points_ver, shardVer=shard_ver, quant=quant, ktypes=ktypes, cats=cats,
-        traces=traces, catOrder=CATEGORY_ORDER,
-        shardFirst=[rows[s * SHARD_SIZE][0] for s in range(n_shards)],  # 課題番号→シャードの二分探索用
-        sphereR=GLOBE_SPHERE_R if is_globe else None,
-        textColor=POINT_COLOR == "text",
-        colorLegend=dict(sectors=color_legend["sectors"]) if color_legend else None,
-        footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
-        title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
-        sub=f"2019–2025年度・{n:,}件",
-    )
+
+def render_html(manifest: dict, out_dir: Path, is_3d: bool, is_globe: bool) -> None:
+    n = manifest["n"]
     html = (
         TEMPLATE
         .replace("__TITLE__", manifest["title"])
@@ -256,6 +251,51 @@ def main() -> None:
     )
     (out_dir / "index.html").write_text(html, encoding="utf-8")
 
+
+def main() -> None:
+    coords_path = Path(sys.argv[1])
+    df, is_3d, is_globe = load_frame(coords_path)
+    ktypes = sorted(df["ktype"].unique().to_list())
+
+    big, traces = build_order(df, parts=16 if is_globe else 1, merge_categories=is_globe)
+    color_legend = apply_text_colors(traces)
+    assert len(traces) + 2 <= 255, f"トレース数 {len(traces)} が Plotly 3D の判定上限(255)を超える"
+    n = big.height
+    dims = ["c0", "c1"] + (["c2"] if is_3d else [])
+    if is_globe:
+        big = jitter_globe(big, dims)
+    quant, qarrs = quantize(big, dims)
+    points_bin = build_points_bin(big, qarrs)
+
+    out_dir = Path("docs/globe" if is_globe else f"docs/map{'3d' if is_3d else '2d'}")
+    if len(sys.argv) > 2:  # 比較実験用に出力先を変えられる（例: reports/globe_compare/sp0.45）
+        out_dir = Path(sys.argv[2])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "points.bin").write_bytes(points_bin)
+
+    cats = sorted(big["category"].unique().to_list())
+    shard_dir = out_dir.parent / "shards"  # docs/shards（3 ビュー共有。内容はビューに依らず同一）
+    shard_first, shard_ver = write_shards(big, ktypes, cats, shard_dir)
+    n_shards = len(shard_first)
+    # データ URL の版（?v=）。HTML はネットワーク優先・データはキャッシュ優先で配信するため、更新直後は
+    # 新しい HTML と古い Service Worker の組み合わせが一度だけ起こり、古い points.bin が返ってくる
+    # （2026-09-11、v1.3 公開直後にスマホの 2D で "Length out of range of buffer"）。URL に内容ハッシュを付ければ
+    # 古いキャッシュには当たらない
+    points_ver = hashlib.sha1(points_bin).hexdigest()[:10]
+
+    manifest = dict(
+        n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
+        pointsBytes=len(points_bin), pointsVer=points_ver, shardVer=shard_ver, quant=quant, ktypes=ktypes, cats=cats,
+        traces=traces, catOrder=CATEGORY_ORDER,
+        shardFirst=shard_first,
+        sphereR=GLOBE_SPHERE_R if is_globe else None,
+        textColor=POINT_COLOR == "text",
+        colorLegend=dict(sectors=color_legend["sectors"]) if color_legend else None,
+        footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
+        title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
+        sub=f"2019–2025年度・{n:,}件",
+    )
+    render_html(manifest, out_dir, is_3d, is_globe)
     write_service_worker(out_dir.parent)
 
     total = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
@@ -271,10 +311,10 @@ def write_service_worker(docs: Path) -> None:
     キャッシュは取得時に貯める（先読みで二重に落とさない）。HTML はネットワーク優先（更新を即反映）、
     データ（shards/*.json, points.bin）と Plotly CDN・画像はキャッシュ優先。計測（GoatCounter）は素通し。
     """
-    import hashlib
     h = hashlib.sha1()
     for f in sorted(docs.glob("shards/*.json")) + sorted(docs.glob("*/points.bin")):
-        h.update(f.name.encode()); h.update(f.read_bytes())
+        h.update(f.name.encode())
+        h.update(f.read_bytes())
     ver = h.hexdigest()[:12]
     (docs / "sw.js").write_text(SW_TEMPLATE.replace("__DATA_VER__", ver), encoding="utf-8")
     print(f"出力: {docs}/sw.js (data version {ver})")
