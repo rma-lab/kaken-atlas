@@ -13,9 +13,11 @@ JSPS 科研費 基盤研究(C) [26K15524](https://kaken.nii.ac.jp/ja/grant/KAKEN
 **https://rma-lab.github.io/kaken-atlas/**
 
 2019–2025年度開始の採択課題 206,078件を意味空間上に配置したインタラクティブ地図
-（2D / 3D / 球面＝地球儀）。タイトル・キーワード検索、種目フィルタ、なげなわ選択による集計、
-点クリックでKAKEN課題ページへのジャンプができる（スマホ・タブレットはタップ→カード）。実体はこのリポジトリの
-`docs/` を GitHub Pages で配信したもの（`scripts/build_web_map.py` で生成）。
+（2D / 3D / 球面＝地球儀）。点の配置も色も研究概要のテキストだけから決めている（色は「研究内容の環」の上の位置を色相にした
+連続色。ヘッダーの「色の見方」に色相環と特徴キーワードの凡例）。タイトル・キーワード・課題番号の検索、大区分・種目による絞り込み、
+なげなわ選択による集計、点のクリック／タップ → 詳細カード → KAKEN 課題ページ、課題ごとの URL（`?award=課題番号`）、
+2 回目以降はオフラインでも開ける（Service Worker）。実体はこのリポジトリの `docs/` を GitHub Pages で配信したもの
+（`scripts/build_web_map.py` で生成）。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
 
 **方針**: この地図は研究内容（採択時の研究概要）だけで課題を配置しています。研究者名や所属機関は載せず、検索・絞り込みの対象にもしていません。名前や機関の先入観なしに、研究の中身で学術の広がりを眺めてもらうためです。個々の課題の詳細は KAKEN のページをご覧ください。
 
@@ -46,7 +48,9 @@ uv run python -m kaken_atlas.parse       # XML → data/interim/awards.parquet
 uv run python -m kaken_atlas.corpus      # 埋め込み対象コーパス → data/processed/corpus.parquet
 uv run python -m kaken_atlas.embed       # Ruri v3 で768次元埋め込み（GPU推奨、A40で約30分）
 uv run python -m kaken_atlas.reduce      # UMAP 2D（--n-components 3 で3D、--sphere --min-dist 0.0 --spread 0.3 で球面）
-uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet  # 地図サイト生成
+uv run python scripts/plot_map_textcolor.py d   # 点の色: 768次元に弾性リングを学習 → data/interim/elastic_ring_nodes.npz
+uv run python scripts/compute_textcolor.py      # 色表と凡例 → data/processed/textcolor_d.parquet, textcolor_legend.json
+uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet  # 地図サイト生成（3D・球面も同様。3 ビューとも再生成する）
 ```
 
 - データ取得には KAKEN の appid（[国立情報学研究所に利用申請](https://support.nii.ac.jp/ja/cinii/api/developer)）
@@ -67,7 +71,7 @@ uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet 
 ```
 kaken-atlas/
 ├── src/kaken_atlas/   # パイプライン本体（fetch / parse / corpus / embed / reduce / kubun）
-├── scripts/           # 可視化・地図サイト生成・審査区分マスタ構築
+├── scripts/           # 可視化・地図サイト生成・点の連続色・審査区分マスタ構築・補助分析（種目の比較など）
 ├── docs/              # GitHub Pages（公開地図サイト）＋設計メモ
 ├── data/
 │   ├── reference/     # 審査区分マスタ（正典、git 管理）
@@ -93,7 +97,7 @@ kaken-atlas/
 
 ### 科研費データに由来する成果物（`docs/` の地図データ、`data/reference/` の審査区分表、図表）
 
-`docs/map2d/`・`docs/map3d/`・`docs/globe/`・`docs/shards/` に含まれる課題番号・タイトル・キーワード・座標データは、
+`docs/map2d/`・`docs/map3d/`・`docs/globe/`・`docs/shards/` に含まれる課題番号・タイトル・キーワード・座標・色のデータは、
 KAKEN科研費データベースのデータを編集・加工したものです。KAKEN の
 [利用規程](https://support.nii.ac.jp/kaken/about/terms)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)
 に準拠）に従って利用してください。要点は次のとおりです。

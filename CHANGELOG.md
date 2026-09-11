@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 文書・スクリプト
+- README・CLAUDE.md・技術ノートを v1.3 の仕様（連続色、データ URL の版、2D の縦横比の自前管理、地名の方針）に合わせて更新。
+  種目の比較（挑戦的研究）の補助分析 `scripts/plot_category_contrast.py`・`scripts/knn_dist_by_category.py` と知見を method.md §11 に記載
+
 ### サイト
 - 2D のピンチ・ズームが v1.3 でカクつく問題を修正。縦横比を Plotly の `scaleanchor` に任せていると範囲変更のたびに全再計算の経路に
   入り、点ごとの色配列で 1 回 190ms かかっていた（v1.2 でも 32ms）。`scaleanchor` を外し、縦横比は自前で保つ（初期表示は全体が収まる

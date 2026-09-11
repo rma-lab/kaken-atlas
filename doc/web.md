@@ -21,10 +21,15 @@
 `scripts/build_web_map.py` → `docs/map2d/`、`docs/map3d/`、`docs/globe/`（GitHub Pages、master の `/docs`）
 
 ```bash
+uv run python scripts/plot_map_textcolor.py d   # 点の色: 弾性リングの学習（埋め込みを更新したときだけ）
+uv run python scripts/compute_textcolor.py      # 色表 textcolor_d.parquet と凡例 textcolor_legend.json
 uv run python scripts/build_web_map.py data/processed/umap2d_nn15_md0.1.parquet
 uv run python scripts/build_web_map.py data/processed/umap3d_nn15_md0.1.parquet
 uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.3.parquet
 ```
+
+点の色は既定で内容由来の連続色（`POINT_COLOR=text`。方法は [method.md](method.md) §8.2）。`POINT_COLOR=dai` で従来の大区分
+単色に戻せる（比較用）。第 2 引数で出力先を変えられる（実験用。`docs/` 以外に出すと共有シャードと sw.js もその親に出る）。
 
 入口 `docs/index.html` は手書き。背景の点群画像は `scripts/make_hero.py`、アイコン（favicon／PWA／apple-touch）は
 `scripts/make_icon.py`、SNS プレビュー画像は `scripts/make_ogp.py` で生成する。検索エンジン・AI 向けに JSON-LD、
@@ -142,7 +147,8 @@ swiftshader は描画が遅く、CDP 経由のタッチイベントは実機と�
 
 ## 10. 既知の制約
 
-- **Plotly の限界**：トレース 255 本、不透明点の遅さ、タッチ非対応。R10 のウェブアプリでは deck.gl 系への移行が本命。
+- **Plotly の限界**：トレース 255 本、不透明点の遅さ、タッチ非対応。点ごとの色配列があると再計算の経路（`scaleanchor`、
+  表示切替の restyle）が重くなる。R10 のウェブアプリでは deck.gl 系への移行が本命。
 - **転送量**：GitHub Pages の目安 100GB/月に対し 1 閲覧 20MB なので月 5,000 閲覧程度が上限。
 - iOS はホーム画面に追加していないサイトの保存領域を 7 日間未使用で消すことがある（PWA として追加すれば残る）。
 - SNS のプレビュー画像は URL ごとに変えられない（静的サイト）。課題の URL でもカードは共通の画像とサイト名になる。
