@@ -97,7 +97,7 @@
   `scripts/knn_dist_by_category.py`（768 次元の最近傍距離を種目別に比較。全件の kNN を `data/processed/knn_dist.parquet` に保存）。
 
 ## バージョン管理（公開サイト）
-- `CHANGELOG.md` に変更を記録し、区切りで **git タグ `vX.Y` ＋ GitHub Release** を切る（2026-09-08 開始、現行 v1.3）。
+- `CHANGELOG.md` に変更を記録し、区切りで **git タグ `vX.Y` ＋ GitHub Release** を切る（2026-09-08 開始、現行 v1.4）。
   Y＝機能追加・UI 変更、X＝地図データ（埋め込み・座標）の更新など根本的な変更。サイト上にバージョン表示は不要（ユーザ方針）。
 - 手順: CHANGELOG の Unreleased を版見出しに → commit → `git tag -a vX.Y -m ...` → `git push --tags` →
   `gh release create vX.Y --notes-file <CHANGELOG の該当節>`。
