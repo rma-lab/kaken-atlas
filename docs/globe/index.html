@@ -1505,7 +1505,7 @@ function summarizeGids(gids) {
   html += '<span style="color:' + SUB + '">頻出キーワード:</span>' +
     (missing ? ' <span style="color:' + MUTED + '">（読み込み中の' + fmt(missing) +
       '件は集計外）</span>' : '') + '<br>' +
-    topEntries(kws, 15).map(function (w) {
+    topEntries(kws, 10).map(function (w) {
       return '<span style="display:inline-block;background:#eef3fa;border:1px solid #c9d8ee;' +
         'border-radius:4px;padding:0 6px;margin:1px 2px">' + esc(w) +
         ' <span style="color:' + MUTED + '">' + kws[w] + '</span></span>';
