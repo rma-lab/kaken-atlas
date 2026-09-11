@@ -180,6 +180,29 @@ main().catch(function (e) {
     'HTTPサーバ経由で開いているか、通信状態を確認してください。';
 });
 
+// 2D の縦横比を自前で保つ。fit=true は現在の範囲（自動範囲）全体が収まるよう両軸を等スケールに決め直す。
+// fit=false は x の範囲を正として y の幅だけを画素比に合わせる（ずれが 0.1% 未満なら何もしない）。
+// 自前のピンチ・フライトゥは両軸を同じ比率で変えるので通常は補正が走らず、ズームボックスや画面回転のときだけ働く
+var equalScaleBusy = false;
+function equalScale(fit) {
+  var fl = plot._fullLayout, xa = fl.xaxis, ya = fl.yaxis;
+  if (!xa || !ya || !xa._length || !ya._length || equalScaleBusy) return Promise.resolve();
+  var xr = xa.range, yr = ya.range, W = xa._length, H = ya._length;
+  var cx = (xr[0] + xr[1]) / 2, cy = (yr[0] + yr[1]) / 2, upp;
+  if (fit) upp = Math.max((xr[1] - xr[0]) / W, (yr[1] - yr[0]) / H);
+  else {
+    upp = (xr[1] - xr[0]) / W;
+    if (Math.abs((yr[1] - yr[0]) / H / upp - 1) < 1e-3) return Promise.resolve();
+  }
+  equalScaleBusy = true;
+  var upd = { 'yaxis.range': [cy - upp * H / 2, cy + upp * H / 2] };
+  if (fit) upd['xaxis.range'] = [cx - upp * W / 2, cx + upp * W / 2];
+  return Plotly.relayout(plot, upd).then(function () { equalScaleBusy = false; }, function () { equalScaleBusy = false; });
+}
+function yHalfSpanFor(xHalf) {  // x の半幅に対応する y の半幅（画素比から）
+  var xa = plot._fullLayout.xaxis, ya = plot._fullLayout.yaxis;
+  return xHalf * ya._length / xa._length;
+}
 async function main() {
   var buf = await loadPoints();
   loadMsg.textContent = 'マップを描画中…';
@@ -275,7 +298,9 @@ async function main() {
   } else {
     layout.plot_bgcolor = SURFACE;
     layout.xaxis = { visible: false };
-    layout.yaxis = { visible: false, scaleanchor: 'x' };
+    // 縦横比は scaleanchor を使わず自前で守る（equalScale）。scaleanchor があると範囲変更のたびに Plotly が全再計算の経路に
+    // 入り、点ごとの色配列（v1.3）では 1 回 190ms（外すと 30ms）。スマホのピンチがカクつく原因だった（2026-09-11）
+    layout.yaxis = { visible: false };
     layout.dragmode = 'pan';
   }
   await Plotly.newPlot(plot, data, layout,
@@ -297,6 +322,13 @@ async function main() {
     var mobile = { showlegend: false, 'annotations[0].visible': false };
     if (!is3d) mobile['margin.b'] = 40;
     await Plotly.relayout(plot, mobile);
+  }
+  if (!is3d) {  // 初期表示: データ全体が収まる等スケールの範囲（以後の範囲変更でも equalScale が縦横比を保つ）
+    await equalScale(true);
+    plot.on('plotly_relayout', function (ev) {  // 自動範囲に戻ったとき（ダブルクリック等）は全体が収まるよう決め直す
+      var auto = ev && (ev['xaxis.autorange'] || ev['yaxis.autorange']);
+      equalScale(!!auto);
+    });
   }
 
   document.getElementById('ka-loading').style.display = 'none';
@@ -742,7 +774,7 @@ function toggleView() {
     return;
   }
   if (isNearView()) { if (homeRange) animateRange(homeRange.x, homeRange.y, 1200); }
-  else animateRange([xs[selGid] - NEAR_SPAN, xs[selGid] + NEAR_SPAN], [ys[selGid] - NEAR_SPAN, ys[selGid] + NEAR_SPAN], 1200);
+  else { var yh2 = yHalfSpanFor(NEAR_SPAN); animateRange([xs[selGid] - NEAR_SPAN, xs[selGid] + NEAR_SPAN], [ys[selGid] - yh2, ys[selGid] + yh2], 1200); }
 }
 // カード下段のアイコンボタン（文字ボタンは場所を取るのでアイコンに。2026-09-09 ユーザ判断。title で補足）
 var ICON_BTN = 'display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border:1px solid ' + LINE +
@@ -1147,7 +1179,8 @@ var NEAR_SPAN = 2.5;  // 着地の半幅（データ座標）。周辺の島と�
 function focusPoint(gid) {
   if (is3d) { focusPoint3d(gid); return; }
   var xy = projected(gid); selectPoint(gid, xy[0], xy[1]);  // 先に選択（現在の倍率でリング＋カード）
-  animateRange([xs[gid] - NEAR_SPAN, xs[gid] + NEAR_SPAN], [ys[gid] - NEAR_SPAN, ys[gid] + NEAR_SPAN], 1200);
+  var yh = yHalfSpanFor(NEAR_SPAN);  // 縦横比を保った着地範囲（scaleanchor なし）
+  animateRange([xs[gid] - NEAR_SPAN, xs[gid] + NEAR_SPAN], [ys[gid] - yh, ys[gid] + yh], 1200);
 }
 // 2D の範囲を補間（対数で、拡大率が一定の速さで変わるように）。リングは各フレームで追随
 var rangeAnim = null;
