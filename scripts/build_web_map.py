@@ -73,11 +73,11 @@ def build_order(df: pl.DataFrame, parts: int = 1, merge_categories: bool = False
         dsub = df.filter(pl.col("dai") == dai)
         if dsub.height == 0:
             continue
-        color = DAI_COLORS.get(dai, "#b9b8b0")
+        color = DAI_COLORS.get(dai, "#cfcec7" if dai == "区分なし" else "#b9b8b0")
         label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
         traces.append(dict(
             k="a", dai=dai, label=label, color=color, n=dsub.height,
-            rank=legend_order.index(dai) + 1, vis=dai != "区分なし",
+            rank=legend_order.index(dai) + 1, vis=True,  # 区分なしも既定で表示（2026-09-11 ユーザ判断。最下層に描くので色を覆わない）
         ))
     for part in range(parts):
         # 組ごとに大区分の順序を回転させ、「常に最後に描かれる大区分」を作らない
@@ -86,9 +86,9 @@ def build_order(df: pl.DataFrame, parts: int = 1, merge_categories: bool = False
             dsub = df.filter((pl.col("dai") == dai) & (pl.col("_part") == part))
             if dsub.height == 0:
                 continue
-            color = DAI_COLORS.get(dai, "#b9b8b0")
+            color = DAI_COLORS.get(dai, "#cfcec7" if dai == "区分なし" else "#b9b8b0")
             label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
-            visible = dai != "区分なし"
+            visible = True
             # len 同数の種目間の順序を固定するため category 名でタイブレーク（出力の再現性）
             cat_counts = dsub.group_by("category").len().sort(
                 ["len", "category"], descending=[True, False]
