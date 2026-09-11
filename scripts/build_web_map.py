@@ -216,17 +216,23 @@ def main() -> None:
     n_shards = (n + SHARD_SIZE - 1) // SHARD_SIZE
     shard_dir = out_dir.parent / "shards"  # docs/shards（3 ビュー共有。内容はビューに依らず同一）
     shard_dir.mkdir(parents=True, exist_ok=True)
+    import hashlib
+    shard_hash = hashlib.sha1()
     for s in range(n_shards):
         chunk = rows[s * SHARD_SIZE:(s + 1) * SHARD_SIZE]
-        (shard_dir / f"{s:03d}.json").write_text(
-            json.dumps([list(r) for r in chunk], ensure_ascii=False,
-                       separators=(",", ":")),
-            encoding="utf-8",
-        )
+        payload = json.dumps([list(r) for r in chunk], ensure_ascii=False, separators=(",", ":"))
+        shard_hash.update(payload.encode("utf-8"))
+        (shard_dir / f"{s:03d}.json").write_text(payload, encoding="utf-8")
+    # データ URL の版（?v=）。HTML はネットワーク優先・データはキャッシュ優先で配信するため、更新直後は
+    # 新しい HTML と古い Service Worker の組み合わせが一度だけ起こり、古い points.bin が返ってくる
+    # （2026-09-11、v1.3 公開直後にスマホの 2D で "Length out of range of buffer"）。URL に内容ハッシュを付ければ
+    # 古いキャッシュには当たらない
+    points_ver = hashlib.sha1(points_bin).hexdigest()[:10]
+    shard_ver = shard_hash.hexdigest()[:10]
 
     manifest = dict(
         n=n, is3d=is_3d, globe=is_globe, shardSize=SHARD_SIZE, nShards=n_shards,
-        pointsBytes=len(points_bin), quant=quant, ktypes=ktypes, cats=cats,
+        pointsBytes=len(points_bin), pointsVer=points_ver, shardVer=shard_ver, quant=quant, ktypes=ktypes, cats=cats,
         traces=traces, catOrder=CATEGORY_ORDER,
         shardFirst=[rows[s * SHARD_SIZE][0] for s in range(n_shards)],  # 課題番号→シャードの二分探索用
         sphereR=GLOBE_SPHERE_R if is_globe else None,
@@ -447,7 +453,7 @@ function pad3(s) { return String(s).padStart(3, '0'); }
 function ensureShard(s) {
   if (det[s]) return Promise.resolve(det[s]);
   if (detPending[s]) return detPending[s];
-  detPending[s] = fetch('../shards/' + pad3(s) + '.json')
+  detPending[s] = fetch('../shards/' + pad3(s) + '.json?v=' + M.shardVer)
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(function (rows) {
       det[s] = rows; detPending[s] = null; detLoaded++;
@@ -486,8 +492,9 @@ function catOf(gid, row) {
 // ==== フェーズ1: points.bin をプログレス付きで取得 ====
 var bar1 = document.getElementById('ka-bar1');
 var loadMsg = document.getElementById('ka-load-msg');
-async function loadPoints() {
-  var r = await fetch('points.bin');
+async function loadPoints(retry) {
+  // 内容ハッシュ付き URL（古い Service Worker のキャッシュに当たらない）。長さが合わなければ 1 回だけ再取得
+  var r = await fetch('points.bin?v=' + M.pointsVer + (retry ? '&r=' + Date.now() : ''), retry ? { cache: 'reload' } : undefined);
   if (!r.ok) throw new Error('points.bin: ' + r.status);
   var reader = r.body.getReader();
   var chunks = [], recv = 0;
@@ -499,6 +506,10 @@ async function loadPoints() {
   }
   var buf = new Uint8Array(recv), o = 0;
   for (var i = 0; i < chunks.length; i++) { buf.set(chunks[i], o); o += chunks[i].length; }
+  if (recv !== M.pointsBytes) {
+    if (!retry) return loadPoints(true);
+    throw new Error('座標データの長さが合いません（' + recv + ' / ' + M.pointsBytes + '）。ページを再読み込みしてください');
+  }
   return buf.buffer;
 }
 
