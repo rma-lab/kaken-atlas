@@ -53,6 +53,15 @@ TEXTCOLOR_LEGEND = TEXTCOLOR_PARQUET.with_name("textcolor_legend.json")
 PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js"
 
 
+def dai_color(dai: str) -> str:
+    """大区分の既定色（dai モードのトレース色。text モードでは apply_text_colors が平均色に差し替える）。"""
+    return DAI_COLORS.get(dai, "#cfcec7" if dai == "区分なし" else "#b9b8b0")
+
+
+def dai_label(dai: str) -> str:
+    return f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
+
+
 def build_order(df: pl.DataFrame, parts: int = 1, merge_categories: bool = False) -> tuple[pl.DataFrame, list[dict]]:
     """plot_map_interactive.py と同じ描画順に並べ、トレース表を作る。
 
@@ -83,10 +92,8 @@ def build_order(df: pl.DataFrame, parts: int = 1, merge_categories: bool = False
         dsub = df.filter(pl.col("dai") == dai)
         if dsub.height == 0:
             continue
-        color = DAI_COLORS.get(dai, "#cfcec7" if dai == "区分なし" else "#b9b8b0")
-        label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
         traces.append(dict(
-            k="a", dai=dai, label=label, color=color, n=dsub.height,
+            k="a", dai=dai, label=dai_label(dai), color=dai_color(dai), n=dsub.height,
             rank=legend_order.index(dai) + 1, vis=True,  # 区分なしも既定で表示（2026-09-11 ユーザ判断。最下層に描くので色を覆わない）
         ))
     for part in range(parts):
@@ -96,28 +103,17 @@ def build_order(df: pl.DataFrame, parts: int = 1, merge_categories: bool = False
             dsub = df.filter((pl.col("dai") == dai) & (pl.col("_part") == part))
             if dsub.height == 0:
                 continue
-            color = DAI_COLORS.get(dai, "#cfcec7" if dai == "区分なし" else "#b9b8b0")
-            label = f"{dai}〈{DAI_GLOSS[dai]}〉" if dai in DAI_GLOSS else dai
-            visible = True
             # len 同数の種目間の順序を固定するため category 名でタイブレーク（出力の再現性）
             cat_counts = dsub.group_by("category").len().sort(
                 ["len", "category"], descending=[True, False]
             )
+            subs = [(cat, dsub.filter(pl.col("category") == cat)) for cat in cat_counts["category"]]
             if merge_categories:  # 種目順に並べたうえで1トレースに
-                subs = [dsub.filter(pl.col("category") == cat) for cat in cat_counts["category"]]
-                sub = pl.concat(subs)
+                subs = [(None, pl.concat([sub for _, sub in subs]))]
+            for cat, sub in subs:
                 traces.append(dict(
-                    k="d", dai=dai, label=label, color=color, cat=None,
-                    off=offset, n=sub.height, vis=visible,
-                ))
-                parts_list.append(sub)
-                offset += sub.height
-                continue
-            for cat in cat_counts["category"]:
-                sub = dsub.filter(pl.col("category") == cat)
-                traces.append(dict(
-                    k="d", dai=dai, label=label, color=color, cat=cat,
-                    off=offset, n=sub.height, vis=visible,
+                    k="d", dai=dai, label=dai_label(dai), color=dai_color(dai), cat=cat,
+                    off=offset, n=sub.height, vis=True,
                 ))
                 parts_list.append(sub)
                 offset += sub.height
