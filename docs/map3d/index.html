@@ -521,7 +521,7 @@ document.getElementById('ka-help-body').innerHTML = isTouch
     '<div>ダブルクリック: 全体表示に戻る</div>' +
     '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
     '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>' +
-    '<div>ツールバーのなげなわ/矩形: 囲って集計</div>' +
+    '<div>ツールバーのなげなわ/矩形: 囲って集計（囲い終えると移動モードに戻る）</div>' +
     '<div>Esc: 選択解除</div>';
 
 // ---- 色の見方（研究内容由来の連続色の凡例: 色相環 12 方位と、そこに集まる課題の特徴語） ----
@@ -1327,8 +1327,19 @@ document.getElementById('ka-selnone').addEventListener('click', function (e) {
 // ---- 選択パネル（なげなわ/矩形で囲うと内訳・キーワード集計を即時表示） ----
 var selPanel = document.createElement('div');
 selPanel.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:999;display:none;' +
-  'max-width:400px;max-height:55vh;overflow-y:auto;padding:10px 14px;' + PANEL;
+  (narrow ? 'right:14px;max-height:40vh;' : 'max-width:400px;max-height:55vh;') + 'overflow-y:auto;padding:10px 14px;' + PANEL;
 document.body.appendChild(selPanel);
+// 選択の後始末: パネルを閉じ、点の強調（selectedpoints）を解き、操作モードを移動に戻す
+function clearLassoHighlight() {
+  var idx = [];
+  plot.data.forEach(function (t, i) { if (t.selectedpoints != null) idx.push(i); });
+  if (idx.length) Plotly.restyle(plot, { selectedpoints: null }, idx);
+}
+function closeSelPanel() {
+  selPanel.style.display = 'none';
+  clearLassoHighlight();
+  if (plot._fullLayout.dragmode !== 'pan') Plotly.relayout(plot, { selections: [], dragmode: 'pan' });
+}
 
 function topEntries(obj, n) {
   return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, n);
@@ -1352,8 +1363,9 @@ plot.on('plotly_selected', function (d) {
       row[3].split('、').forEach(function (w) { if (w) kws[w] = (kws[w] || 0) + 1; });
     }
   });
-  var html = '<b>選択: ' + fmt(n) + '件</b>' +
-    ' <a href="#" id="ka-selclear" style="color:' + MUTED + '">閉じる</a><br>';
+  var html = '<div style="display:flex;align-items:center;gap:10px"><b style="flex:1">選択: ' + fmt(n) + '件</b>' +
+    '<a href="#" id="ka-selclear" style="color:' + MUTED + ';padding:2px 10px;border:1px solid ' + LINE + ';border-radius:12px;' +
+    'text-decoration:none;font-size:11.5px">閉じる ×</a></div>';
   html += '<span style="color:' + SUB + '">大区分:</span> ' + topEntries(dais, 5).map(function (g) {
     return esc(g) + ' ' + fmt(dais[g]);
   }).join(' / ') + '<br>';
@@ -1371,11 +1383,14 @@ plot.on('plotly_selected', function (d) {
   selPanel.innerHTML = html;
   selPanel.style.display = 'block';
   document.getElementById('ka-selclear').addEventListener('click', function (e) {
-    e.preventDefault(); selPanel.style.display = 'none';
+    e.preventDefault(); closeSelPanel();
   });
   outlineClearedAt = Date.now();
-  Plotly.relayout(plot, { selections: [] });
+  // 囲い終えたら操作モードを移動に戻す（なげなわのままだと次のドラッグがまた囲いになり、スマホでは動けなくなる）
+  Plotly.relayout(plot, { selections: [], dragmode: 'pan' });
 });
+// 地図を動かし始めたら点の強調だけ解く（強調があると範囲変更のたびに全点の再計算が走って重い）。パネルは残す
+plot.on('plotly_relayouting', function () { clearLassoHighlight(); });
 plot.on('plotly_deselect', function () {
   if (Date.now() - outlineClearedAt < 800) return;
   selPanel.style.display = 'none';
@@ -1384,9 +1399,8 @@ plot.on('plotly_deselect', function () {
 // Esc: 選択を解除してパン操作モードに戻る
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
-  selPanel.style.display = 'none';
   clearSelection();
-  Plotly.update(plot, { selectedpoints: null }, { selections: [], dragmode: 'pan' });
+  closeSelPanel();
 });
 
 // ---- ボトムシート（スマホ幅のみ）: 大区分と種目で同じ部品を使う ----
