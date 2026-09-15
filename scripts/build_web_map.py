@@ -164,7 +164,8 @@ def apply_text_colors(traces: list[dict]) -> dict | None:
         return None
     color_legend = json.loads(TEXTCOLOR_LEGEND.read_text(encoding="utf-8"))
     for t in traces:
-        if t["dai"] in color_legend["dai"]:
+        # 「複数」「区分なし」は分野ではないので平均色を付けず灰色のまま（2026-09-15 ユーザ判断）
+        if t["dai"] in color_legend["dai"] and t["dai"] in DAI_COLORS:
             r, g, b = color_legend["dai"][t["dai"]]["rgb"]
             t["color"] = f"rgb({r},{g},{b})"
     return color_legend
