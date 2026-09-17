@@ -44,6 +44,10 @@ SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使�
 GLOBE_JITTER_SIGMA = float(os.environ.get("GLOBE_JITTER_SIGMA", "0.002"))
 GLOBE_JITTER_CLIP = float(os.environ.get("GLOBE_JITTER_CLIP", "0.005"))
 GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の視距離での半径。縮小時は JS 側で距離に応じて小さくする
+# キーワード地名（scripts/compute_placenames.py の出力）を 2D の manifest に同梱する。既定 OFF（段階的な導入のため。
+# OFF のときは manifest に鍵を足さないので生成物は従来と同一）。2026-09-17
+PLACENAMES = os.environ.get("PLACENAMES", "0") == "1"
+PLACENAMES_JSON = Path("data/processed/placenames_2d.json")
 # 点の色（2026-09-11 決定）: 既定 "text"=研究内容から導いた連続色（弾性リング。scripts/compute_textcolor.py の色表を
 # points.bin 末尾に RGB 各 1 バイトで同梱し、点ごとに塗る）。"dai"=従来の大区分 11 色（トレース単色。比較・実験用）。
 # text のとき大区分の凡例・シートの色見本は「所属課題の平均色」（textcolor_legend.json）、カードの縁と見出しは点自身の色
@@ -234,6 +238,18 @@ def write_shards(big: pl.DataFrame, ktypes: list[str], cats: list[str], shard_di
     return shard_first, shard_hash.hexdigest()[:10]
 
 
+def load_placenames(is_3d: bool) -> dict | None:
+    """キーワード地名を manifest 用に間引く（2D のみ。候補語や広がりは落とし、峰の座標・件数・語だけ）。"""
+    if not PLACENAMES or is_3d or not PLACENAMES_JSON.exists():
+        return None
+    d = json.loads(PLACENAMES_JSON.read_text(encoding="utf-8"))
+    levels = [
+        dict(sigma=lv["sigma"], places=[dict(x=p["x"], y=p["y"], n=p["n"], w=p["words"]) for p in lv["places"]])
+        for lv in d["levels"]
+    ]
+    return dict(levels=levels)
+
+
 def render_html(manifest: dict, out_dir: Path, is_3d: bool, is_globe: bool) -> None:
     n = manifest["n"]
     html = (
@@ -292,6 +308,9 @@ def main() -> None:
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
     )
+    placenames = load_placenames(is_3d)
+    if placenames:
+        manifest["placenames"] = placenames
     render_html(manifest, out_dir, is_3d, is_globe)
     write_service_worker(out_dir.parent)
 

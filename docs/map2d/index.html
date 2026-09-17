@@ -1941,6 +1941,96 @@ function initTouch3d() {
   }
 }
 
+// ---- 地名（キーワード地名。2D のみ） ----
+// 密度の峰ごとに、その山域の課題のキーワードから作った 2 語を峰の位置に置く（scripts/compute_placenames.py が生成し、
+// manifest の placenames に同梱）。公式区分は使わない。全体表示では出さず、拡大に応じて粗い階層→細かい階層を出す。
+// SVG の重ね描き（なげなわと同じ流儀、pointer-events なし）なので点の操作は素通しで、地図を動かすと追随する。
+var pnSvg, pnOn, pnLevel, pnShown, pnRaf;
+var PN_ZOOM = [1.5, 3.0];  // 階層ごとの表示開始倍率（全体表示の幅 ÷ 現在の幅）。狭幅は 1.25 倍厳しく
+function pnTextWidth(s, fs) {  // 文字幅の見積もり（全角＝fs、半角＝0.58fs）
+  var w = 0;
+  for (var i = 0; i < s.length; i++) w += s.charCodeAt(i) > 0x2e7f ? fs : fs * 0.58;
+  return w;
+}
+function placenamesRender() {
+  if (!pnSvg) return;
+  var fl = plot._fullLayout, xa = fl.xaxis, ya = fl.yaxis;
+  if (!pnOn || !xa || !ya || !homeRange || !xa._length) { pnSvg.style.display = 'none'; pnLevel = -1; pnShown = 0; return; }
+  var xr = xa.range, yr = ya.range, sz = fl._size;
+  var z = (homeRange.x[1] - homeRange.x[0]) / (xr[1] - xr[0]);
+  var levels = M.placenames.levels, lv = -1;
+  for (var i = 0; i < levels.length; i++) if (z >= PN_ZOOM[i] * (narrow ? 1.25 : 1)) lv = i;
+  if (lv < 0) { pnSvg.style.display = 'none'; pnLevel = -1; pnShown = 0; return; }
+  var sx = sz.w / (xr[1] - xr[0]), sy = sz.h / (yr[1] - yr[0]);
+  var places = levels[lv].places.slice().sort(function (a, b) { return b.n - a.n; });
+  var nMax = places[0].n, base = (lv === 0 ? 14 : 12) - (narrow ? 1 : 0);
+  var boxes = [], html = '', shown = 0;
+  var x0 = sz.l, y0 = sz.t, x1 = sz.l + sz.w, y1 = sz.t + sz.h;  // 描画領域（軸の内側）。凡例やツールバーには掛けない
+  for (var k = 0; k < places.length; k++) {
+    var p = places[k];
+    var px = sz.l + (p.x - xr[0]) * sx, py = sz.t + (yr[1] - p.y) * sy;
+    if (px < x0 || px > x1 || py < y0 || py > y1) continue;
+    var fs = base + 3 * Math.sqrt(p.n / nMax);
+    var w = 0;
+    for (var j = 0; j < p.w.length; j++) w = Math.max(w, pnTextWidth(p.w[j], fs));
+    var h = fs * 1.25 * p.w.length;
+    var bx0 = px - w / 2 - 6, by0 = py - h / 2 - 3, bx1 = px + w / 2 + 6, by1 = py + h / 2 + 3, hit = false;
+    if (bx0 < x0 || bx1 > x1 || by0 < y0 || by1 > y1) continue;  // 端で切れる地名は出さない
+    for (var b = 0; b < boxes.length; b++) {
+      var q = boxes[b];
+      if (bx0 < q[2] && bx1 > q[0] && by0 < q[3] && by1 > q[1]) { hit = true; break; }
+    }
+    if (hit) continue;  // 件数の多い峰を優先し、重なる地名は省く
+    boxes.push([bx0, by0, bx1, by1]);
+    shown++;
+    var top = py - (p.w.length - 1) * fs * 1.25 / 2;
+    html += '<text x="' + px.toFixed(1) + '" y="' + top.toFixed(1) + '" font-size="' + fs.toFixed(1) + '"' +
+      (lv === 0 ? ' font-weight="600"' : '') + '>';
+    for (var m = 0; m < p.w.length; m++) {
+      html += '<tspan x="' + px.toFixed(1) + '"' + (m ? ' dy="' + (fs * 1.25).toFixed(1) + '"' : '') + '>' + esc(p.w[m]) + '</tspan>';
+    }
+    html += '</text>';
+  }
+  pnSvg.innerHTML = html;
+  pnSvg.style.display = 'block';
+  pnLevel = lv; pnShown = shown;
+}
+function placenamesSchedule() {
+  if (pnRaf) return;
+  pnRaf = requestAnimationFrame(function () { pnRaf = 0; placenamesRender(); });
+}
+function initPlacenames() {
+  pnSvg = null; pnOn = false; pnLevel = -1; pnShown = 0; pnRaf = 0;
+  plot._dbgPlacenames = function () { return { on: pnOn, level: pnLevel, shown: pnShown, svg: !!pnSvg }; };  // 検証用
+  if (!M.placenames || is3d) return;
+  try { pnOn = localStorage.getItem('ka-placenames') !== '0'; } catch (_) { pnOn = true; }
+  pnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  pnSvg.setAttribute('id', 'ka-placenames');
+  pnSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:4;display:none;pointer-events:none;' +
+    'font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;fill:#1d1d1b;text-anchor:middle;' +
+    'dominant-baseline:middle;paint-order:stroke;stroke:#fcfcfb;stroke-width:3.5px;stroke-linejoin:round;opacity:0.92';
+  plot.style.position = 'relative';
+  plot.appendChild(pnSvg);
+  plot.on('plotly_relayouting', placenamesSchedule);
+  plot.on('plotly_relayout', placenamesSchedule);
+  window.addEventListener('resize', function () { setTimeout(placenamesRender, 150); });
+  // 表示切替は「操作」（狭幅は羅針盤メニューの「操作の説明」）の先頭に。設定は端末に記憶
+  var help = document.getElementById('ka-help-body');
+  if (help) {
+    var row = document.createElement('div');
+    row.style.cssText = 'padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid ' + LINE;
+    row.innerHTML = '<label style="cursor:pointer"><input type="checkbox" id="ka-pn-toggle"' + (pnOn ? ' checked' : '') +
+      ' style="vertical-align:-2px"> 地名を表示（拡大すると、峰ごとに周辺の課題のキーワードから作った地名が出ます）</label>';
+    help.insertBefore(row, help.firstChild);
+    document.getElementById('ka-pn-toggle').addEventListener('change', function (e) {
+      pnOn = !!e.target.checked;
+      try { localStorage.setItem('ka-placenames', pnOn ? '1' : '0'); } catch (_) {}
+      placenamesRender();
+    });
+  }
+  placenamesRender();
+}
+
 function setupUI() {
   initHome();
   initHeader();
@@ -1951,6 +2041,7 @@ function setupUI() {
   initSearch();
   initCategoryFilter();
   initLasso();
+  initPlacenames();
   initSheets();
   initPinch2d();
   initTouch3d();

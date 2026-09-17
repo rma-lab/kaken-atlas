@@ -38,16 +38,19 @@ OUT_BASINS = Path("data/interim/placenames_basins.parquet")
 
 GRID = 640      # 密度場の格子解像度（長辺ピクセル数）。plot_kde_years.py と同じ
 MARGIN = 0.5    # 格子の余白（座標単位）
-SIGMAS = [0.6, 0.3]          # 階層ごとの平滑化幅（座標単位）。粗い順
+SIGMAS = [0.3, 0.15]         # 階層ごとの平滑化幅（座標単位）。粗い順（2026-09-17 静的図で選定: 42 峰と 129 峰）
 PEAK_REL = 0.03              # 峰と認める密度の下限（最大密度に対する比）。海の上の微小な山を除く
 MASK_REL = 0.005             # 山域を割り当てる密度の下限（これ未満は「海」で未割り当て）
 MIN_N = 150                  # 地名を付ける山域の最低件数
-N_WORDS = 3                  # 地名に使う語数
+N_WORDS = 2                  # 地名に使う語数（2026-09-17 ユーザ決定: 2 語）
 N_CAND = 8                   # JSON に残す候補語数（後で語数を変えられるように）
 SCORE_K = 30                 # 特徴度 = n_in / (n_all + K)。凡例の 12 方位と同じ
 ALPHA = 0.5                  # 広さの重み: 特徴度 × n_in^ALPHA。0 なら凡例と同じ（狭い専門語に寄る）、1 なら頻度に寄る
 MIN_FRAC = 0.01              # 山域内で語が出現する最低割合（かつ最低 MIN_COUNT 件）
 MIN_COUNT = 5
+# 中心重み付け: 各課題の重み = (その位置の密度 / 峰の密度)^GAMMA。山頂の課題は 1、裾野（隣の峰との鞍部）は小さい。
+# 縁の課題は架橋的で隣の峰にもまたがるため、峰らしさを語に反映させる（ユーザ提案 2026-09-17）。GAMMA=0 で重みなし
+GAMMA = 1.0
 # 除外語: 分野を表さない汎用語。静的図を見て育てる
 STOP_WORDS = {"その他", "研究", "開発", "解析", "分析", "評価", "調査", "検討", "モデル", "システム", "データ",
               "メカニズム", "機序", "教育", "支援", "制御", "測定", "設計", "構造", "機能", "手法", "方法", "効果"}
@@ -103,13 +106,17 @@ def basins_for_sigma(field: np.ndarray, sigma_px: float) -> tuple[np.ndarray, np
 
 
 def feature_words(ex: pl.DataFrame, total: pl.DataFrame, basin_col: str) -> dict[int, list[dict]]:
-    """山域ごとの特徴語候補（上位 N_CAND）。ex = 課題×語（正規化済み w、山域 id 列付き）。"""
-    per = ex.group_by([basin_col, "w"]).len().rename({"len": "n_in"}).join(total, on="w")
+    """山域ごとの特徴語候補（上位 N_CAND）。ex = 課題×語（正規化済み w、山域 id 列と中心重み wt 列付き）。
+    n_in は素の件数（最低件数の判定用）、w_in は中心重み付きの件数（採点用）。"""
+    per = (
+        ex.group_by([basin_col, "w"]).agg(pl.len().alias("n_in"), pl.col("wt").sum().alias("w_in"))
+        .join(total, on="w")
+    )
     n_basin = ex.group_by(basin_col).agg(pl.col("award_number").n_unique().alias("n_b"))
     per = per.join(n_basin, on=basin_col)
     per = per.filter(
         (pl.col("n_in") >= MIN_COUNT) & (pl.col("n_in") >= pl.col("n_b") * MIN_FRAC)
-    ).with_columns((pl.col("n_in") / (pl.col("n_all") + SCORE_K) * pl.col("n_in") ** ALPHA).alias("score"))
+    ).with_columns((pl.col("w_in") / (pl.col("n_all") + SCORE_K) * pl.col("w_in") ** ALPHA).alias("score"))
     out: dict[int, list[dict]] = {}
     for (b,), g in per.sort("score", descending=True).group_by([basin_col], maintain_order=True):
         cand: list[dict] = []
@@ -130,7 +137,7 @@ def similar(a: str, b: str) -> bool:
         return True
     ga = {a2[i:i + 2] for i in range(len(a2) - 1)}
     gb = {b2[i:i + 2] for i in range(len(b2) - 1)}
-    return bool(ga and gb) and len(ga & gb) / min(len(ga), len(gb)) >= 0.6
+    return bool(ga and gb) and len(ga & gb) / min(len(ga), len(gb)) >= 0.5
 
 
 def main() -> None:
@@ -165,7 +172,10 @@ def main() -> None:
         col = f"basin_s{sigma:g}"
         basins_df = basins_df.with_columns(pl.Series(col, basin))
         counts = np.bincount(basin, minlength=len(peaks) + 1)
-        words = feature_words(ex.join(basins_df.select("award_number", col), on="award_number"), total, col)
+        peak_h = np.concatenate([[1.0], field[peaks[:, 0], peaks[:, 1]]])   # 山域 id → 峰の密度（id 0 はダミー）
+        wt = (field[iy, ix] / peak_h[basin]) ** GAMMA
+        lv = basins_df.select("award_number", col).with_columns(pl.Series("wt", wt))
+        words = feature_words(ex.join(lv, on="award_number"), total, col)
 
         places = []
         for k, (py, px) in enumerate(peaks):
@@ -193,7 +203,7 @@ def main() -> None:
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(dict(
         coords=str(args.coords), grid=[nx, ny], extent=extent, n_awards=len(df),
-        params=dict(peak_rel=PEAK_REL, mask_rel=MASK_REL, score_k=SCORE_K, alpha=ALPHA, min_frac=MIN_FRAC, min_count=MIN_COUNT,
+        params=dict(peak_rel=PEAK_REL, mask_rel=MASK_REL, score_k=SCORE_K, alpha=ALPHA, gamma=GAMMA, min_frac=MIN_FRAC, min_count=MIN_COUNT,
                     n_words=N_WORDS, stop_words=sorted(STOP_WORDS)),
         levels=levels,
     ), ensure_ascii=False, indent=1), encoding="utf-8")
