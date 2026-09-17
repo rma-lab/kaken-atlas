@@ -2020,7 +2020,7 @@ function initPlacenames() {
     var row = document.createElement('div');
     row.style.cssText = 'padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid ' + LINE;
     row.innerHTML = '<label style="cursor:pointer"><input type="checkbox" id="ka-pn-toggle"' + (pnOn ? ' checked' : '') +
-      ' style="vertical-align:-2px"> 地名を表示（拡大すると、峰ごとに周辺の課題のキーワードから作った地名が出ます）</label>';
+      ' style="vertical-align:-2px"> 地名を表示（拡大すると、研究が密集している場所ごとに、周辺の課題のキーワードから作った地名が出ます）</label>';
     help.insertBefore(row, help.firstChild);
     document.getElementById('ka-pn-toggle').addEventListener('change', function (e) {
       pnOn = !!e.target.checked;
