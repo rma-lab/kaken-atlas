@@ -1985,7 +1985,7 @@ function placenamesRender() {
     shown++;
     var top = py - (p.w.length - 1) * fs * 1.25 / 2;
     html += '<text x="' + px.toFixed(1) + '" y="' + top.toFixed(1) + '" font-size="' + fs.toFixed(1) + '"' +
-      (lv === 0 ? ' font-weight="600"' : '') + '>';
+      (lv === 0 ? ' font-weight="500"' : '') + '>';
     for (var m = 0; m < p.w.length; m++) {
       html += '<tspan x="' + px.toFixed(1) + '"' + (m ? ' dy="' + (fs * 1.25).toFixed(1) + '"' : '') + '>' + esc(p.w[m]) + '</tspan>';
     }
@@ -2007,8 +2007,8 @@ function initPlacenames() {
   pnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   pnSvg.setAttribute('id', 'ka-placenames');
   pnSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:4;display:none;pointer-events:none;' +
-    'font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;fill:#1d1d1b;text-anchor:middle;' +
-    'dominant-baseline:middle;paint-order:stroke;stroke:#fcfcfb;stroke-width:3.5px;stroke-linejoin:round;opacity:0.92';
+    'font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;fill:' + SUB + ';text-anchor:middle;' +
+    'dominant-baseline:middle;paint-order:stroke;stroke:#fcfcfb;stroke-width:3.5px;stroke-linejoin:round;opacity:0.9';  // 文字は黒でなくグレー（ユーザ「文字が強い」2026-09-17）
   plot.style.position = 'relative';
   plot.appendChild(pnSvg);
   plot.on('plotly_relayouting', placenamesSchedule);
