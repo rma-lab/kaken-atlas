@@ -6,6 +6,7 @@
 サイト: https://rma-lab.github.io/kaken-atlas/
 ソースコード・README: https://github.com/rma-lab/kaken-atlas
 技術ノート（方法と決定事項）: https://github.com/rma-lab/kaken-atlas/blob/master/doc/method.md
+データセット（埋め込み 768 次元・座標・色・地名、CC BY 4.0） / Dataset: https://huggingface.co/datasets/rma-lab/kaken-atlas-embeddings
 
 ## 何が見られるか / What it shows
 - 各点が 1 つの科研費採択課題。点をクリック（タッチ端末はタップ→カード）で KAKEN の課題ページへ。
@@ -28,6 +29,8 @@
 ## 出典・ライセンス / Attribution
 - データ出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを KAKEN-ATLAS が編集・加工（利用規程: https://support.nii.ac.jp/kaken/about/terms）。
 - プログラム: MIT License。地図データ: KAKEN 利用規程（CC BY 4.0 準拠）に従う。
+- 埋め込みベクトルと座標は Hugging Face で公開（rma-lab/kaken-atlas-embeddings）。研究概要の本文・研究者名・所属機関は含まない。
+- Embeddings and map coordinates are published on Hugging Face (rma-lab/kaken-atlas-embeddings); abstracts, researcher names and institutions are not included.
 - 研究プロジェクト: KAKEN-ATLAS（JSPS 科研費 基盤研究(C) 26K15524, FY2026–2028）。目的は既存の 306 小区分に依らない学術構造の解明と、新規性・架橋性・成長性の 3 指標の開発。
 
 ## ページ / Pages
