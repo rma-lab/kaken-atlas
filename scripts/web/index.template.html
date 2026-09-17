@@ -1962,7 +1962,9 @@ var pnSvg, pnOn, pnLevel, pnShown, pnRaf, pnHomeGap, pnSig;
 var PN_ZOOM = [1.5, 3.0];  // 階層ごとの表示開始倍率（全体表示の幅 ÷ 現在の幅）。狭幅は 1.25 倍厳しく
 // 球面: 既定の距離で粗い階層を出し、近づいたら（球面までの距離が既定の 1/PN_ZOOM_GLOBE 以下）細かい階層に切り替える。
 // 縁に近い地名は斜めに見えて点も詰まるので、正面度（視線とのなす角の余弦）が PN_FACING 未満は出さず、境目は薄くする
-var PN_ZOOM_GLOBE = 1.5, PN_FACING = 0.55;
+var PN_ZOOM_GLOBE = 1.5, PN_FACING = 0.6;
+// 球面は点が詰まって見えるので地名を少なめに: 地名どうしの余白を広く取り、画面に出す数に上限（階層ごと。狭幅は 7 割）。ユーザ「文字が多い」2026-09-17
+var PN_GLOBE_MAX = [7, 14], PN_GLOBE_PAD = [26, 14];
 function pnTextWidth(s, fs) {  // 文字幅の見積もり（全角＝fs、半角＝0.58fs）
   var w = 0;
   for (var i = 0; i < s.length; i++) w += s.charCodeAt(i) > 0x2e7f ? fs : fs * 0.58;
@@ -1978,15 +1980,15 @@ function placenamesRenderGlobe() {
   var x0 = P.ox - P.hw - r0.left, y0 = P.oy - P.hh - r0.top, x1 = x0 + 2 * P.hw, y1 = y0 + 2 * P.hh;
   var places = levels[lv].places.slice().sort(function (a, b) { return b.n - a.n; });
   var nMax = places[0].n, base = (lv === 0 ? 13.5 : 12) - (narrow ? 1 : 0);
-  var boxes = [], html = '', shown = 0;
-  for (var k = 0; k < places.length; k++) {
+  var boxes = [], html = '', shown = 0, cap = Math.round(PN_GLOBE_MAX[lv] * (narrow ? 0.7 : 1));
+  for (var k = 0; k < places.length && shown < cap; k++) {
     var p = places[k], q = projectXYZ(p.x, p.y, p.z, P);
     if (!q || q[2] < PN_FACING) continue;
     var px = q[0] - r0.left, py = q[1] - r0.top;
     var fs = base + 3 * Math.sqrt(p.n / nMax), w = 0;
     for (var j = 0; j < p.w.length; j++) w = Math.max(w, pnTextWidth(p.w[j], fs));
     var h = fs * 1.25 * p.w.length;
-    var bx0 = px - w / 2 - 6, by0 = py - h / 2 - 3, bx1 = px + w / 2 + 6, by1 = py + h / 2 + 3, hit = false;
+    var bx0 = px - w / 2 - PN_GLOBE_PAD[0], by0 = py - h / 2 - PN_GLOBE_PAD[1], bx1 = px + w / 2 + PN_GLOBE_PAD[0], by1 = py + h / 2 + PN_GLOBE_PAD[1], hit = false;
     if (bx0 < x0 || bx1 > x1 || by0 < y0 || by1 > y1) continue;
     for (var b = 0; b < boxes.length; b++) {
       var bb = boxes[b];
