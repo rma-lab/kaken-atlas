@@ -6,6 +6,7 @@
 
 使い方:
     uv run python scripts/plot_placenames.py            # data/processed/placenames_2d.json の全階層
+    uv run python scripts/plot_placenames.py --sphere   # 球面版（placenames_sphere.json）。6 方向の正射影
 出力: reports/figures/placenames_s<σ>.png
 """
 
@@ -87,5 +88,55 @@ def main() -> None:
         print(out)
 
 
+
+
+# ---- 球面版の検証図（compute_placenames_sphere.py の出力）: 6 方向からの正射影に地名を重ねる ----
+def main_sphere() -> None:
+    sph = Path("data/processed/placenames_sphere.json")
+    meta = json.loads(sph.read_text(encoding="utf-8"))
+    pts = pl.read_parquet(meta["coords"], columns=["c0", "c1", "c2"]).to_numpy().astype(float)
+    pts /= np.linalg.norm(pts, axis=1, keepdims=True)
+    col = pl.read_parquet("data/processed/textcolor_d.parquet", columns=["r", "g", "b"]).to_numpy() / 255.0
+    rng = np.random.default_rng(0)
+    sub = rng.choice(len(pts), 70000, replace=False)
+    views = {"+x": (1, 0, 0), "-x": (-1, 0, 0), "+y": (0, 1, 0), "-y": (0, -1, 0), "+z": (0, 0, 1), "-z": (0, 0, -1)}
+    for level in meta["levels"]:
+        fig, axes = plt.subplots(2, 3, figsize=(24, 16.5), facecolor=SURFACE)
+        n_max = max(p["n"] for p in level["places"])
+        for ax, (name, v) in zip(axes.ravel(), views.items()):
+            v = np.array(v, float)
+            up = np.array([0, 0, 1.0]) if abs(v[2]) < 0.9 else np.array([0, 1.0, 0])
+            ex_ = np.cross(up, v); ex_ /= np.linalg.norm(ex_); ey = np.cross(v, ex_)
+            vis = pts[sub] @ v > 0
+            ax.add_patch(plt.Circle((0, 0), 1, color="#f1f0ea", zorder=0))
+            ax.scatter(pts[sub][vis] @ ex_, pts[sub][vis] @ ey, s=1.6, c=col[sub][vis], alpha=0.6, linewidths=0, zorder=1)
+            for p in sorted(level["places"], key=lambda q: -q["n"]):
+                q = np.array([p["x"], p["y"], p["z"]])
+                if q @ v < 0.35:   # 縁に近い峰は別の方向の図で見る
+                    continue
+                ax.text(q @ ex_, q @ ey, "\n".join(p["words"]), ha="center", va="center", color=INK, linespacing=1.05,
+                        fontsize=5.5 + 6 * np.sqrt(p["n"] / n_max), zorder=5,
+                        path_effects=[pe.withStroke(linewidth=2.2, foreground="white")])
+            ax.set_xlim(-1.03, 1.03); ax.set_ylim(-1.03, 1.03); ax.set_aspect("equal"); ax.axis("off")
+            ax.set_title(f"視線 {name}", color=MUTED, fontsize=11)
+        fig.suptitle(f"球面のキーワード地名（σ={np.degrees(level['sigma']):.2f}°: 峰 {level['n_peaks']}、地名 {len(level['places'])}）",
+                     color=INK, fontsize=16, x=0.01, ha="left")
+        fig.text(0.01, 0.005,
+                 "出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを編集・加工 | "
+                 f"対象: 2019–2025年度開始の採択課題 {meta['n_awards']:,}件 | 埋め込み: cl-nagoya/ruri-v3-310m | "
+                 "球面 UMAP (cosine→haversine, n_neighbors=15, min_dist=0, spread=0.3, seed=42)\n"
+                 f"密度: フィボナッチ格子 {meta['grid_n']:,} 点のヒストグラムをガウス平滑（大円距離）。峰＝σ 以内で最大、山域＝峰を種にした分水嶺。"
+                 "点は 7 万件の無作為抽出、色は内容由来の連続色。縁に近い峰は別方向の図に出す | 作成: KAKEN-ATLAS (26K15524)",
+                 color=MUTED, fontsize=8)
+        fig.tight_layout(rect=(0, 0.03, 1, 0.97))
+        out = FIG_DIR / f"placenames_sphere_s{np.degrees(level['sigma']):.2f}deg.png"
+        fig.savefig(out, dpi=110, facecolor=SURFACE)
+        plt.close(fig)
+        print(out)
+
+
 if __name__ == "__main__":
-    main()
+    if "--sphere" in sys.argv:
+        main_sphere()
+    else:
+        main()
