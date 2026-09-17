@@ -668,6 +668,19 @@ function project3d(g, P) {  // 1点の画面座標 [x, y]（裏側・カメラ�
           P.oy - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * P.hh];
 }
 
+function projectXYZ(x0, y0, z0, P) {  // 任意のデータ座標 → [画面 x, 画面 y, 正面度]。球の裏側・カメラ後方なら null
+  var m = P.m, x = x0 * P.ds[0], y = y0 * P.ds[1], z = z0 * P.ds[2], facing = 1;
+  if (P.E) {
+    var pe = x * P.E[0] + y * P.E[1] + z * P.E[2], pp = x * x + y * y + z * z;
+    if (pe <= pp) return null;
+    facing = pe / Math.sqrt(pp * (P.E[0] * P.E[0] + P.E[1] * P.E[1] + P.E[2] * P.E[2]));  // 視線の正面で 1、縁で小さい
+  }
+  var w = m[3] * x + m[7] * y + m[11] * z + m[15];
+  if (w <= 0) return null;
+  return [P.ox + (m[0] * x + m[4] * y + m[8] * z + m[12]) / w * P.hw,
+          P.oy - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * P.hh, facing];
+}
+
 function nearestGid3d(cx, cy, tol) {
   var P = proj3dSetup(); if (!P) return null;
   var m = P.m, ds = P.ds, E = P.E;
@@ -1945,15 +1958,69 @@ function initTouch3d() {
 // 密度の峰ごとに、その山域の課題のキーワードから作った 2 語を峰の位置に置く（scripts/compute_placenames.py が生成し、
 // manifest の placenames に同梱）。公式区分は使わない。全体表示では出さず、拡大に応じて粗い階層→細かい階層を出す。
 // SVG の重ね描き（なげなわと同じ流儀、pointer-events なし）なので点の操作は素通しで、地図を動かすと追随する。
-var pnSvg, pnOn, pnLevel, pnShown, pnRaf;
+var pnSvg, pnOn, pnLevel, pnShown, pnRaf, pnHomeGap, pnSig;
 var PN_ZOOM = [1.5, 3.0];  // 階層ごとの表示開始倍率（全体表示の幅 ÷ 現在の幅）。狭幅は 1.25 倍厳しく
+// 球面: 既定の距離で粗い階層を出し、近づいたら（球面までの距離が既定の 1/PN_ZOOM_GLOBE 以下）細かい階層に切り替える。
+// 縁に近い地名は斜めに見えて点も詰まるので、正面度（視線とのなす角の余弦）が PN_FACING 未満は出さず、境目は薄くする
+var PN_ZOOM_GLOBE = 1.5, PN_FACING = 0.55;
 function pnTextWidth(s, fs) {  // 文字幅の見積もり（全角＝fs、半角＝0.58fs）
   var w = 0;
   for (var i = 0; i < s.length; i++) w += s.charCodeAt(i) > 0x2e7f ? fs : fs * 0.58;
   return w;
 }
+function placenamesRenderGlobe() {
+  var P = pnOn ? proj3dSetup() : null;
+  if (!P || !P.E) { pnSvg.style.display = 'none'; pnLevel = -1; pnShown = 0; return; }
+  var E = P.E, gap = Math.sqrt(E[0] * E[0] + E[1] * E[1] + E[2] * E[2]) - P.ds[0];  // 視点から球面までの距離
+  if (!pnHomeGap) pnHomeGap = gap;
+  var levels = M.placenames.levels, lv = (pnHomeGap / gap >= PN_ZOOM_GLOBE && levels.length > 1) ? 1 : 0;
+  var r0 = plot.getBoundingClientRect();
+  var x0 = P.ox - P.hw - r0.left, y0 = P.oy - P.hh - r0.top, x1 = x0 + 2 * P.hw, y1 = y0 + 2 * P.hh;
+  var places = levels[lv].places.slice().sort(function (a, b) { return b.n - a.n; });
+  var nMax = places[0].n, base = (lv === 0 ? 13.5 : 12) - (narrow ? 1 : 0);
+  var boxes = [], html = '', shown = 0;
+  for (var k = 0; k < places.length; k++) {
+    var p = places[k], q = projectXYZ(p.x, p.y, p.z, P);
+    if (!q || q[2] < PN_FACING) continue;
+    var px = q[0] - r0.left, py = q[1] - r0.top;
+    var fs = base + 3 * Math.sqrt(p.n / nMax), w = 0;
+    for (var j = 0; j < p.w.length; j++) w = Math.max(w, pnTextWidth(p.w[j], fs));
+    var h = fs * 1.25 * p.w.length;
+    var bx0 = px - w / 2 - 6, by0 = py - h / 2 - 3, bx1 = px + w / 2 + 6, by1 = py + h / 2 + 3, hit = false;
+    if (bx0 < x0 || bx1 > x1 || by0 < y0 || by1 > y1) continue;
+    for (var b = 0; b < boxes.length; b++) {
+      var bb = boxes[b];
+      if (bx0 < bb[2] && bx1 > bb[0] && by0 < bb[3] && by1 > bb[1]) { hit = true; break; }
+    }
+    if (hit) continue;
+    boxes.push([bx0, by0, bx1, by1]);
+    shown++;
+    var op = Math.min(1, (q[2] - PN_FACING) / 0.12), top = py - (p.w.length - 1) * fs * 1.25 / 2;
+    html += '<text x="' + px.toFixed(1) + '" y="' + top.toFixed(1) + '" font-size="' + fs.toFixed(1) + '"' +
+      (lv === 0 ? ' font-weight="500"' : '') + (op < 1 ? ' opacity="' + op.toFixed(2) + '"' : '') + '>';
+    for (var m = 0; m < p.w.length; m++) {
+      html += '<tspan x="' + px.toFixed(1) + '"' + (m ? ' dy="' + (fs * 1.25).toFixed(1) + '"' : '') + '>' + esc(p.w[m]) + '</tspan>';
+    }
+    html += '</text>';
+  }
+  pnSvg.innerHTML = html;
+  pnSvg.style.display = 'block';
+  pnLevel = lv; pnShown = shown;
+}
+// 球面はカメラの更新が描画ループ側で遅れ、慣性やフライ・トゥでも動き続けるので、毎フレーム投影行列の変化を見て描き直す
+// （変化がなければ何もしない。行列の積 1 回なので軽い）
+function placenamesWatchGlobe() {
+  requestAnimationFrame(placenamesWatchGlobe);
+  if (!pnSvg || !pnOn || document.hidden) return;
+  var P = proj3dSetup(); if (!P) return;
+  var sig = P.m[0].toFixed(4) + ',' + P.m[5].toFixed(4) + ',' + P.m[8].toFixed(4) + ',' + P.m[9].toFixed(4) + ',' + P.m[14].toFixed(3) + ',' + P.hw + ',' + P.hh;
+  if (sig === pnSig) return;
+  pnSig = sig;
+  placenamesRenderGlobe();
+}
 function placenamesRender() {
   if (!pnSvg) return;
+  if (isGlobe) { pnSig = null; placenamesRenderGlobe(); return; }
   var fl = plot._fullLayout, xa = fl.xaxis, ya = fl.yaxis;
   if (!pnOn || !xa || !ya || !homeRange || !xa._length) { pnSvg.style.display = 'none'; pnLevel = -1; pnShown = 0; return; }
   var xr = xa.range, yr = ya.range, sz = fl._size;
@@ -2000,9 +2067,9 @@ function placenamesSchedule() {
   pnRaf = requestAnimationFrame(function () { pnRaf = 0; placenamesRender(); });
 }
 function initPlacenames() {
-  pnSvg = null; pnOn = false; pnLevel = -1; pnShown = 0; pnRaf = 0;
+  pnSvg = null; pnOn = false; pnLevel = -1; pnShown = 0; pnRaf = 0; pnHomeGap = 0; pnSig = null;
   plot._dbgPlacenames = function () { return { on: pnOn, level: pnLevel, shown: pnShown, svg: !!pnSvg }; };  // 検証用
-  if (!M.placenames || is3d) return;
+  if (!M.placenames || (is3d && !isGlobe)) return;  // 3D は奥行きで地名が重なり、どの塊を指すか分からなくなるので付けない
   try { pnOn = localStorage.getItem('ka-placenames') !== '0'; } catch (_) { pnOn = true; }
   pnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   pnSvg.setAttribute('id', 'ka-placenames');
@@ -2011,8 +2078,11 @@ function initPlacenames() {
     'dominant-baseline:middle;paint-order:stroke;stroke:#fcfcfb;stroke-width:3.5px;stroke-linejoin:round;opacity:0.9';  // 文字は黒でなくグレー（ユーザ「文字が強い」2026-09-17）
   plot.style.position = 'relative';
   plot.appendChild(pnSvg);
-  plot.on('plotly_relayouting', placenamesSchedule);
-  plot.on('plotly_relayout', placenamesSchedule);
+  if (isGlobe) placenamesWatchGlobe();
+  else {
+    plot.on('plotly_relayouting', placenamesSchedule);
+    plot.on('plotly_relayout', placenamesSchedule);
+  }
   window.addEventListener('resize', function () { setTimeout(placenamesRender, 150); });
   // 表示切替は「操作」（狭幅は羅針盤メニューの「操作の説明」）の先頭に。設定は端末に記憶
   var help = document.getElementById('ka-help-body');
@@ -2020,7 +2090,8 @@ function initPlacenames() {
     var row = document.createElement('div');
     row.style.cssText = 'padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid ' + LINE;
     row.innerHTML = '<label style="cursor:pointer"><input type="checkbox" id="ka-pn-toggle"' + (pnOn ? ' checked' : '') +
-      ' style="vertical-align:-2px"> 地名を表示（拡大すると、研究が密集している場所ごとに、周辺の課題のキーワードから作った地名が出ます）</label>';
+      ' style="vertical-align:-2px"> 地名を表示（' + (isGlobe ? '研究が密集している場所ごとに、周辺の課題のキーワードから作った地名です。近づくと細かい地名に切り替わります'
+        : '拡大すると、研究が密集している場所ごとに、周辺の課題のキーワードから作った地名が出ます') + '）</label>';
     help.insertBefore(row, help.firstChild);
     document.getElementById('ka-pn-toggle').addEventListener('change', function (e) {
       pnOn = !!e.target.checked;

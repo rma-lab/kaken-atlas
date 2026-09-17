@@ -99,7 +99,12 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
   `plotly_relayouting`／`relayout`（rAF で間引き）のたびに、拡大倍率（全体表示の幅 ÷ 現在の幅）で階層を選び（1.5 倍で粗い層、
   3 倍で細かい層。狭幅は 1.25 倍厳しい。全体表示では出さない）、件数順に置いて既配置の箱と重なるものと描画領域からはみ出すものを
   省く（20〜30 個、数 ms）。文字は白縁取り（`paint-order:stroke`）。「操作」の先頭のチェックで切替、`localStorage` の `ka-placenames`。
-  3D・球面は投影が違うので未対応。検証用 `plot._dbgPlacenames()`。
+  検証用 `plot._dbgPlacenames()`。
+- **球面の地名**（`placenamesRenderGlobe()`）。峰の xyz を `projectXYZ()`（選択リングと同じ投影行列。球の裏側は null）で画面に置く。
+  正面度（視線とのなす角の余弦）が 0.55 未満は出さず、境目は薄くする。階層は拡大倍率でなく**視点から球面までの距離**で決める
+  （既定の距離で粗い階層、既定の 1/1.5 以下に近づくと細かい階層）。gl3d はカメラの更新が描画ループ側で遅れ、慣性やフライ・トゥでも
+  動き続けるので、イベントに頼らず rAF で毎フレーム投影行列の変化を見て、変わったときだけ描き直す（行列の積 1 回、描画は数 ms）。
+  3D には付けない（奥行きで地名が重なり、どの塊を指すか分からなくなる）。
 - 狭幅では検索欄が先に縮み、「操作」は羅針盤メニューの末尾へ。大区分・種目は同じ部品のボトムシート（行タップで表示切替、すべて表示／非表示）。
 
 ## 5. 課題ごとの URL
@@ -138,7 +143,7 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
 ## 8. 検証
 
 UI 変更は **ヘッドレス Chrome（puppeteer-core）で回帰確認**してから公開する。回帰試験一式は `tests/web/`
-（`cd tests/web && npm install && node run.js`、3 ビュー × PC・iPhone 相当、約 2 分、61 項目。内容は `tests/web/README.md`）。
+（`cd tests/web && npm install && node run.js`、3 ビュー × PC・iPhone 相当、約 3 分、71 項目。内容は `tests/web/README.md`）。
 `docs/` をローカル HTTP で配信し、実物のページを操作して確認する。描画は Metal で GPU を使う（swiftshader は深度精度と速度が
 実機と違い、z-fighting や所要時間の検証に使えない）。
 - 時間依存の検証（慣性、フライ・トゥ）はページ内で合成 TouchEvent を発行する。CDP のタッチ API は実機とかけ離れた時刻列になる。

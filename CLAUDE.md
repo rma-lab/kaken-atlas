@@ -88,7 +88,8 @@
 - `docs/sw.js`（Service Worker）と `docs/shards/`（3 ビュー共有の詳細データ、課題番号順）は `build_web_map.py` の生成物。
   **手で編集しない**。データを更新したら 3 ビューすべてを再生成してから commit（sw.js のデータ版が最後の生成で確定する）。
 - `reports/` は **git 管理外**（実験ノート扱い。公開物として文脈を整えるまでローカル）。
-- **キーワード地名（2026-09-17、2D）**: `scripts/compute_placenames.py`（密度の峰＋反転密度の分水嶺で「山域」→ 山域のキーワードの
+- **キーワード地名（2026-09-17、2D と球面。3D には付けない）**: 球面は `scripts/compute_placenames_sphere.py` → `placenames_sphere.json`（フィボナッチ格子、
+  閾値は上位 1% 点基準、大きすぎる山域は区画分割、粗い階層は 1,000 件以上）。2D は `scripts/compute_placenames.py`（密度の峰＋反転密度の分水嶺で「山域」→ 山域のキーワードの
   集中度で上位 2 語。用語は「峰と山域」、「流域」と呼ばない）→ `data/processed/placenames_2d.json` → `build_web_map.py` が manifest に同梱
   （`PLACENAMES=0` で外せる）。検証図 `scripts/plot_placenames.py`。座標を更新したら再計算する。方法は doc/method.md §12。
 - UI 変更時は**回帰試験一式を通してから公開**: `cd tests/web && npm install && node run.js`（ヘッドレス Chrome、3 ビュー × PC・

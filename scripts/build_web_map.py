@@ -48,6 +48,7 @@ GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の�
 # OFF のときは manifest に鍵を足さないので生成物は従来と同一）。2026-09-17
 PLACENAMES = os.environ.get("PLACENAMES", "1") == "1"
 PLACENAMES_JSON = Path("data/processed/placenames_2d.json")
+PLACENAMES_SPHERE_JSON = Path("data/processed/placenames_sphere.json")  # 球面版（scripts/compute_placenames_sphere.py）
 # 点の色（2026-09-11 決定）: 既定 "text"=研究内容から導いた連続色（弾性リング。scripts/compute_textcolor.py の色表を
 # points.bin 末尾に RGB 各 1 バイトで同梱し、点ごとに塗る）。"dai"=従来の大区分 11 色（トレース単色。比較・実験用）。
 # text のとき大区分の凡例・シートの色見本は「所属課題の平均色」（textcolor_legend.json）、カードの縁と見出しは点自身の色
@@ -238,13 +239,16 @@ def write_shards(big: pl.DataFrame, ktypes: list[str], cats: list[str], shard_di
     return shard_first, shard_hash.hexdigest()[:10]
 
 
-def load_placenames(is_3d: bool) -> dict | None:
-    """キーワード地名を manifest 用に間引く（2D のみ。候補語や広がりは落とし、峰の座標・件数・語だけ）。"""
-    if not PLACENAMES or is_3d or not PLACENAMES_JSON.exists():
+def load_placenames(is_3d: bool, is_globe: bool) -> dict | None:
+    """キーワード地名を manifest 用に間引く（2D と球面。候補語や広がりは落とし、峰の座標・件数・語だけ）。
+    3D は奥行きで地名が重なり、どの塊を指すか分からなくなるので付けない。"""
+    src = PLACENAMES_SPHERE_JSON if is_globe else PLACENAMES_JSON
+    if not PLACENAMES or (is_3d and not is_globe) or not src.exists():
         return None
-    d = json.loads(PLACENAMES_JSON.read_text(encoding="utf-8"))
+    d = json.loads(src.read_text(encoding="utf-8"))
+    keys = ("x", "y", "z") if is_globe else ("x", "y")
     levels = [
-        dict(sigma=lv["sigma"], places=[dict(x=p["x"], y=p["y"], n=p["n"], w=p["words"]) for p in lv["places"]])
+        dict(sigma=lv["sigma"], places=[dict({k: p[k] for k in keys}, n=p["n"], w=p["words"]) for p in lv["places"]])
         for lv in d["levels"]
     ]
     return dict(levels=levels)
@@ -308,7 +312,7 @@ def main() -> None:
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
     )
-    placenames = load_placenames(is_3d)
+    placenames = load_placenames(is_3d, is_globe)
     if placenames:
         manifest["placenames"] = placenames
     render_html(manifest, out_dir, is_3d, is_globe)

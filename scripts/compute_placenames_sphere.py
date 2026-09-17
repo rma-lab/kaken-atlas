@@ -51,6 +51,9 @@ REF_Q = 0.99
 # 峰から 15° 以上に広がる）。地名 1 つでは粗いので、件数が SPLIT_N を超える山域は位置（球面上の k-means、k = ceil(n / SPLIT_N)）で
 # 区画に分け、区画ごとに特徴語を付けて区画の重心に置く。階層ごとの閾値（粗い順）
 SPLIT_N = [10_000, 4_000]
+# 地名を付ける山域の最低件数（階層ごと、粗い順）。粗い階層は既定の表示で出るので、点のまばらな側にある小さな島
+# （数百件）の名前が大きな領域と同格に見えないよう、下限を高くする
+MIN_N_LEVELS = [1_000, MIN_N]
 
 
 def fibonacci_sphere(n: int) -> np.ndarray:
@@ -109,7 +112,6 @@ def main() -> None:
     ap.add_argument("--sigma0", type=float, default=SIGMA0)
     ap.add_argument("--steps", type=str, default=",".join(str(s) for s in STEPS))
     ap.add_argument("--grid", type=int, default=GRID_N)
-    ap.add_argument("--min-n", type=int, default=MIN_N)
     args = ap.parse_args()
     steps = [int(s) for s in args.steps.split(",")]
 
@@ -161,6 +163,7 @@ def main() -> None:
 
         # 大きすぎる山域を位置で区画に分ける（区画 id = 山域 id × 100 + 区画番号）
         split_n = SPLIT_N[min(li, len(SPLIT_N) - 1)]
+        min_n = MIN_N_LEVELS[min(li, len(MIN_N_LEVELS) - 1)]
         sector = np.zeros(len(basin), dtype=np.int64)
         sector_places = {}
         for b in np.nonzero(cnt > split_n)[0]:
@@ -188,7 +191,7 @@ def main() -> None:
                                words=[c["w"] for c in cand[:N_WORDS]], cand=cand))
         for k, i in enumerate(peaks):
             b = k + 1
-            if cnt[b] < args.min_n or cnt[b] > split_n:
+            if cnt[b] < min_n or cnt[b] > split_n:
                 continue
             m = basin == b
             spread = float(np.degrees(np.arccos(np.clip(pts[m] @ grid[i], -1, 1))).std())
@@ -198,7 +201,7 @@ def main() -> None:
                                words=[c["w"] for c in cand[:N_WORDS]], cand=cand))
         print(f"σ={np.degrees(sigma):.2f}°（{sigma:.3f} rad, 平滑化 {n} 回）: 峰 {len(peaks)}, 地名 {len(places)}（うち分割した区画 {len(sector_places)}）, "
               f"海 {int((basin == 0).sum()):,} 件, 山域件数 中央値 {int(np.median(cnt[1:])):,} / 最大 {int(cnt[1:].max()):,}")
-        levels.append(dict(sigma=round(float(sigma), 4), smooth_steps=n, min_n=args.min_n, n_peaks=int(len(peaks)), places=places))
+        levels.append(dict(sigma=round(float(sigma), 4), smooth_steps=n, min_n=min_n, n_peaks=int(len(peaks)), places=places))
 
     OUT_JSON.write_text(json.dumps(dict(
         coords=str(args.coords), grid_n=args.grid, sigma0=args.sigma0, n_awards=len(df),
