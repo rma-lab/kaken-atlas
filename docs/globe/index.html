@@ -1979,13 +1979,13 @@ function placenamesRenderGlobe() {
   var r0 = plot.getBoundingClientRect();
   var x0 = P.ox - P.hw - r0.left, y0 = P.oy - P.hh - r0.top, x1 = x0 + 2 * P.hw, y1 = y0 + 2 * P.hh;
   var places = levels[lv].places.slice().sort(function (a, b) { return b.n - a.n; });
-  var nMax = places[0].n, base = (lv === 0 ? 13.5 : 12) - (narrow ? 1 : 0);
+  var nMax = places[0].n, base = (lv === 0 ? 12 : 11) - (narrow ? 1 : 0);  // 球面は 2D より一回り小さく（ユーザ 2026-09-17）
   var boxes = [], html = '', shown = 0, cap = Math.round(PN_GLOBE_MAX[lv] * (narrow ? 0.7 : 1));
   for (var k = 0; k < places.length && shown < cap; k++) {
     var p = places[k], q = projectXYZ(p.x, p.y, p.z, P);
     if (!q || q[2] < PN_FACING) continue;
     var px = q[0] - r0.left, py = q[1] - r0.top;
-    var fs = base + 3 * Math.sqrt(p.n / nMax), w = 0;
+    var fs = base + 2 * Math.sqrt(p.n / nMax), w = 0;
     for (var j = 0; j < p.w.length; j++) w = Math.max(w, pnTextWidth(p.w[j], fs));
     var h = fs * 1.25 * p.w.length;
     var bx0 = px - w / 2 - PN_GLOBE_PAD[0], by0 = py - h / 2 - PN_GLOBE_PAD[1], bx1 = px + w / 2 + PN_GLOBE_PAD[0], by1 = py + h / 2 + PN_GLOBE_PAD[1], hit = false;
