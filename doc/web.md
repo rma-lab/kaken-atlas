@@ -93,6 +93,13 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
   タッチとマウス共通）、画面座標での射線法で内側の点を求める（表示中のトレースのみ、20 万点で数十 ms）。点の強調表示はせず、
   輪郭線と集計パネルで示す。囲い終えたら移動モードに戻る。多角形はデータ座標で保持し、`plotly_relayouting`／`relayout` のたびに描き直す。
   外側には描画領域だけに薄い膜（evenodd の穴あき矩形、`pointer-events:none`）をかけて内側を際立たせる。Esc／「閉じる ×」で解除。
+- **キーワード地名（2D、v1.5）**は SVG の重ね描き（なげなわと同じ流儀、`pointer-events:none` なので点の操作は素通し）。
+  `build_web_map.py` が `data/processed/placenames_2d.json`（`compute_placenames.py`、方法は method.md §12）の峰の座標・件数・語を
+  manifest の `placenames` に同梱する（`PLACENAMES=0` で外す。外すと manifest は従来と同一）。`placenamesRender()` が
+  `plotly_relayouting`／`relayout`（rAF で間引き）のたびに、拡大倍率（全体表示の幅 ÷ 現在の幅）で階層を選び（1.5 倍で粗い層、
+  3 倍で細かい層。狭幅は 1.25 倍厳しい。全体表示では出さない）、件数順に置いて既配置の箱と重なるものと描画領域からはみ出すものを
+  省く（20〜30 個、数 ms）。文字は白縁取り（`paint-order:stroke`）。「操作」の先頭のチェックで切替、`localStorage` の `ka-placenames`。
+  3D・球面は投影が違うので未対応。検証用 `plot._dbgPlacenames()`。
 - 狭幅では検索欄が先に縮み、「操作」は羅針盤メニューの末尾へ。大区分・種目は同じ部品のボトムシート（行タップで表示切替、すべて表示／非表示）。
 
 ## 5. 課題ごとの URL
@@ -131,7 +138,7 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
 ## 8. 検証
 
 UI 変更は **ヘッドレス Chrome（puppeteer-core）で回帰確認**してから公開する。回帰試験一式は `tests/web/`
-（`cd tests/web && npm install && node run.js`、3 ビュー × PC・iPhone 相当、約 2 分、46 項目。内容は `tests/web/README.md`）。
+（`cd tests/web && npm install && node run.js`、3 ビュー × PC・iPhone 相当、約 2 分、61 項目。内容は `tests/web/README.md`）。
 `docs/` をローカル HTTP で配信し、実物のページを操作して確認する。描画は Metal で GPU を使う（swiftshader は深度精度と速度が
 実機と違い、z-fighting や所要時間の検証に使えない）。
 - 時間依存の検証（慣性、フライ・トゥ）はページ内で合成 TouchEvent を発行する。CDP のタッチ API は実機とかけ離れた時刻列になる。

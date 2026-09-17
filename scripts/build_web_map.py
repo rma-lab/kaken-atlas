@@ -44,9 +44,9 @@ SHARD_SIZE = 2048  # 2の冪であること（JS側でビットシフトに使�
 GLOBE_JITTER_SIGMA = float(os.environ.get("GLOBE_JITTER_SIGMA", "0.002"))
 GLOBE_JITTER_CLIP = float(os.environ.get("GLOBE_JITTER_CLIP", "0.005"))
 GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の視距離での半径。縮小時は JS 側で距離に応じて小さくする
-# キーワード地名（scripts/compute_placenames.py の出力）を 2D の manifest に同梱する。既定 OFF（段階的な導入のため。
+# キーワード地名（scripts/compute_placenames.py の出力）を 2D の manifest に同梱する。既定 ON（PLACENAMES=0 で外せる。
 # OFF のときは manifest に鍵を足さないので生成物は従来と同一）。2026-09-17
-PLACENAMES = os.environ.get("PLACENAMES", "0") == "1"
+PLACENAMES = os.environ.get("PLACENAMES", "1") == "1"
 PLACENAMES_JSON = Path("data/processed/placenames_2d.json")
 # 点の色（2026-09-11 決定）: 既定 "text"=研究内容から導いた連続色（弾性リング。scripts/compute_textcolor.py の色表を
 # points.bin 末尾に RGB 各 1 バイトで同梱し、点ごとに塗る）。"dai"=従来の大区分 11 色（トレース単色。比較・実験用）。
