@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### 文書・スクリプト
+- **データセットを Hugging Face で公開**: [rma-lab/kaken-atlas-embeddings](https://huggingface.co/datasets/rma-lab/kaken-atlas-embeddings)（埋め込み 768 次元 × 206,078 件、2D・3D・球面の座標、点の色、キーワード地名、最近傍距離。概要本文・研究者名・機関は含めない。CC BY 4.0）。組み立ては `scripts/build_hf_dataset.py`、説明ページの原稿は `scripts/hf/dataset_card.md`
 - 紹介資料（A4 両面の PDF。表＝概要と使い方、裏＝技術の詳細）を `doc/flyer/` に追加（RA 協議会 2026 年 9 月の配布用）
 
 ## [v1.5] — 2026-09-17

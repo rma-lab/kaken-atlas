@@ -22,6 +22,8 @@ JSPS 科研費 基盤研究(C) [26K15524](https://kaken.nii.ac.jp/ja/grant/KAKEN
 
 **方針**: この地図は研究内容（採択時の研究概要）だけで課題を配置しています。研究者名や所属機関は載せず、検索・絞り込みの対象にもしていません。名前や機関の先入観なしに、研究の中身で学術の広がりを眺めてもらうためです。個々の課題の詳細は KAKEN のページをご覧ください。
 
+データ（埋め込み・座標・色・地名）: [Hugging Face: rma-lab/kaken-atlas-embeddings](https://huggingface.co/datasets/rma-lab/kaken-atlas-embeddings)（206,078 件 × 768 次元。GPU なしで近傍探索やクラスタリングを追試できます。CC BY 4.0、KAKEN の出典明記）
+
 紹介資料（A4 両面の PDF。表＝概要、裏＝技術の詳細。2026 年 9 月）: [doc/flyer/kaken-atlas_flyer_2026-09.pdf](doc/flyer/kaken-atlas_flyer_2026-09.pdf)
 
 開発者向けの技術ノート: [doc/method.md](doc/method.md)（方法と可視化の設計）、[doc/web.md](doc/web.md)（地図サイトの実装と運用）、[doc/roadmap.md](doc/roadmap.md)（今後の設計メモ）。
