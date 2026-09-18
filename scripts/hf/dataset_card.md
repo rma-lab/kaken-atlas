@@ -64,7 +64,7 @@ Row order is identical in every file, and `award_number` is a unique key.
 |---|---|
 | `metadata/*.parquet` | One row per project: attributes, map coordinates, color, place names (see columns below) |
 | `embeddings/*.parquet` | `award_number`, `embedding` (float32 × 768, L2-normalized), 4 shards |
-| `extras/placenames_2d.json` | Keyword place names of the 2D map: peak coordinates, sizes, candidate words (two levels) |
+| `extras/placenames_2d.json` | Keyword place names of the 2D map: peak coordinates, sizes, candidate words (two levels). The website shows LLM-abstracted names derived from these regions (see below) |
 | `extras/color_legend.json` | 12 hue sectors of the content-derived color wheel with characteristic keywords |
 | `extras/elastic_ring_nodes.npz` | The closed ring (198 nodes × 768 dims) fitted in the embedding space, and node hues |
 
@@ -85,7 +85,7 @@ Row order is identical in every file, and `award_number` is a unique key.
 | `sphere_x/y/z`, `sphere_theta`, `sphere_phi` | Spherical UMAP (`output_metric="haversine"`, min_dist=0, spread=0.3); xyz on the unit sphere |
 | `color_r/g/b` | Content-derived color used on the map (sRGB) |
 | `color_hue_deg`, `color_agreement` | Position on the fitted ring (hue angle) and how consistent the neighboring ring nodes are (0–1; low = between fields) |
-| `place_coarse_id`, `place_coarse` | Region of the 2D density landscape (42 regions) and its two-keyword name |
+| `place_coarse_id`, `place_coarse` | Region of the 2D density landscape (42 regions) and its two-keyword name (the reference labels; the map displays a one-level-more-abstract name written by an LLM from the abstracts of each region) |
 | `place_fine_id`, `place_fine` | Finer regions (129); `null` name = region too small to be named, id 0 = unassigned |
 | `nn1_cosine_distance`, `nn15_mean_cosine_distance` | Cosine distance to the nearest / mean of the 15 nearest projects in the 768-d space |
 
@@ -166,7 +166,7 @@ Japan Advanced Institute of Science and Technology (JAIST). Comments and correct
 ### ファイル
 
 - `metadata/`: 1 課題 1 行。課題番号、KAKEN の URL、タイトル、キーワード、種目、大区分、小区分コード、年度、2D・3D・球面の座標、
-  点の色（色相と合意度）、キーワード地名の山域（42 と 129 の 2 階層）、768 次元での最近傍距離。
+  点の色（色相と合意度）、地名の山域（42 と 129 の 2 階層）とキーワード地名（基準の語。サイトの表示は各山域の概要を LLM が読んで付けた名前）、768 次元での最近傍距離。
 - `embeddings/`: 課題番号と 768 次元ベクトル（float32、L2 正規化済み）。4 分割。行順は `metadata` と同じです。
 - `extras/`: 地名の JSON、色の凡例、色の輪のノード（198 × 768）。
 

@@ -1954,9 +1954,10 @@ function initTouch3d() {
   }
 }
 
-// ---- 地名（キーワード地名。2D のみ） ----
-// 密度の峰ごとに、その山域の課題のキーワードから作った 2 語を峰の位置に置く（scripts/compute_placenames.py が生成し、
-// manifest の placenames に同梱）。公式区分は使わない。全体表示では出さず、拡大に応じて粗い階層→細かい階層を出す。
+// ---- 地名（2D と球面。3D には付けない） ----
+// 密度の峰ごとに山域を切り（scripts/compute_placenames*.py）、山域の課題の研究概要を LLM が読んで付けた名前を峰の位置に置く
+// （scripts/name_places_llm.py。無い所はキーワードから作った 2 語）。build_web_map.py が manifest の placenames に同梱する。
+// 公式区分は使わない。2D は全体表示では出さず、拡大に応じて粗い階層→細かい階層を出す。
 // SVG の重ね描き（なげなわと同じ流儀、pointer-events なし）なので点の操作は素通しで、地図を動かすと追随する。
 var pnSvg, pnOn, pnLevel, pnShown, pnRaf, pnHomeGap, pnSig;
 var PN_ZOOM = [1.5, 3.0];  // 階層ごとの表示開始倍率（全体表示の幅 ÷ 現在の幅）。狭幅は 1.25 倍厳しく
@@ -2092,8 +2093,8 @@ function initPlacenames() {
     var row = document.createElement('div');
     row.style.cssText = 'padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid ' + LINE;
     row.innerHTML = '<label style="cursor:pointer"><input type="checkbox" id="ka-pn-toggle"' + (pnOn ? ' checked' : '') +
-      ' style="vertical-align:-2px"> 地名を表示（' + (isGlobe ? '研究が密集している場所ごとに、周辺の課題のキーワードから作った地名です。近づくと細かい地名に切り替わります'
-        : '拡大すると、研究が密集している場所ごとに、周辺の課題のキーワードから作った地名が出ます') + '）</label>';
+      ' style="vertical-align:-2px"> 地名を表示（' + (isGlobe ? '研究が密集している場所ごとに、周辺の課題の研究概要を AI が読んで付けた名前です。近づくと細かい地名に切り替わります'
+        : '拡大すると、研究が密集している場所ごとに、周辺の課題の研究概要を AI が読んで付けた名前が出ます') + '）</label>';
     help.insertBefore(row, help.firstChild);
     document.getElementById('ka-pn-toggle').addEventListener('change', function (e) {
       pnOn = !!e.target.checked;

@@ -93,7 +93,7 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
   タッチとマウス共通）、画面座標での射線法で内側の点を求める（表示中のトレースのみ、20 万点で数十 ms）。点の強調表示はせず、
   輪郭線と集計パネルで示す。囲い終えたら移動モードに戻る。多角形はデータ座標で保持し、`plotly_relayouting`／`relayout` のたびに描き直す。
   外側には描画領域だけに薄い膜（evenodd の穴あき矩形、`pointer-events:none`）をかけて内側を際立たせる。Esc／「閉じる ×」で解除。
-- **キーワード地名（2D、v1.5）**は SVG の重ね描き（なげなわと同じ流儀、`pointer-events:none` なので点の操作は素通し）。
+- **地名（2D は v1.5、球面は v1.6、LLM の名前は v1.7）**は SVG の重ね描き（なげなわと同じ流儀、`pointer-events:none` なので点の操作は素通し）。
   `build_web_map.py` が `data/processed/placenames_2d.json`（`compute_placenames.py`、方法は method.md §12）の峰の座標・件数・語を
   manifest の `placenames` に同梱する（`PLACENAMES=0` で外す。外すと manifest は従来と同一）。`placenamesRender()` が
   `plotly_relayouting`／`relayout`（rAF で間引き）のたびに、拡大倍率（全体表示の幅 ÷ 現在の幅）で階層を選び（1.5 倍で粗い層、
