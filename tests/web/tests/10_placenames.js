@@ -44,7 +44,8 @@ module.exports = async ({ browser, url, lib }) => {
     out.push({ name: `${device} 初回は地名オフで案内が出る`, ok: !s0.on && s0.shown === 0 && h0, info: JSON.stringify(s0) + ' hint=' + h0 });
     const pressed = await pressButton(p, device);
     const s1 = await state(p), b1 = await boxes(p), h1 = await hint(p);
-    out.push({ name: `${device} ボタンでオン、全体表示でも粗い階層、案内は消える`, ok: pressed && s1.on && s1.level === 0 && s1.shown >= 5 && b1.n === s1.shown && b1.overlap === 0 && b1.outside === 0 && !h1, info: `shown=${s1.shown} overlap=${b1.overlap} outside=${b1.outside}` });
+    const lit1 = await p.evaluate(() => document.querySelector('.modebar-btn[data-title="地名を表示（切替）"]').classList.contains('active'));
+    out.push({ name: `${device} ボタンでオン（点灯）、全体表示でも粗い階層、案内は消える`, ok: pressed && lit1 && s1.on && s1.level === 0 && s1.shown >= 5 && b1.n === s1.shown && b1.overlap === 0 && b1.outside === 0 && !h1, info: `shown=${s1.shown} lit=${lit1} overlap=${b1.overlap} outside=${b1.outside}` });
     await zoomTo(p, 4);
     const s2 = await state(p), b2 = await boxes(p);
     out.push({ name: `${device} 4 倍で細かい階層`, ok: s2.level === 1 && s2.shown >= 5 && b2.overlap === 0 && b2.outside === 0, info: `shown=${s2.shown} overlap=${b2.overlap} outside=${b2.outside}` });
@@ -55,7 +56,8 @@ module.exports = async ({ browser, url, lib }) => {
     // 設定が残る: 再読み込み後もオン、案内は出ない
     await p.reload({ waitUntil: 'load' }); await lib.ready(p); await lib.sleep(800);
     const s4 = await state(p), h4 = await hint(p);
-    out.push({ name: `${device} 再読み込み後もオンが残り、案内は 2 回目に出ない`, ok: s4.on && s4.shown >= 5 && !h4, info: `shown=${s4.shown} hint=${h4}` });
+    const lit4 = await p.evaluate(() => document.querySelector('.modebar-btn[data-title="地名を表示（切替）"]').classList.contains('active'));
+    out.push({ name: `${device} 再読み込み後もオン（点灯）が残り、案内は 2 回目に出ない`, ok: s4.on && lit4 && s4.shown >= 5 && !h4, info: `shown=${s4.shown} lit=${lit4} hint=${h4}` });
     // チェックでオフ（ボタンの点灯も消える）
     await p.evaluate(() => { const c = document.getElementById('ka-pn-toggle'); c.checked = false; c.dispatchEvent(new Event('change')); });
     await lib.sleep(200);

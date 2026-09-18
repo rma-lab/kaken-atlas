@@ -41,6 +41,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   body { margin:0; background:#fcfcfb; }
   #plot { margin-top:48px; height:calc(100vh - 48px); touch-action:none; }
   #ka-q::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
+  /* 地名ボタン（既定オフのため気づかれにくい）: 他のツールバーのアイコンより一回り大きく、点灯時は青（ユーザ 2026-09-18） */
+  .modebar-btn[data-title="地名を表示（切替）"] svg { width:1.45em !important; height:1.45em !important; }
+  .modebar-btn[data-title="地名を表示（切替）"].active svg path { fill:#1c5cab !important; }
   /* iOS Safari は 16px 未満の入力欄にフォーカスすると画面を自動拡大する（その後の操作にも残る）→ タッチ端末では 16px */
   @media (pointer: coarse) { #ka-q { font-size:16px !important; } }
   @media (max-width:640px) {
@@ -309,7 +312,7 @@ async function main() {
   };
   var placenamesButton = {  // 地名の表示切替（既定オフ。2026-09-18 ユーザ決定。押すと点灯）
     name: 'ka-placenames', title: '地名を表示（切替）',
-    icon: { width: 24, height: 24, path: 'M3 5h11l6 7-6 7H3z M6 9h6v1.6H6z M6 13.4h6V15H6z' },
+    icon: { width: 24, height: 24, path: 'M2 4h12l7 8-7 8H2z M5 9h7v2H5z M5 13h7v2H5z' },
     click: function () { if (window.kaTogglePlacenames) window.kaTogglePlacenames(); },
   };
   await Plotly.newPlot(plot, data, layout,
@@ -1548,7 +1551,11 @@ function initLasso() {
   lassoData = null;
   lassoPointerId = null;
   lassoEndedAt = 0;
-  window.kaToggleLasso = function () { setLassoMode(!lassoMode); };
+  window.kaToggleLasso = function () {
+    setLassoMode(!lassoMode);
+    // Plotly が click 直後に active を外すので一拍置いて上書き（ボタンは作り直されることがあるので毎回探す）
+    setTimeout(function () { var b = plot.querySelector('.modebar-btn[data-title="囲って集計（なげなわ）"]'); if (b) b.classList.toggle('active', lassoMode); }, 0);
+  };
   plot._dbgLasso = function () { return { mode: lassoMode, outline: !!(lassoPath && lassoPath.getAttribute('d')), veil: !!(lassoVeil && lassoVeil.getAttribute('d')), data: lassoData ? lassoData.length : 0, panel: selPanel.style.display }; };  // 検証用
   if (!is3d) {
     var mbBtns = plot.querySelectorAll('.modebar-btn');
@@ -2030,6 +2037,7 @@ function placenamesWatchGlobe() {
 }
 function placenamesRender() {
   if (!pnSvg) return;
+  var b = pnButton(); if (b && b.classList.contains('active') !== pnOn) b.classList.toggle('active', pnOn);
   if (isGlobe) { pnSig = null; placenamesRenderGlobe(); return; }
   var fl = plot._fullLayout, xa = fl.xaxis, ya = fl.yaxis;
   if (!pnOn || !xa || !ya || !homeRange || !xa._length) { pnSvg.style.display = 'none'; pnLevel = -1; pnShown = 0; return; }
@@ -2095,8 +2103,6 @@ function initPlacenames() {
   }
   window.addEventListener('resize', function () { setTimeout(placenamesRender, 150); });
   // 切替はツールバーの「地名」ボタン（点灯＝表示中）と、「操作」（狭幅は羅針盤メニューの「操作の説明」）先頭のチェック。設定は端末に記憶
-  var mbBtns = plot.querySelectorAll('.modebar-btn');
-  for (var bi = 0; bi < mbBtns.length; bi++) if (mbBtns[bi].getAttribute('data-title') === '地名を表示（切替）') pnBtn = mbBtns[bi];
   var help = document.getElementById('ka-help-body');
   if (help) {
     var row = document.createElement('div');
@@ -2109,12 +2115,16 @@ function initPlacenames() {
     pnCheck = document.getElementById('ka-pn-toggle');
     pnCheck.addEventListener('change', function (e) { setPlacenames(!!e.target.checked); });
   }
-  window.kaTogglePlacenames = function () { setPlacenames(!pnOn); };
+  // Plotly は click の直後に updateActiveButton で active を外す（attr のない自前ボタンは常に非点灯扱い）ので、一拍置いて上書きする
+  window.kaTogglePlacenames = function () { setPlacenames(!pnOn); setTimeout(function () { var b = pnButton(); if (b) b.classList.toggle('active', pnOn); }, 0); };
   setPlacenames(pnOn, true);
   placenamesHint();
 }
+// ツールバーのボタンは Plotly が relayout や resize で作り直すことがあるので、参照を持たず毎回探す
+function pnButton() { return plot.querySelector('.modebar-btn[data-title="地名を表示（切替）"]'); }
 function setPlacenames(on, silent) {
   pnOn = !!on;
+  pnBtn = pnButton();
   if (pnBtn) pnBtn.classList.toggle('active', pnOn);
   if (pnCheck) pnCheck.checked = pnOn;
   if (!silent) { try { localStorage.setItem('ka-placenames', pnOn ? '1' : '0'); } catch (_) {} }
@@ -2125,6 +2135,7 @@ function setPlacenames(on, silent) {
 function placenamesHint() {
   var seen = false;
   try { seen = !!localStorage.getItem('ka-pn-hint'); } catch (_) {}
+  pnBtn = pnButton();
   if (seen || pnOn || !pnBtn) return;
   try { localStorage.setItem('ka-pn-hint', '1'); } catch (_) {}
   var r = pnBtn.getBoundingClientRect();
