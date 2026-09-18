@@ -55,7 +55,7 @@ async function open(browser, url, device, opts) {
 const plotted = (p) => p.waitForFunction(() => { const el = document.getElementById('plot'); if (!el || !el._fullLayout) return false; return el._fullLayout.scene ? !!el._fullLayout.scene._scene : !!el._fullLayout.xaxis; }, { timeout: 180000 });
 // 詳細データまで読み込み完了（検索欄が有効）
 const ready = (p) => p.waitForFunction(() => { const q = document.getElementById('ka-q'); return q && !q.disabled; }, { timeout: 180000 });
-const hideChrome = (p) => p.evaluate(() => { ['ka-load', 'ka-phase2'].forEach((id) => { const e = document.getElementById(id); if (e) e.style.display = 'none'; }); });
+const hideChrome = (p) => p.evaluate(() => { ['ka-load', 'ka-phase2', 'ka-pn-hint'].forEach((id) => { const e = document.getElementById(id); if (e) e.style.display = 'none'; }); });
 const aspect = (p) => p.evaluate(() => { const xa = plot._fullLayout.xaxis, ya = plot._fullLayout.yaxis; const ux = (xa.range[1] - xa.range[0]) / xa._length, uy = (ya.range[1] - ya.range[0]) / ya._length; return { ratio: +(uy / ux).toFixed(4), xr: xa.range.map((v) => +v.toFixed(2)), yr: ya.range.map((v) => +v.toFixed(2)) }; });
 const cardState = (p) => p.evaluate(() => { const c = document.getElementById('ka-card'); if (!c || c.style.display === 'none') return null; return { text: c.textContent.slice(0, 40), award: (c.textContent.match(/\d\dK\w{5}|\d\dH\w{5}|\d\dJ\w{5}|\d\dKK\w{4}/) || [])[0], url: location.search, border: c.style.borderColor }; });
 

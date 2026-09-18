@@ -94,7 +94,8 @@
   （`PLACENAMES=0` で外せる）。検証図 `scripts/plot_placenames.py`。座標を更新したら再計算する。方法は doc/method.md §12。
   **表示する文言は LLM の名前**（`scripts/name_places_llm.py`、Claude Opus 5、`.env` の `ANTHROPIC_API_KEY`）。出力 `placenames_llm_<map>_L<level>.json` を
   build_web_map.py が読む（無い所はキーワード地名。`PLACENAMES_SOURCE=keywords` で戻す）。山域を再計算したら命名もやり直す（約 $20）。
-  失敗分だけ `--retry-errors`。球面の区画 id は山域 id×1000＋番号（×100 だと山域 id と衝突する）。
+  失敗分だけ `--retry-errors`。球面の区画 id は山域 id×1000＋番号（×100 だと山域 id と衝突する）。**地名は既定オフ**（2026-09-18 ユーザ決定。
+  ツールバーの「地名」ボタン＋初回の案内）。
 - UI 変更時は**回帰試験一式を通してから公開**: `cd tests/web && npm install && node run.js`（ヘッドレス Chrome、3 ビュー × PC・
   iPhone 相当、約 2 分。内容は `tests/web/README.md`）。新しい UI を足したらテストも足す。一時的な探索ハーネスは
   セッションの scratchpad（`ptest/`）で良いが、残す価値のある確認は `tests/web/tests/` に移す。詳細は `doc/web.md` §8。

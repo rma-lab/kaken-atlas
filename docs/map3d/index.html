@@ -307,10 +307,15 @@ async function main() {
     name: 'ka-lasso', title: '囲って集計（なげなわ）', icon: Plotly.Icons.lasso,
     click: function () { if (window.kaToggleLasso) window.kaToggleLasso(); },
   };
+  var placenamesButton = {  // 地名の表示切替（既定オフ。2026-09-18 ユーザ決定。押すと点灯）
+    name: 'ka-placenames', title: '地名を表示（切替）',
+    icon: { width: 24, height: 24, path: 'M3 5h11l6 7-6 7H3z M6 9h6v1.6H6z M6 13.4h6V15H6z' },
+    click: function () { if (window.kaTogglePlacenames) window.kaTogglePlacenames(); },
+  };
   await Plotly.newPlot(plot, data, layout,
     { scrollZoom: true, displaylogo: false, doubleClick: 'reset', responsive: true,
       modeBarButtonsToRemove: isGlobe ? ['pan3d'] : (is3d ? [] : ['select2d', 'lasso2d', 'zoom2d']),
-      modeBarButtonsToAdd: is3d ? [] : [lassoButton] });
+      modeBarButtonsToAdd: is3d ? (isGlobe ? [placenamesButton] : []) : [lassoButton, placenamesButton] });
 
   if (isGlobe) {  // 注視点が動いたら（右ドラッグの移動など）中心へ戻す。視点も同じだけ戻して見え方を保つ
     plot.on('plotly_relayout', function (ev) {
@@ -1959,8 +1964,10 @@ function initTouch3d() {
 // （scripts/name_places_llm.py。無い所はキーワードから作った 2 語）。build_web_map.py が manifest の placenames に同梱する。
 // 公式区分は使わない。2D は全体表示では出さず、拡大に応じて粗い階層→細かい階層を出す。
 // SVG の重ね描き（なげなわと同じ流儀、pointer-events なし）なので点の操作は素通しで、地図を動かすと追随する。
-var pnSvg, pnOn, pnLevel, pnShown, pnRaf, pnHomeGap, pnSig;
-var PN_ZOOM = [1.5, 3.0];  // 階層ごとの表示開始倍率（全体表示の幅 ÷ 現在の幅）。狭幅は 1.25 倍厳しく
+var pnSvg, pnOn, pnLevel, pnShown, pnRaf, pnHomeGap, pnSig, pnBtn, pnCheck;
+// 階層ごとの表示開始倍率（全体表示の幅 ÷ 現在の幅）。粗い階層はオンなら全体表示でも出す（既定オフになった 2026-09-18 に、
+// ボタンを押した直後に何も起きないのを避けるため 1.5 → 1.0）。細かい階層は 3 倍から。狭幅は 1.25 倍厳しく
+var PN_ZOOM = [1.0, 3.0];
 // 球面: 既定の距離で粗い階層を出し、近づいたら（球面までの距離が既定の 1/PN_ZOOM_GLOBE 以下）細かい階層に切り替える。
 // 縁に近い地名は斜めに見えて点も詰まるので、正面度（視線とのなす角の余弦）が PN_FACING 未満は出さず、境目は薄くする
 var PN_ZOOM_GLOBE = 1.5, PN_FACING = 0.6;
@@ -2029,7 +2036,7 @@ function placenamesRender() {
   var xr = xa.range, yr = ya.range, sz = fl._size;
   var z = (homeRange.x[1] - homeRange.x[0]) / (xr[1] - xr[0]);
   var levels = M.placenames.levels, lv = -1;
-  for (var i = 0; i < levels.length; i++) if (z >= PN_ZOOM[i] * (narrow ? 1.25 : 1)) lv = i;
+  for (var i = 0; i < levels.length; i++) if (z >= (i === 0 ? PN_ZOOM[0] : PN_ZOOM[i] * (narrow ? 1.25 : 1))) lv = i;
   if (lv < 0) { pnSvg.style.display = 'none'; pnLevel = -1; pnShown = 0; return; }
   var sx = sz.w / (xr[1] - xr[0]), sy = sz.h / (yr[1] - yr[0]);
   var places = levels[lv].places.slice().sort(function (a, b) { return b.n - a.n; });
@@ -2073,7 +2080,7 @@ function initPlacenames() {
   pnSvg = null; pnOn = false; pnLevel = -1; pnShown = 0; pnRaf = 0; pnHomeGap = 0; pnSig = null;
   plot._dbgPlacenames = function () { return { on: pnOn, level: pnLevel, shown: pnShown, svg: !!pnSvg }; };  // 検証用
   if (!M.placenames || (is3d && !isGlobe)) return;  // 3D は奥行きで地名が重なり、どの塊を指すか分からなくなるので付けない
-  try { pnOn = localStorage.getItem('ka-placenames') !== '0'; } catch (_) { pnOn = true; }
+  try { pnOn = localStorage.getItem('ka-placenames') === '1'; } catch (_) { pnOn = false; }  // 既定オフ（端末に記憶した人だけオン）
   pnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   pnSvg.setAttribute('id', 'ka-placenames');
   pnSvg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:4;display:none;pointer-events:none;' +
@@ -2087,22 +2094,53 @@ function initPlacenames() {
     plot.on('plotly_relayout', placenamesSchedule);
   }
   window.addEventListener('resize', function () { setTimeout(placenamesRender, 150); });
-  // 表示切替は「操作」（狭幅は羅針盤メニューの「操作の説明」）の先頭に。設定は端末に記憶
+  // 切替はツールバーの「地名」ボタン（点灯＝表示中）と、「操作」（狭幅は羅針盤メニューの「操作の説明」）先頭のチェック。設定は端末に記憶
+  var mbBtns = plot.querySelectorAll('.modebar-btn');
+  for (var bi = 0; bi < mbBtns.length; bi++) if (mbBtns[bi].getAttribute('data-title') === '地名を表示（切替）') pnBtn = mbBtns[bi];
   var help = document.getElementById('ka-help-body');
   if (help) {
     var row = document.createElement('div');
     row.style.cssText = 'padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid ' + LINE;
     row.innerHTML = '<label style="cursor:pointer"><input type="checkbox" id="ka-pn-toggle"' + (pnOn ? ' checked' : '') +
       ' style="vertical-align:-2px"> 地名を表示（' + (isGlobe ? '研究が密集している場所ごとに、周辺の課題の研究概要を AI が読んで付けた名前です。近づくと細かい地名に切り替わります'
-        : '拡大すると、研究が密集している場所ごとに、周辺の課題の研究概要を AI が読んで付けた名前が出ます') + '）</label>';
+        : '研究が密集している場所ごとに、周辺の課題の研究概要を AI が読んで付けた名前です。拡大すると細かい地名に切り替わります') +
+      '。ツールバーの「地名」ボタンでも切り替えられます）</label>';
     help.insertBefore(row, help.firstChild);
-    document.getElementById('ka-pn-toggle').addEventListener('change', function (e) {
-      pnOn = !!e.target.checked;
-      try { localStorage.setItem('ka-placenames', pnOn ? '1' : '0'); } catch (_) {}
-      placenamesRender();
-    });
+    pnCheck = document.getElementById('ka-pn-toggle');
+    pnCheck.addEventListener('change', function (e) { setPlacenames(!!e.target.checked); });
   }
+  window.kaTogglePlacenames = function () { setPlacenames(!pnOn); };
+  setPlacenames(pnOn, true);
+  placenamesHint();
+}
+function setPlacenames(on, silent) {
+  pnOn = !!on;
+  if (pnBtn) pnBtn.classList.toggle('active', pnOn);
+  if (pnCheck) pnCheck.checked = pnOn;
+  if (!silent) { try { localStorage.setItem('ka-placenames', pnOn ? '1' : '0'); } catch (_) {} }
+  var h = document.getElementById('ka-pn-hint'); if (h && pnOn) h.remove();
   placenamesRender();
+}
+// 初回だけ、ボタンの下に小さな案内を出す（既定オフだとスイッチに気づかれないため。閉じるか 30 秒で消え、以後は出さない）
+function placenamesHint() {
+  var seen = false;
+  try { seen = !!localStorage.getItem('ka-pn-hint'); } catch (_) {}
+  if (seen || pnOn || !pnBtn) return;
+  try { localStorage.setItem('ka-pn-hint', '1'); } catch (_) {}
+  var r = pnBtn.getBoundingClientRect();
+  var h = document.createElement('div');
+  h.id = 'ka-pn-hint';
+  h.style.cssText = 'position:fixed;z-index:1001;top:' + Math.round(r.bottom + 8) + 'px;right:' + Math.max(8, Math.round(window.innerWidth - r.right - 6)) + 'px;' +
+    'padding:7px 10px 7px 12px;font:12.5px -apple-system,sans-serif;color:' + INK + ';' + PANEL + 'cursor:pointer;white-space:nowrap';
+  h.innerHTML = '<span style="position:absolute;top:-6px;right:14px;width:10px;height:10px;background:#fcfcfb;border-left:1px solid ' + LINE + ';border-top:1px solid ' + LINE + ';transform:rotate(45deg)"></span>' +
+    '地名を表示できます <span style="color:' + MUTED + ';margin-left:8px">×</span>';
+  h.addEventListener('click', function (e) {
+    var closeOnly = e.target.tagName === 'SPAN' && e.target.textContent === '×';
+    h.remove();
+    if (!closeOnly) setPlacenames(true);
+  });
+  document.body.appendChild(h);
+  setTimeout(function () { if (h.parentNode) h.remove(); }, 30000);  // 詳細データの読み込み中に出るので、読み終えてからも十分残す
 }
 
 function setupUI() {
