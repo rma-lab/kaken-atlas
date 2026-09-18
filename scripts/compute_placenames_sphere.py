@@ -158,6 +158,7 @@ def main() -> None:
         cnt = np.bincount(basin, minlength=len(peaks) + 1)
         peak_h = np.concatenate([[1.0], field[peaks]])
         wt = (field[node] / peak_h[basin]) ** GAMMA
+        basins_df = basins_df.with_columns(pl.Series(f"wt_s{sigma:.3g}", wt.astype(np.float32)))  # 中心重み（LLM 命名の抽出にも使う）
         lv = basins_df.select("award_number", col).with_columns(pl.Series("wt", wt.astype(np.float64)))
         words = feature_words(ex.join(lv, on="award_number"), total, col)
 
@@ -176,6 +177,7 @@ def main() -> None:
             for c in range(k_sec):
                 ctr = pts[m[km.labels_ == c]].mean(axis=0)
                 sector_places[int(b * 100 + c + 1)] = (ctr / np.linalg.norm(ctr), int((km.labels_ == c).sum()))
+        basins_df = basins_df.with_columns(pl.Series(f"sector_s{sigma:.3g}", sector.astype(np.int32)))  # 区画 id（0 = 分割なし）
         sec_words = {}
         if sector_places:
             sv = pl.DataFrame({"award_number": df["award_number"], "sector": sector, "wt": np.ones(len(sector))}).filter(pl.col("sector") > 0)

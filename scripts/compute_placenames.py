@@ -174,6 +174,7 @@ def main() -> None:
         counts = np.bincount(basin, minlength=len(peaks) + 1)
         peak_h = np.concatenate([[1.0], field[peaks[:, 0], peaks[:, 1]]])   # 山域 id → 峰の密度（id 0 はダミー）
         wt = (field[iy, ix] / peak_h[basin]) ** GAMMA
+        basins_df = basins_df.with_columns(pl.Series(f"wt_s{sigma:g}", wt.astype(np.float32)))  # 中心重み（LLM 命名の抽出にも使う）
         lv = basins_df.select("award_number", col).with_columns(pl.Series("wt", wt))
         words = feature_words(ex.join(lv, on="award_number"), total, col)
 
