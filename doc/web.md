@@ -100,6 +100,9 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
   3 倍で細かい層。狭幅は 1.25 倍厳しい。全体表示では出さない）、件数順に置いて既配置の箱と重なるものと描画領域からはみ出すものを
   省く（20〜30 個、数 ms）。文字は白縁取り（`paint-order:stroke`）。「操作」の先頭のチェックで切替、`localStorage` の `ka-placenames`。
   検証用 `plot._dbgPlacenames()`。
+- **地名の文言**は既定で LLM の名前（`data/processed/placenames_llm_*.json`、method.md §12）。`build_web_map.py` が読み、失敗・未生成の所は
+  キーワード地名で代替する。7 文字を超える名前は「と・の、」のうち中央に近い区切りの直後で 2 行に折る（`split_placename`）。
+  `PLACENAMES_SOURCE=keywords` でキーワード地名に戻せる。
 - **球面の地名**（`placenamesRenderGlobe()`）。峰の xyz を `projectXYZ()`（選択リングと同じ投影行列。球の裏側は null）で画面に置く。
   正面度（視線とのなす角の余弦）が 0.55 未満は出さず、境目は薄くする。階層は拡大倍率でなく**視点から球面までの距離**で決める
   （既定の距離で粗い階層、既定の 1/1.5 以下に近づくと細かい階層）。gl3d はカメラの更新が描画ループ側で遅れ、慣性やフライ・トゥでも

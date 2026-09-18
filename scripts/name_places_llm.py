@@ -24,6 +24,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -33,9 +34,11 @@ import polars as pl
 
 MODEL = "claude-opus-5"
 PRICE = {"claude-opus-5": (5.0, 25.0), "claude-sonnet-5": (2.0, 10.0)}  # $/M tokens (入力, 出力)
-PROMPT_VERSION = "2026-09-18a"
+PROMPT_VERSION = "2026-09-18b"
 K_BY_LEVEL = [25, 15]
 MAX_CHARS = 600   # 1 課題の本文の上限（概要が長いものを切る）
+# 地名に許す文字: ひらがな・カタカナ・漢字・英数字と少数の記号。試行でキリル文字が混入した（「代謝медицина」）ので検査して再試行
+JA_OK = re.compile(r"^[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f\u0370-\u03ffA-Za-z0-9・ー々〜～\-/&()（）\s]+$")  # ギリシャ文字（π電子系）は許す
 
 SCHEMA = {
     "type": "object",
@@ -115,22 +118,38 @@ def build_prompt(place: dict, texts: list[str], n_total: int, level: int, n_plac
         "- 領域内の大半の課題を包含し、かつ隣の領域と区別がつく程度に具体的\n"
         "- 公式の審査区分の名称（「医歯薬学」「人文学」「工学」など）をそのまま名前にしない\n"
         "- 英語名（2〜5 語）と、その名前にした根拠を 1 文\n"
-        "- 課題が 2 つ以上の異なる主題に分かれていて 1 つの名前では無理があるときは mixed を true にし、sub_themes に主題を挙げる"
-        "（その場合も name_ja には最も多い主題の名前を入れる）"
+        "- 課題が 2 つ以上の異なる主題に分かれていて 1 つの名前では無理があるときは mixed を true にし、sub_themes に主題を挙げる。"
+        "その場合、name_ja と name_en は**最も件数の多い主題だけ**の名前にする（主題を「と」で連結した名前にしない）\n"
+        "- name_ja は日本語（漢字・かな・英数字）だけで書く"
     )
 
 
 def call(client, model: str, prompt: str) -> tuple[dict, dict]:
-    kwargs = dict(
-        model=model, max_tokens=2000, system=SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
-        output_config={"format": {"type": "json_schema", "schema": SCHEMA}, "effort": "medium"},
-    )
-    r = client.messages.create(**kwargs)
-    if r.stop_reason == "refusal":
-        raise RuntimeError(f"refusal: {getattr(r, 'stop_details', None)}")
-    text = next(b.text for b in r.content if b.type == "text")
-    return json.loads(text), dict(input=r.usage.input_tokens, output=r.usage.output_tokens)
+    usage = dict(input=0, output=0)
+    messages = [{"role": "user", "content": prompt}]
+    for attempt in range(3):
+        r = client.messages.create(
+            model=model, max_tokens=2000, system=SYSTEM, messages=messages,
+            output_config={"format": {"type": "json_schema", "schema": SCHEMA}, "effort": "medium"},
+        )
+        usage["input"] += r.usage.input_tokens; usage["output"] += r.usage.output_tokens
+        if r.stop_reason == "refusal":
+            raise RuntimeError(f"refusal: {getattr(r, 'stop_details', None)}")
+        text = next(b.text for b in r.content if b.type == "text")
+        out = json.loads(text)
+        bad = []
+        if not JA_OK.match(out["name_ja"] or ""):
+            bad.append("name_ja に日本語以外の文字が含まれています")
+        if not (4 <= len(out["name_ja"]) <= 14):
+            bad.append("name_ja は 4〜12 文字にしてください")
+        if not bad:
+            out["attempts"] = attempt + 1
+            return out, usage
+        messages = messages[:1] + [{"role": "assistant", "content": text},
+                                   {"role": "user", "content": "前回の回答に問題があります: " + "。".join(bad) + "。同じ形式で直してください。"}]
+    out["attempts"] = 3
+    out["rationale"] = "WARN: " + "; ".join(bad) + " | " + out.get("rationale", "")
+    return out, usage
 
 
 def main() -> None:
@@ -143,6 +162,7 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--parent", type=Path, default=None, help="粗い階層の LLM 命名 JSON（細かい階層に親の名前を渡す）")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--retry-errors", action="store_true", help="保存済み JSON のうち ERROR/WARN の場所だけ呼び直して差し替える（クレジット切れの続きなど）")
     args = ap.parse_args()
     k = args.k or K_BY_LEVEL[min(args.level, len(K_BY_LEVEL) - 1)]
 
@@ -167,6 +187,13 @@ def main() -> None:
             parent_name[p["id"]] = pname.get(top, "")
 
     places = sorted(lv["places"], key=lambda q: -q["n"])
+    out_path = Path(f"data/processed/placenames_llm_{args.map}_L{args.level}.json")
+    prev = None
+    if args.retry_errors:
+        prev = json.loads(out_path.read_text(encoding="utf-8"))
+        bad_ids = {r["id"] for r in prev["places"] if r["rationale"].startswith(("ERROR", "WARN"))}
+        places = [p for p in places if p["id"] in bad_ids]
+        print(f"やり直し {len(places)} か所")
     if args.limit:
         places = places[: args.limit]
     jobs = []
@@ -200,7 +227,10 @@ def main() -> None:
     tin = sum(r["usage"]["input"] for r in results); tout = sum(r["usage"]["output"] for r in results)
     pin, pout = PRICE.get(args.model, (0, 0))
     cost = tin / 1e6 * pin + tout / 1e6 * pout
-    out_path = Path(f"data/processed/placenames_llm_{args.map}_L{args.level}.json")
+    if prev is not None:  # やり直した分を差し替え、費用は加算
+        fixed = {r["id"]: r for r in results}
+        results = [fixed.get(r["id"], r) for r in prev["places"]]
+        tin += prev["usage"]["input"]; tout += prev["usage"]["output"]; cost += prev["usage"]["cost_usd"]
     payload = dict(map=args.map, level=args.level, sigma=lv["sigma"], model=args.model, prompt_version=PROMPT_VERSION,
                    created=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), k=k, max_chars=MAX_CHARS,
                    usage=dict(input=tin, output=tout, cost_usd=round(cost, 3)), places=results)

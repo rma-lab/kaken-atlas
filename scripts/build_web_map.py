@@ -49,6 +49,10 @@ GLOBE_SPHERE_R = float(os.environ.get("GLOBE_SPHERE_R", "0.985"))  # 既定の�
 PLACENAMES = os.environ.get("PLACENAMES", "1") == "1"
 PLACENAMES_JSON = Path("data/processed/placenames_2d.json")
 PLACENAMES_SPHERE_JSON = Path("data/processed/placenames_sphere.json")  # 球面版（scripts/compute_placenames_sphere.py）
+# LLM で一段抽象化した地名（scripts/name_places_llm.py）。あれば既定でこちらを表示し、キーワード地名は無い所の代替に使う。
+# PLACENAMES_SOURCE=keywords でキーワード地名に戻せる（2026-09-18）
+PLACENAMES_SOURCE = os.environ.get("PLACENAMES_SOURCE", "llm")
+PLACENAME_MAX_LINE = 7  # 地名の 1 行の文字数の目安。超えたら「と」「・」「の」「、」で 2 行に折る
 # 点の色（2026-09-11 決定）: 既定 "text"=研究内容から導いた連続色（弾性リング。scripts/compute_textcolor.py の色表を
 # points.bin 末尾に RGB 各 1 バイトで同梱し、点ごとに塗る）。"dai"=従来の大区分 11 色（トレース単色。比較・実験用）。
 # text のとき大区分の凡例・シートの色見本は「所属課題の平均色」（textcolor_legend.json）、カードの縁と見出しは点自身の色
@@ -239,19 +243,51 @@ def write_shards(big: pl.DataFrame, ktypes: list[str], cats: list[str], shard_di
     return shard_first, shard_hash.hexdigest()[:10]
 
 
+def split_placename(name: str) -> list[str]:
+    """LLM の地名（4〜12 文字の名詞句）を地図用に 1〜2 行へ。長いときは中央に近い区切り（と・の、）の直後で折る。"""
+    if len(name) <= PLACENAME_MAX_LINE:
+        return [name]
+    cuts = [i + 1 for i, ch in enumerate(name[:-1]) if ch in "と・の、"]
+    if not cuts:
+        return [name]
+    mid = len(name) / 2
+    c = min(cuts, key=lambda i: abs(i - mid))
+    return [name[:c], name[c:]]
+
+
+def load_llm_names(map_kind: str, n_levels: int) -> list[dict[int, str]]:
+    """階層ごとの {山域 id: LLM の地名}。失敗（ERROR/WARN）や未生成は含めない（呼び出し側でキーワード地名に代替）。"""
+    out: list[dict[int, str]] = []
+    for lv in range(n_levels):
+        f = Path(f"data/processed/placenames_llm_{map_kind}_L{lv}.json")
+        names: dict[int, str] = {}
+        if f.exists():
+            for r in json.loads(f.read_text(encoding="utf-8"))["places"]:
+                if r.get("name_ja") and not r["rationale"].startswith(("ERROR", "WARN")):
+                    names[r["id"]] = r["name_ja"]
+        out.append(names)
+    return out
+
+
 def load_placenames(is_3d: bool, is_globe: bool) -> dict | None:
-    """キーワード地名を manifest 用に間引く（2D と球面。候補語や広がりは落とし、峰の座標・件数・語だけ）。
-    3D は奥行きで地名が重なり、どの塊を指すか分からなくなるので付けない。"""
+    """地名を manifest 用に間引く（2D と球面。峰の座標・件数・表示する行だけ）。
+    既定は LLM の地名（無い所はキーワード地名）。3D は奥行きで地名が重なり、どの塊を指すか分からなくなるので付けない。"""
     src = PLACENAMES_SPHERE_JSON if is_globe else PLACENAMES_JSON
     if not PLACENAMES or (is_3d and not is_globe) or not src.exists():
         return None
     d = json.loads(src.read_text(encoding="utf-8"))
     keys = ("x", "y", "z") if is_globe else ("x", "y")
-    levels = [
-        dict(sigma=lv["sigma"], places=[dict({k: p[k] for k in keys}, n=p["n"], w=p["words"]) for p in lv["places"]])
-        for lv in d["levels"]
-    ]
-    return dict(levels=levels)
+    llm = load_llm_names("sphere" if is_globe else "2d", len(d["levels"])) if PLACENAMES_SOURCE == "llm" else []
+    levels, n_llm, n_all = [], 0, 0
+    for li, lv in enumerate(d["levels"]):
+        places = []
+        for p in lv["places"]:
+            name = llm[li].get(p["id"]) if llm else None
+            n_all += 1; n_llm += name is not None
+            places.append(dict({k: p[k] for k in keys}, n=p["n"], w=split_placename(name) if name else p["words"]))
+        levels.append(dict(sigma=lv["sigma"], places=places))
+    print(f"地名: {'LLM' if llm else 'キーワード'} {n_llm}/{n_all} か所（残りはキーワード地名）")
+    return dict(levels=levels, source="llm" if llm else "keywords")
 
 
 def render_html(manifest: dict, out_dir: Path, is_3d: bool, is_globe: bool) -> None:

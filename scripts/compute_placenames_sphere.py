@@ -49,7 +49,8 @@ K_NEIGHBORS = 8    # 分水嶺で使う格子の隣接数
 REF_Q = 0.99
 # 大きすぎる山域の分割: 球面の配置には、内部に小さな峰を持たない裾野の広い山が 2 つある（物性・材料と代謝・循環器。各 2 万件、
 # 峰から 15° 以上に広がる）。地名 1 つでは粗いので、件数が SPLIT_N を超える山域は位置（球面上の k-means、k = ceil(n / SPLIT_N)）で
-# 区画に分け、区画ごとに特徴語を付けて区画の重心に置く。階層ごとの閾値（粗い順）
+# 区画に分け、区画ごとに特徴語を付けて区画の重心に置く。区画 id = 山域 id × 1000 + 番号（山域 id は 1000 未満なので衝突しない。
+# 当初 ×100 にしていて細かい階層の山域 101 と区画 1-1 が衝突した 2026-09-18）。階層ごとの閾値（粗い順）
 SPLIT_N = [10_000, 4_000]
 # 地名を付ける山域の最低件数（階層ごと、粗い順）。粗い階層は既定の表示で出るので、点のまばらな側にある小さな島
 # （数百件）の名前が大きな領域と同格に見えないよう、下限を高くする
@@ -162,7 +163,7 @@ def main() -> None:
         lv = basins_df.select("award_number", col).with_columns(pl.Series("wt", wt.astype(np.float64)))
         words = feature_words(ex.join(lv, on="award_number"), total, col)
 
-        # 大きすぎる山域を位置で区画に分ける（区画 id = 山域 id × 100 + 区画番号）
+        # 大きすぎる山域を位置で区画に分ける（区画 id = 山域 id × 1000 + 区画番号）
         split_n = SPLIT_N[min(li, len(SPLIT_N) - 1)]
         min_n = MIN_N_LEVELS[min(li, len(MIN_N_LEVELS) - 1)]
         sector = np.zeros(len(basin), dtype=np.int64)
@@ -173,10 +174,10 @@ def main() -> None:
             m = np.nonzero(basin == b)[0]
             k_sec = int(np.ceil(cnt[b] / split_n))
             km = KMeans(n_clusters=k_sec, n_init=4, random_state=42).fit(pts[m])
-            sector[m] = b * 100 + km.labels_ + 1
+            sector[m] = b * 1000 + km.labels_ + 1
             for c in range(k_sec):
                 ctr = pts[m[km.labels_ == c]].mean(axis=0)
-                sector_places[int(b * 100 + c + 1)] = (ctr / np.linalg.norm(ctr), int((km.labels_ == c).sum()))
+                sector_places[int(b * 1000 + c + 1)] = (ctr / np.linalg.norm(ctr), int((km.labels_ == c).sum()))
         basins_df = basins_df.with_columns(pl.Series(f"sector_s{sigma:.3g}", sector.astype(np.int32)))  # 区画 id（0 = 分割なし）
         sec_words = {}
         if sector_places:
@@ -189,7 +190,7 @@ def main() -> None:
             m = sector == sid
             spread = float(np.degrees(np.arccos(np.clip(pts[m] @ ctr, -1, 1))).std())
             places.append(dict(id=sid, n=n_sec, x=round(float(ctr[0]), 4), y=round(float(ctr[1]), 4), z=round(float(ctr[2]), 4),
-                               spread_deg=round(spread, 2), sector_of=int(sid // 100),
+                               spread_deg=round(spread, 2), sector_of=int(sid // 1000),
                                words=[c["w"] for c in cand[:N_WORDS]], cand=cand))
         for k, i in enumerate(peaks):
             b = k + 1
