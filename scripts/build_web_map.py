@@ -34,7 +34,7 @@ import polars as pl
 
 sys.path.insert(0, "src")
 sys.path.insert(0, "scripts")
-from plot_map_interactive import CATEGORY_ORDER, FOOTER  # noqa: E402
+from plot_map_interactive import CATEGORY_ORDER  # noqa: E402
 
 from kaken_atlas.kubun import DAI_COLORS, DAI_GLOSS, load_dai_labels  # noqa: E402
 
@@ -344,7 +344,6 @@ def main() -> None:
         sphereR=GLOBE_SPHERE_R if is_globe else None,
         textColor=POINT_COLOR == "text",
         colorLegend=dict(sectors=color_legend["sectors"]) if color_legend else None,
-        footer=FOOTER + (f" | 球面埋め込み: output_metric=haversine{globe_params(coords_path)}" if is_globe else ""),
         title=f"科研費 学術地図 {'球面' if is_globe else ('3D' if is_3d else '2D')}",
         sub=f"2019–2025年度・{n:,}件",
     )
