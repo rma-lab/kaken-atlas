@@ -3,11 +3,13 @@
 出所:
 - 階層・コード・名前（日英）: niijp/grants_masterxml_kaken の review_section_master_kakenhi.xml
   （type="review_section", start_date="2018-04-01" のテーブル。M付き合同審査区分は除外）
-- 小区分の内容キーワード: 検証済みの KubunTable.csv（2026-08-28 に公式マスタと全数照合済み）
+- 小区分の「内容の例」（現行）: data/reference/shinsa_kubun_r4.json（JSPS 審査区分表 別表2、令和4年3月9日決定・令和5年度審査から適用。
+  令和9年度公募ページ配布の PDF から抽出し、NII マスタと突合したもの。whet プロジェクトで 2026-09-23 作成）
+- 2018 年初版の「内容の例」: 手作りの KubunTable.csv（参考として sho_keywords_2018 列に残す。令和4年改正で 99 小区分の語彙が見直された）
 
 出力（--outdir 以下）:
-- kubun_table.csv  : tidy 形式（1行 = 小区分の1所属、323行、UTF-8）
-- kubun_table.json : 小区分コードをキーにした辞書（所属リスト・キーワード付き、UTF-8）
+- kubun_table.csv  : tidy 形式（1行 = 小区分の1所属、323行、UTF-8）。sho_keywords＝現行、sho_keywords_2018＝初版
+- kubun_table.json : 小区分コードをキーにした辞書（所属リスト・keywords〔現行〕・keywords_2018 付き、UTF-8）
 
 使い方:
     uv run python scripts/build_kubun_table.py --outdir data/interim
@@ -31,6 +33,13 @@ MASTER_CACHE = Path("data/raw/masters/review_section_master_kakenhi.xml")
 KEYWORDS_CSV = Path(
     "/Users/takayuki/Library/CloudStorage/Dropbox/研究IR/区分分類/BERT/KubunTable.csv"
 )
+EXAMPLES_JSON = Path("data/reference/shinsa_kubun_r4.json")  # 現行の「内容の例」
+
+
+def load_examples() -> dict[str, str]:
+    """現行（令和4年改正）の小区分の「内容の例」。小区分コード → 文字列。"""
+    d = json.loads(EXAMPLES_JSON.read_text(encoding="utf-8"))
+    return {it["code"]: it["examples"] for it in d["shokubun"]}
 
 
 def _name(el: ET.Element, lang: str) -> str:
@@ -87,12 +96,16 @@ def main() -> None:
     args.outdir.mkdir(parents=True, exist_ok=True)
 
     rows = load_master()
-    keywords = load_keywords()
+    keywords_2018 = load_keywords()
+    examples = load_examples()
     df = pl.DataFrame(rows).sort(["dai_code", "chu_code", "sho_code"])
     df = df.with_columns(
-        sho_keywords=pl.col("sho_code").replace_strict(keywords, default=""),
+        sho_keywords=pl.col("sho_code").replace_strict(examples, default=""),
+        sho_keywords_2018=pl.col("sho_code").replace_strict(keywords_2018, default=""),
         n_memberships=pl.len().over("sho_code"),
     )
+    n_diff = (df.filter(pl.col("sho_keywords").str.replace_all(" ", "") != pl.col("sho_keywords_2018").str.replace_all(" ", ""))["sho_code"].n_unique())
+    print(f"内容の例が 2018 年版と異なる小区分: {n_diff}")
 
     csv_path = args.outdir / "kubun_table.csv"
     df.write_csv(csv_path)
@@ -106,6 +119,7 @@ def main() -> None:
                 "name_ja": r["sho_name_ja"],
                 "name_en": r["sho_name_en"],
                 "keywords": r["sho_keywords"],
+                "keywords_2018": r["sho_keywords_2018"],
                 "memberships": [],
             },
         )

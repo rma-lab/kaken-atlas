@@ -54,8 +54,8 @@
   `pyproject.toml` の `tool.uv.sources` 参照）。
 
 ## 審査区分表・大区分の扱い
-- **正典は `data/reference/kubun_table.csv` / `.json`**（公式マスタ由来、`scripts/build_kubun_table.py` で再生成、
-  実データ23.9万件と全数照合済み）。小区分コードは**5桁ゼロ埋め文字列**で扱う（数値化禁止）。
+- **正典は `data/reference/kubun_table.csv` / `.json`**（階層・名称は公式マスタ由来、`scripts/build_kubun_table.py` で再生成、
+  実データ23.9万件と全数照合済み。小区分の「内容の例」は令和4年改正版 `shinsa_kubun_r4.json` 由来で、2018 年初版は `*_2018` 列。2026-09-23）。小区分コードは**5桁ゼロ埋め文字列**で扱う（数値化禁止）。
 - 大区分の割り当ては `kaken_atlas/kubun.py` の `load_dai_labels()` に一本化。審査区分の**3階層を解釈**：
   基盤B/C・若手=小区分、基盤A・挑戦的=中区分、基盤S=大区分直接。複数大区分にまたがる場合は「複数」、
   体系外（特別研究員奨励費・スタート支援・新学術・学術変革等）は「区分なし」。
