@@ -2,7 +2,7 @@
 
 考え方（2026-09-17 決定）:
   地図上の課題の密度を地形と見て、密度の山頂（局所最大）を「峰」、峰から裾野まで谷で隣と分かれる
-  ひとまとまりを「山域」と呼ぶ。山域は、密度を上下反転した地形に分水嶺法（watershed）を適用して得る
+  ひとまとまりを「山域」と呼ぶ。山域は、密度を上下反転した地形に谷線分割（watershed）を適用して得る
   （反転するので窪み＝密度の山。境界は密度の谷＝地図の空白）。山域ごとに所属課題のキーワードから
   特徴語（頻度でなく特徴度。「色の見方」の 12 方位の特徴語と同じスコア）を選び、峰の位置に置く地名とする。
   公式区分は一切使わない（公開版は人が線を引く前の地形を主役にする方針）。
@@ -93,7 +93,7 @@ def pixel_index(x: np.ndarray, y: np.ndarray, extent: list[float], nx: int, ny: 
 
 
 def basins_for_sigma(field: np.ndarray, sigma_px: float) -> tuple[np.ndarray, np.ndarray]:
-    """峰（局所最大）を検出し、反転密度の分水嶺で山域ラベル画像を作る。戻り値: (labels[y,x], peaks[k]=(iy,ix))。
+    """峰（局所最大）を検出し、谷線を境に山域ラベル画像を作る（反転密度に watershed を適用）。戻り値: (labels[y,x], peaks[k]=(iy,ix))。
     labels は 1 始まり（0 = 海・未割り当て）。peaks[k] がラベル k+1 の峰。"""
     peaks = peak_local_max(
         field, min_distance=max(1, int(round(sigma_px))), threshold_abs=PEAK_REL * field.max(), exclude_border=False,

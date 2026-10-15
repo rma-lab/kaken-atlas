@@ -4,7 +4,7 @@
   1) 各課題を最寄りの格子点に数える（ヒストグラム）
   2) 格子点どうしのガウス重み（大円距離、幅 σ0）で平滑化する。粗い階層は同じ平滑化を n 回重ねる（幅は σ0×√n）
   3) 峰＝大円距離 σ 以内で最大、かつ基準密度（上位 1% 点）の PEAK_REL 倍以上の格子点
-  4) 山域＝峰を種にした分水嶺（密度の高い順に隣接格子点へ広げる。反転地形に水を張るのと同じ）
+  4) 山域＝峰を種に密度の高い順に隣接格子点へ広げ、谷線で区切る（反転した地形に水を張る watershed 法と同じ）
   5) 山域ごとの特徴語は 2D 版と同じ採点（集中度 × 広さ、中心重み付け、表記ゆれ除去、上位 N_WORDS 語）
   6) 大きすぎる山域（内部に峰のない裾野の広い山）は位置で区画に分け、区画ごとに名付ける
 球面の配置は 2D とは別の UMAP なので、2D の地名は流用できない。公式区分は使わない。
@@ -43,7 +43,7 @@ OUT_BASINS = Path("data/interim/placenames_basins_sphere.parquet")
 GRID_N = 150_000   # 格子点数（間隔 ≈ sqrt(4π/N) = 0.009 rad ≈ 0.52°）
 SIGMA0 = 0.03      # 平滑化の基本幅（rad）。細かい階層の幅
 STEPS = [4, 1]     # 階層ごとの平滑化の回数（幅 = SIGMA0×√n）。粗い順
-K_NEIGHBORS = 8    # 分水嶺で使う格子の隣接数
+K_NEIGHBORS = 8    # 山域を広げるときに使う格子の隣接数
 # 峰・海の閾値の基準: 最大密度ではなく、課題のある格子点の密度の上位 REF_Q 点。球面の配置（min_dist=0）には中心が他の峰の
 # 約 10 倍に突出した塊が 2 つあり、最大値基準だと周辺の峰が閾値で落ち、塊の裾野が 2 万件超の 1 山域になる（2026-09-17 実測）
 REF_Q = 0.99
@@ -91,7 +91,7 @@ def find_peaks(field: np.ndarray, tree: cKDTree, grid: np.ndarray, nbr: np.ndarr
 
 
 def watershed_graph(field: np.ndarray, nbr: np.ndarray, peaks: np.ndarray, ref: float) -> np.ndarray:
-    """峰を種に、密度の高い順に隣接格子点へ広げる（反転地形の分水嶺と同じ）。戻り値: 格子点ごとの山域 id（1 始まり、0 = 海）。"""
+    """峰を種に、密度の高い順に隣接格子点へ広げる（谷線で区切る。反転した地形への watershed 法と同じ）。戻り値: 格子点ごとの山域 id（1 始まり、0 = 海）。"""
     label = np.zeros(len(field), dtype=np.int32)
     mask = field > MASK_REL * ref
     heap: list[tuple[float, int]] = []

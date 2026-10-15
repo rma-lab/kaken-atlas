@@ -77,7 +77,7 @@ def main() -> None:
                  f"対象: 2019–2025年度開始の採択課題 {meta['n_awards']:,}件 | 埋め込み: cl-nagoya/ruri-v3-310m | "
                  "次元削減: UMAP (cosine, n_neighbors=15, seed=42)\n"
                  f"密度: 格子ヒストグラム＋ガウス平滑（σ={sigma} 座標単位）。峰＝局所最大（最大密度の {prm['peak_rel']:.0%} 以上）、"
-                 "山域＝反転密度の分水嶺。灰線＝山域の境界（密度の谷）、赤点＝峰 | "
+                 "山域＝谷線で区切った領域。灰線＝谷線（山域の境界）、赤点＝峰 | "
                  f"語: 山域内のキーワードを特徴度 n_in/(n_all+{prm['score_k']})×n_in^{prm['alpha']} で順位付け、"
                  f"表記ゆれを除いて上位 {prm['n_words']} 語 | 作成: KAKEN-ATLAS (26K15524)",
                  color=MUTED, fontsize=7.5)
@@ -125,7 +125,7 @@ def main_sphere() -> None:
                  "出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを編集・加工 | "
                  f"対象: 2019–2025年度開始の採択課題 {meta['n_awards']:,}件 | 埋め込み: cl-nagoya/ruri-v3-310m | "
                  "球面 UMAP (cosine→haversine, n_neighbors=15, min_dist=0, spread=0.3, seed=42)\n"
-                 f"密度: フィボナッチ格子 {meta['grid_n']:,} 点のヒストグラムをガウス平滑（大円距離）。峰＝σ 以内で最大、山域＝峰を種にした分水嶺。"
+                 f"密度: フィボナッチ格子 {meta['grid_n']:,} 点のヒストグラムをガウス平滑（大円距離）。峰＝σ 以内で最大、山域＝峰を種に広げて谷線で区切る。"
                  "点は 7 万件の無作為抽出、色は内容由来の連続色。縁に近い峰は別方向の図に出す | 作成: KAKEN-ATLAS (26K15524)",
                  color=MUTED, fontsize=8)
         fig.tight_layout(rect=(0, 0.03, 1, 0.97))
