@@ -296,6 +296,7 @@ async function main() {
     if (isGlobe) {  // 球全体が収まる距離から見る。回転は自由（軸は固定しない）
       layout.scene.camera = { eye: { x: 1.9, y: 1.4, z: 0.9 }, center: { x: 0, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } };
       layout.scene.aspectmode = 'cube';
+      layout.scene.dragmode = false;  // マウス操作は自前（initMouseGlobe）。Plotly の回転・ズームを切る
     }
   } else {
     layout.plot_bgcolor = SURFACE;
@@ -316,7 +317,7 @@ async function main() {
   };
   await Plotly.newPlot(plot, data, layout,
     { scrollZoom: true, displaylogo: false, doubleClick: 'reset', responsive: true,
-      modeBarButtonsToRemove: isGlobe ? ['pan3d'] : (is3d ? [] : ['select2d', 'lasso2d', 'zoom2d']),
+      modeBarButtonsToRemove: isGlobe ? ['pan3d', 'zoom3d', 'orbitRotation', 'tableRotation'] : (is3d ? [] : ['select2d', 'lasso2d', 'zoom2d']),
       modeBarButtonsToAdd: is3d ? (isGlobe ? [placenamesButton] : []) : [lassoButton, placenamesButton] });
 
   if (isGlobe) {  // 注視点が動いたら（右ドラッグの移動など）中心へ戻す。視点も同じだけ戻して見え方を保つ
@@ -529,14 +530,14 @@ function initHeader() {
     });
   }
   document.getElementById('ka-help-body').innerHTML = isTouch
-    ? (is3d ? '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小' + (isGlobe ? '' : ' / 2本指ドラッグ: 移動') + '</div>'
+    ? (is3d ? (isGlobe ? '<div>1本指: 動かす / 2本指ピンチ: 指の間へ拡大縮小</div>' : '<div>1本指: 回転 / 2本指ピンチ: 拡大縮小 / 2本指ドラッグ: 移動</div>')
             : '<div>1本指: 移動 / 2本指ピンチ: 拡大縮小</div>' +
               '<div>ダブルタップ: 全体表示に戻る</div>') +
       '<div>点をタップ: 詳細カード / カードをタップ: KAKENページ</div>' +
       '<div>「大区分」「種目」: 行をタップで表示切替・すべて表示/非表示</div>' +
       '<div>点の色: 羅針盤メニューの「色の見方」</div>'
     : is3d
-    ? '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>' +
+    ? (isGlobe ? '<div>ドラッグ: 動かす / スクロール: ポインタの場所へ拡大縮小 / ダブルクリック: 全体表示に戻る</div>' : '<div>ドラッグ: 回転 / スクロール: 拡大縮小</div>') +
       '<div>点にホバー: 概要 / クリック: 詳細カード / カードをクリック: KAKENページ</div>' +
       '<div>凡例クリック: 大区分の表示切替 / ダブルクリック: その大区分だけ表示</div>'
     : '<div>スクロール: 拡大縮小 / ドラッグ: 移動</div>' +
@@ -1805,11 +1806,16 @@ function initPinch2d() {
   }
 }
 
-// ---- 3D/球面のタッチ操作（自前のカメラ制御）----
+// ---- 3D/球面のカメラ操作（自前。タッチは 3D・球面とも、マウスは球面のみ）----
 // Plotly の 3D はタッチの回転終了時に内部状態からカメラを書き戻すことがあり、こちらの relayout と
 // 競合して「ピンチで初期の向きに戻る」「離すと前の位置に戻る」が起きた。タッチ端末では Plotly に
 // タッチイベントを一切渡さず（capture で stopPropagation）、1本指=回転、2本指=拡大縮小（+3Dは移動）を
 // すべて自前のカメラ状態から計算して relayout で渡す。
+// 球面はマウスも自前（2026-10-22、Google マップ流）: Plotly の回転は倍率に関係なく 1px＝一定角で、寄ると少し引いただけで
+// 景色が飛び、ホイールは球の中心にしか寄れなかった。scene.dragmode=false で Plotly のマウス操作を切り、
+//  - ドラッグ: 画面中央の面の点がポインタと同じだけ動く回転角（1:1。寄るほど少ししか回らない）
+//  - ホイール／ピンチ: ポインタ（指の間）の下の面の点がその場に留まるよう、距離を変えてから球を回す
+// 3D（箱）のマウスは Plotly のまま（面がないので 1:1 の基準がない）。
 function v3(x, y, z) { return { x: x, y: y, z: z }; }
 
 function vsub(a, b) { return v3(a.x - b.x, a.y - b.y, a.z - b.z); }
@@ -1832,137 +1838,255 @@ function vrot(v, axis, ang) {  // ロドリゲスの回転公式（axis は単�
 }
 
 function tCenter(t) { return [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]; }
+
+var FOVY = Math.PI / 4;        // gl-plot3d の既定の縦の画角（透視投影）
+var ROT_FEEL = 1.0;            // 球面ドラッグの感度（1＝画面中央の面がポインタに 1:1 で付いてくる）
+var WHEEL_ZOOM_100PX = 1.25;   // ホイール 100px あたりの距離の倍率
+var GLOBE_NEAR = 0.03;         // 面にどこまで寄れるか（面までの距離 ÷ 球の半径）
+var GLOBE_FAR = 4.0;           // どこまで離れられるか（読み込み時の視距離の倍率）
+var INERTIA = true;
+var cam3 = { pending: null, raf: false, last: null, inert: null, samples: [], rotK: 0, rotK0: null, initDist: null };
+
+function camNow() {  // いま基準にすべきカメラ: 慣性中はその値、relayout 待ちならその値、でなければ最後に適用した値、無ければ実機
+  if (cam3.inert) return cam3.inert.cam;
+  return cam3.pending || cam3.last || liveCamera();
+}
+
+function camBasis(c) {  // 視線 f、画面右 r、画面上 u
+  var f = vnorm(vsub(c.ctr, c.eye));
+  var r = vnorm(vcross(f, c.up));
+  return { f: f, r: r, u: vcross(r, f) };
+}
+
+function applyCam(c) {  // 1 フレームに 1 回だけ relayout（イベントの方が速い）
+  cam3.last = c;
+  cam3.pending = c;
+  if (cam3.raf) return;
+  cam3.raf = true;
+  requestAnimationFrame(function () {
+    cam3.raf = false;
+    if (!cam3.pending) return;
+    var pc = cam3.pending; cam3.pending = null;
+    Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
+      .then(function () { updateSelectionPos(); adaptDepth(); });
+  });
+}
+
+function canvasRect() { var cv = plot.querySelector('canvas'); return cv ? cv.getBoundingClientRect() : plot.getBoundingClientRect(); }
+
+function surfaceR() {  // 球面: 球の半径（カメラ座標系）。3D: 0（注視点までの距離で代用）
+  if (!isGlobe) return 0;
+  var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
+  var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
+  var x = ds[0];
+  return mm ? Math.hypot(mm[0] * x, mm[1] * x, mm[2] * x) : x;
+}
+
+function pixelAngle(c) {  // 1px あたりの回転角
+  var rect = canvasRect(), R = surfaceR(), d = vlen(vsub(c.eye, c.ctr));
+  if (isGlobe) {
+    // 画面中央の面の点（視点からの距離 d−R）が 1px 動くのに要する角: 1px の世界での大きさ ÷ 半径
+    var ds = Math.max(d - R, GLOBE_NEAR * R);
+    cam3.rotK = ROT_FEEL * 2 * ds * Math.tan(FOVY / 2) / (Math.max(rect.height, 1) * R);
+    return cam3.rotK;
+  }
+  // 3D: 既定の視距離で「画面幅のドラッグ＝半回転」、寄ったら注視点までの距離に比例して弱める（2026-09-09 ユーザ指摘）
+  if (cam3.rotK0 === null) cam3.rotK0 = Math.max(cam3.initDist || d, 1e-3);
+  var ratio = Math.min(1.5, Math.max(0.02, d / cam3.rotK0));
+  cam3.rotK = Math.PI / Math.max(rect.width, 1) * ratio;
+  return cam3.rotK;
+}
+
+function rotateByPixels(c, bs, dx, dy, k) {
+  // ポインタの動きに場面が付いてくる向き: 右へ動かす→場面が右へ→カメラは上方向軸まわりに逆回転。
+  // 自由回転（固定軸なし）: 回転軸はジェスチャ開始時のカメラの上・右ベクトル
+  var f1 = vrot(vsub(c.eye, c.ctr), bs.u, -dx * k), up1 = vrot(c.up, bs.r, -dy * k);
+  f1 = vrot(f1, bs.r, -dy * k);
+  return { eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 };
+}
+
+function pixelRay(c, bs, px, py) {  // 画素 (px,py) を通る視線の方向（カメラ座標系、単位ベクトル）。透視投影 fovy、縦横比＝画素比
+  var rect = canvasRect(), t = Math.tan(FOVY / 2);
+  var nx = (px - (rect.left + rect.width / 2)) / (rect.width / 2), ny = -(py - (rect.top + rect.height / 2)) / (rect.height / 2);
+  return vnorm(vadd(vadd(bs.f, vmul(bs.r, nx * t * rect.width / rect.height)), vmul(bs.u, ny * t)));
+}
+
+function hitSphere(eye, dir, R) {  // 視線と球（中心＝原点）の手前の交点。外れたら null
+  var b = vdot(eye, dir), cc = vdot(eye, eye) - R * R, disc = b * b - cc;
+  if (disc < 0) return null;
+  var t = -b - Math.sqrt(disc);
+  return t > 0 ? vadd(eye, vmul(dir, t)) : null;
+}
+
+function aimAt(c, S, px, py) {  // 球面: 面の点 S が画素 (px,py) の下に来るよう、球の中心まわりにカメラを回す
+  var hit = hitSphere(c.eye, pixelRay(c, camBasis(c), px, py), surfaceR());
+  if (!hit) return c;
+  var a = vnorm(hit), b = vnorm(S), axis = vcross(a, b), sn = vlen(axis), cs = vdot(a, b);
+  if (sn < 1e-9) return c;
+  var ang = Math.atan2(sn, cs); axis = vmul(axis, 1 / sn);
+  return { eye: vrot(c.eye, axis, ang), ctr: c.ctr, up: vrot(c.up, axis, ang) };
+}
+
+function zoomAt(c, factor, px, py) {  // 球面: 視距離を factor 倍（<1 で寄る）。画素 (px,py) の下の面の点はその場に留まる。面の外なら中心へ寄る
+  var R = surfaceR(), d = vlen(c.eye);
+  var d0 = homeCam ? vlen(homeCam.eye) : (cam3.initDist || d);
+  var d1 = Math.min(d0 * GLOBE_FAR, Math.max(R * (1 + GLOBE_NEAR), d * factor));
+  if (Math.abs(d1 - d) < 1e-9) return c;
+  var S = hitSphere(c.eye, pixelRay(c, camBasis(c), px, py), R);
+  var c1 = { eye: vmul(vnorm(c.eye), d1), ctr: c.ctr, up: c.up };
+  return S ? aimAt(c1, S, px, py) : c1;
+}
+
+// 慣性（3D・球面、タッチとマウス）: 離す直前 ~150ms の速度で、離した後も減衰させながら回し続ける。次の操作で止める
+function sampleMove(t, x, y) {
+  cam3.samples.push({ t: t, x: x, y: y });
+  // 直近 ~150ms、ただし描画が重くイベントが間引かれても速度が取れるよう最低3点は残す
+  while (cam3.samples.length > 3 && t - cam3.samples[0].t > 150) cam3.samples.shift();
+}
+
+function stepInertia(now) {
+  var inert = cam3.inert;
+  if (!inert) return;
+  var dt = Math.min(50, now - inert.t); inert.t = now;
+  var c = inert.cam;
+  c = rotateByPixels(c, camBasis(c), inert.wx * dt, inert.wy * dt, 1);
+  inert.cam = c; applyCam(c);
+  var decay = Math.exp(-dt / 500);  // 時定数 500ms（60fps なら約 2〜3 秒で止まる）
+  inert.wx *= decay; inert.wy *= decay;
+  if (Math.hypot(inert.wx, inert.wy) < 2e-5) { cam3.inert = null; return; }
+  requestAnimationFrame(stepInertia);
+}
+
+function startInertia(endTime) {
+  var s = cam3.samples;
+  if (!INERTIA || s.length < 2) return;
+  var a = s[0], b = s[s.length - 1], dt = b.t - a.t;
+  if (dt <= 0 || dt > 400 || endTime - b.t > 100) return;  // 止めてから離した／描画が重く速度が測れない
+  var vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt, sp = Math.hypot(vx, vy);  // px/ms
+  if (sp < 0.05) return;
+  if (sp > 2) { vx *= 2 / sp; vy *= 2 / sp; }
+  // 速度の半分から始める（全速だと最大 1 周近く回ってしまう。上限 2px/ms で約 0.6 周、1px/ms で約 1/3 周）
+  var k = 0.5 * cam3.rotK;  // 慣性も直前の回転ゲインに合わせる
+  cam3.inert = { wx: vx * k, wy: vy * k, t: performance.now(), cam: cam3.last || liveCamera() };
+  requestAnimationFrame(stepInertia);
+}
+
+function initCamera3d() {
+  if (!is3d) return;
+  var c0 = liveCamera(); cam3.initDist = vlen(vsub(c0.eye, c0.ctr));  // 読み込み時の視距離を基準
+  // 外からカメラが変えられたら（フライ・トゥ、全体に戻す、検証）自前の最新値を捨てて実機から読み直す
+  plot.on('plotly_relayout', function (ev) {
+    if (!ev || !cam3.last) return;
+    var e1 = ev['scene.camera.eye'] || (ev['scene.camera'] && ev['scene.camera'].eye);
+    if (!e1) return;
+    if (Math.abs(e1.x - cam3.last.eye.x) + Math.abs(e1.y - cam3.last.eye.y) + Math.abs(e1.z - cam3.last.eye.z) > 1e-7) cam3.last = null;
+  });
+  if (isGlobe) initMouseGlobe();
+  if (isTouch) initTouch3d();
+}
+
+function initMouseGlobe() {  // 球面のマウス: 左ドラッグ＝1:1 の回転（慣性つき）、ホイール＝ポインタの場所へ拡大縮小
+  var drag = null, canvas = null;
+  function setCursor(v) { canvas = canvas || plot.querySelector('canvas'); if (canvas) canvas.style.cursor = v; }
+  setTimeout(function () { setCursor('grab'); }, 0);
+  plot.addEventListener('dblclick', function () {  // 全体に戻る（Plotly の doubleClick:'reset' は dragmode=false では効かない）
+    if (!homeCam) return;
+    cam3.inert = null; cam3.last = null; suppressUntil = Date.now() + 700;
+    animateCamera({ 'scene.camera.eye': homeCam.eye, 'scene.camera.center': homeCam.ctr, 'scene.camera.up': homeCam.up }, 1200);
+  });
+  plot.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    camAnim = null;  // フライ・トゥ中なら止めて手の操作を優先
+    var c = camNow(); cam3.inert = null; cam3.samples = [];
+    drag = { x: e.clientX, y: e.clientY, cam: c, bs: camBasis(c), k: pixelAngle(c) };
+    setCursor('grabbing');
+  }, true);
+  document.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    if (!(e.buttons & 1)) { drag = null; setCursor('grab'); return; }  // 画面外で離した
+    sampleMove(e.timeStamp, e.clientX, e.clientY);
+    applyCam(rotateByPixels(drag.cam, drag.bs, e.clientX - drag.x, e.clientY - drag.y, drag.k));
+  });
+  document.addEventListener('mouseup', function (e) {
+    if (!drag) return;
+    drag = null; setCursor('grab');
+    startInertia(e.timeStamp);
+  });
+  plot.addEventListener('wheel', function (e) {
+    e.preventDefault(); e.stopPropagation();  // Plotly（中心へのズーム）とページのスクロールに渡さない
+    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+    dy = Math.max(-300, Math.min(300, dy));
+    var factor = Math.exp(dy * Math.log(WHEEL_ZOOM_100PX) / 100);  // 下へ回す（deltaY>0）＝遠ざかる
+    cam3.inert = null; camAnim = null;
+    applyCam(zoomAt(camNow(), factor, e.clientX, e.clientY));
+  }, { capture: true, passive: false });
+  plot._zoomAt = function (factor, px, py) { applyCam(zoomAt(camNow(), factor, px, py)); };  // 検証用
+  plot._pixelRay = function (px, py) { var c = camNow(); return pixelRay(c, camBasis(c), px, py); };  // 検証用
+  plot._cam3 = cam3;  // 検証用
+  plot._surfacePoint = function (px, py) { var c = camNow(); return hitSphere(c.eye, pixelRay(c, camBasis(c), px, py), surfaceR()); };  // 検証用
+  plot._camToScreen = function (S) {  // 検証用: カメラ座標系の点 → 画面座標（Plotly の view・projection 行列で）
+    var sc = plot._fullLayout.scene._scene, cp = sc.glplot.cameraParams, v = cp.view, pm = cp.projection, rect = canvasRect();
+    var x = v[0] * S.x + v[4] * S.y + v[8] * S.z + v[12], y = v[1] * S.x + v[5] * S.y + v[9] * S.z + v[13];
+    var z = v[2] * S.x + v[6] * S.y + v[10] * S.z + v[14], w = v[3] * S.x + v[7] * S.y + v[11] * S.z + v[15];
+    var cx = pm[0] * x + pm[4] * y + pm[8] * z + pm[12] * w, cy = pm[1] * x + pm[5] * y + pm[9] * z + pm[13] * w;
+    var cw = pm[3] * x + pm[7] * y + pm[11] * z + pm[15] * w;
+    return [rect.left + rect.width / 2 + cx / cw * rect.width / 2, rect.top + rect.height / 2 - cy / cw * rect.height / 2];
+  };
+}
+
 function initTouch3d() {
-  if (isTouch && is3d) {
-    var g3 = null, raf3 = false, pendingCam = null, lastCam = null;
-    // 慣性（3D・球面）: 1本指回転の直近の指速度を離した後も減衰させながら回し続ける。
-    // 次のタッチ開始で止める。速度は touchend 直前 ~150ms の touchmove から求める
-    // （指を止めてから離した場合は速度ゼロ→慣性なし）。
-    var INERTIA = true, inert = null, samples = [];
-    function sampleTouch(t, x, y) {
-      samples.push({ t: t, x: x, y: y });
-      // 直近 ~150ms、ただし描画が重くイベントが間引かれても速度が取れるよう最低3点は残す
-      while (samples.length > 3 && t - samples[0].t > 150) samples.shift();
-    }
-    function stepInertia(now) {
-      if (!inert) return;
-      var dt = Math.min(50, now - inert.t); inert.t = now;
-      var c = inert.cam, bs = basis(c);
-      var f1 = vrot(vsub(c.eye, c.ctr), bs.u, -inert.wx * dt), up1 = c.up;
-      f1 = vrot(f1, bs.r, -inert.wy * dt); up1 = vrot(up1, bs.r, -inert.wy * dt);
-      c = { eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 };
-      inert.cam = c; applyCam(c);
-      var decay = Math.exp(-dt / 500);  // 時定数 500ms（60fps なら約 2〜3 秒で止まる）
-      inert.wx *= decay; inert.wy *= decay;
-      if (Math.hypot(inert.wx, inert.wy) < 2e-5) { inert = null; return; }
-      requestAnimationFrame(stepInertia);
-    }
-    function startInertia(endTime) {
-      if (!INERTIA || samples.length < 2) return;
-      var a = samples[0], b = samples[samples.length - 1], dt = b.t - a.t;
-      if (dt <= 0 || dt > 400 || endTime - b.t > 100) return;  // 止めてから離した／描画が重く速度が測れない
-      var vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt, sp = Math.hypot(vx, vy);  // px/ms
-      if (sp < 0.05) return;
-      if (sp > 2) { vx *= 2 / sp; vy *= 2 / sp; }
-      // 指速度の半分から始める（全速だと最大 1 周近く回ってしまう。上限 2px/ms で約 0.6 周、1px/ms で約 1/3 周）
-      var k = 0.5 * lastRotK;  // 慣性も直前の回転ゲインに合わせる
-      inert = { wx: vx * k, wy: vy * k, t: performance.now(), cam: lastCam || liveCam() };
-      requestAnimationFrame(stepInertia);
-    }
-    function liveCam() {  // 実際のカメラ（レイアウト上の値は更新が遅れることがある）
-      var sc = plot._fullLayout.scene && plot._fullLayout.scene._scene;
-      var c = (sc && sc.getCamera) ? sc.getCamera() : (plot._fullLayout.scene.camera || {});
-      var eye = c.eye || v3(1.25, 1.25, 1.25), ctr = c.center || v3(0, 0, 0), up = c.up || v3(0, 0, 1);
-      return { eye: v3(eye.x, eye.y, eye.z), ctr: v3(ctr.x, ctr.y, ctr.z), up: v3(up.x, up.y, up.z) };
-    }
-    function basis(c) {  // 視線 f、画面右 r、画面上 u
-      var f = vnorm(vsub(c.ctr, c.eye));
-      var r = vnorm(vcross(f, c.up));
-      return { f: f, r: r, u: vcross(r, f) };
-    }
-    function applyCam(c) {
-      lastCam = c;
-      pendingCam = c;
-      if (raf3) return;
-      raf3 = true;
-      requestAnimationFrame(function () {
-        raf3 = false;
-        if (!pendingCam) return;
-        var pc = pendingCam; pendingCam = null;
-        Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
-          .then(function () { updateSelectionPos(); adaptDepth(); });
-      });
-    }
-    // 1px あたりの回転角。既定の視距離で「画面幅のドラッグ＝半回転」。拡大して視点が近づいたら
-    // 「視点から面までの距離」に比例して弱める（拡大時に指の動き以上に球が回ってしまう問題。2026-09-09 ユーザ指摘）
-    var initCam0 = liveCam(), initDist = vlen(vsub(initCam0.eye, initCam0.ctr));  // 読み込み時の視距離を基準
-    var rotK0 = null, lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1);
-    function surfaceR() {  // 球面: 球の半径（カメラ座標系）。3D: 0（注視点までの距離で代用）
-      if (!isGlobe) return 0;
-      var sc = plot._fullLayout.scene._scene, ds = (sc && sc.dataScale) || [1, 1, 1];
-      var mm = sc && sc.glplot && sc.glplot.cameraParams && sc.glplot.cameraParams.model;
-      var x = ds[0], y = 0, z = 0;
-      return mm ? Math.hypot(mm[0] * x, mm[1] * x, mm[2] * x) : x;
-    }
-    function rotGain(c) {
-      var R = surfaceR(), d = vlen(vsub(c.eye, c.ctr)) - R;
-      if (rotK0 === null) rotK0 = Math.max(initDist - R, 1e-3);  // 基準＝読み込み時の視距離（面までの距離）
-      var ratio = Math.min(1.5, Math.max(0.02, d / rotK0));
-      lastRotK = Math.PI / Math.max(plot._fullLayout._size.w, 1) * ratio;
-      return lastRotK;
-    }
-    function startGesture(touches) {
-      samples = [];
-      // 慣性で回転中は relayout が追いつかず liveCam が古いことがあるので、自前の最新カメラを使う
-      var c = inert ? inert.cam : liveCam(), bs = basis(c);
-      inert = null;
-      if (touches.length === 1) {
-        g3 = { mode: 'rot', x: touches[0].clientX, y: touches[0].clientY, cam: c, bs: bs,
-               k: rotGain(c) };  // 既定の視距離で画面幅のドラッグ＝半回転、拡大時はその分弱める
-      } else if (touches.length === 2) {
-        var c0 = tCenter(touches);
-        g3 = { mode: 'two', d0: tDist(touches), cx: c0[0], cy: c0[1], cam: c, bs: bs,
-               // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
-               k: 2 * vlen(vsub(c.eye, c.ctr)) * Math.tan(Math.PI / 8) / plot._fullLayout._size.h };
-      } else g3 = null;
-    }
-    plot.addEventListener('touchstart', function (e) {
-      e.stopPropagation();
-      startGesture(e.touches);
-    }, { capture: true, passive: true });
-    plot.addEventListener('touchmove', function (e) {
-      e.preventDefault(); e.stopPropagation();
-      // 指の本数がジェスチャ開始時と違えば（2本→1本など）現在の指で始め直す
-      if (!g3 || (g3.mode === 'rot') !== (e.touches.length === 1)) startGesture(e.touches);
-      if (!g3) return;
-      var c = g3.cam, bs = g3.bs;
-      if (g3.mode === 'rot' && e.touches.length === 1) {
-        // 指の動きに場面が付いてくる向き: 右へ動かす→場面が右へ→カメラは上方向軸まわりに逆回転。
-        // 自由回転（固定軸なし）: 回転軸はジェスチャ開始時のカメラの上・右ベクトル
-        var dx = e.touches[0].clientX - g3.x, dy = e.touches[0].clientY - g3.y;
-        sampleTouch(e.timeStamp, e.touches[0].clientX, e.touches[0].clientY);
-        var f = vsub(c.eye, c.ctr);
-        var f1 = vrot(f, bs.u, -dx * g3.k), up1 = c.up;
-        f1 = vrot(f1, bs.r, -dy * g3.k); up1 = vrot(up1, bs.r, -dy * g3.k);
-        applyCam({ eye: vadd(c.ctr, f1), ctr: c.ctr, up: up1 });
-      } else if (g3.mode === 'two' && e.touches.length === 2) {
-        var s = Math.max(0.05, g3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
-        var cc = tCenter(e.touches), mx = cc[0] - g3.cx, my = cc[1] - g3.cy;
-        // 球面は並行移動なし（球の中心を固定し、拡大縮小のみ）。3D は重心の移動で視点・注視点を平行移動
-        var T = isGlobe ? v3(0, 0, 0) : vadd(vmul(bs.r, -mx * g3.k), vmul(bs.u, my * g3.k));
+  var g3 = null;
+  function startGesture(touches) {
+    cam3.samples = [];
+    // 慣性で回転中は relayout が追いつかず実機の値が古いことがあるので、自前の最新カメラを使う
+    var c = camNow(), bs = camBasis(c);
+    cam3.inert = null; camAnim = null;
+    if (touches.length === 1) {
+      g3 = { mode: 'rot', x: touches[0].clientX, y: touches[0].clientY, cam: c, bs: bs, k: pixelAngle(c) };
+    } else if (touches.length === 2) {
+      var c0 = tCenter(touches);
+      g3 = { mode: 'two', d0: tDist(touches), cx: c0[0], cy: c0[1], cam: c, bs: bs,
+             // 1ピクセルあたりの空間距離（透視投影 fovy=45° で注視点距離の画面高さから換算）
+             k: 2 * vlen(vsub(c.eye, c.ctr)) * Math.tan(FOVY / 2) / Math.max(canvasRect().height, 1) };
+    } else g3 = null;
+  }
+  plot.addEventListener('touchstart', function (e) {
+    e.stopPropagation();
+    startGesture(e.touches);
+  }, { capture: true, passive: true });
+  plot.addEventListener('touchmove', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    // 指の本数がジェスチャ開始時と違えば（2本→1本など）現在の指で始め直す
+    if (!g3 || (g3.mode === 'rot') !== (e.touches.length === 1)) startGesture(e.touches);
+    if (!g3) return;
+    var c = g3.cam, bs = g3.bs;
+    if (g3.mode === 'rot' && e.touches.length === 1) {
+      var dx = e.touches[0].clientX - g3.x, dy = e.touches[0].clientY - g3.y;
+      sampleMove(e.timeStamp, e.touches[0].clientX, e.touches[0].clientY);
+      applyCam(rotateByPixels(c, bs, dx, dy, g3.k));
+    } else if (g3.mode === 'two' && e.touches.length === 2) {
+      var s = Math.max(0.05, g3.d0 / tDist(e.touches));  // 指を広げる=s<1=近づく
+      var cc = tCenter(e.touches), mx = cc[0] - g3.cx, my = cc[1] - g3.cy;
+      if (isGlobe) {
+        // 開始時の指の間にあった面の点を留めたまま寄り（zoomAt）、指の間の移動分は 1:1 で回す
+        var c1 = zoomAt(c, s, g3.cx, g3.cy);
+        applyCam(rotateByPixels(c1, camBasis(c1), mx, my, pixelAngle(c1)));
+      } else {
+        // 3D は重心の移動で視点・注視点を平行移動
+        var T = vadd(vmul(bs.r, -mx * g3.k), vmul(bs.u, my * g3.k));
         applyCam({ eye: vadd(vadd(c.ctr, vmul(vsub(c.eye, c.ctr), s)), T), ctr: vadd(c.ctr, T), up: c.up });
       }
-    }, { capture: true, passive: false });
-    plot.addEventListener('touchend', function (e) {
-      e.stopPropagation();
-      if (e.touches.length > 0) startGesture(e.touches);  // 2本→1本: 残った指で回転を続ける
-      else {
-        if (g3 && g3.mode === 'rot') startInertia(e.timeStamp);
-        g3 = null;
-      }
-    }, { capture: true, passive: true });
-    plot.addEventListener('touchcancel', function () { g3 = null; samples = []; }, { capture: true, passive: true });
-  }
+    }
+  }, { capture: true, passive: false });
+  plot.addEventListener('touchend', function (e) {
+    e.stopPropagation();
+    if (e.touches.length > 0) startGesture(e.touches);  // 2本→1本: 残った指で回転を続ける
+    else {
+      if (g3 && g3.mode === 'rot') startInertia(e.timeStamp);
+      g3 = null;
+    }
+  }, { capture: true, passive: true });
+  plot.addEventListener('touchcancel', function () { g3 = null; cam3.samples = []; }, { capture: true, passive: true });
 }
 
 // ---- 地名（2D と球面。3D には付けない） ----
@@ -2166,7 +2290,7 @@ function setupUI() {
   initPlacenames();
   initSheets();
   initPinch2d();
-  initTouch3d();
+  initCamera3d();
 }
   // setupUI
 </script>
