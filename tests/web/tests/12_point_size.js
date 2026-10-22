@@ -1,4 +1,5 @@
-// 拡大に応じた点の大きさ（3 ビュー共通、連続）: 全体表示は基準、4 倍で直径 ×4^0.3≒1.52（2D は不透明度も上がる）、40 倍は上限、戻すと基準。
+// 拡大に応じた点の大きさ（3 ビュー共通、連続）: 全体表示は基準、2D は 4 倍で直径 ×4^0.3≒1.52（不透明度も上がる）、40 倍は上限 5px、
+// 3D/球面は見かけが元々大きいので 4 倍で ×4^0.15≒1.23、上限 ×1.5。戻すと基準。
 // 2D は Plotly が範囲変更のたびに点の設定を再適用しても大きさが保たれる。球面は自前カメラのズーム（ホイール）でも同じフレームで追随する。
 // evaluate から Plotly の promise をそのまま返さない（plot 要素が返り、直列化で固まる）
 module.exports = async ({ browser, url, lib }) => {
@@ -36,7 +37,7 @@ module.exports = async ({ browser, url, lib }) => {
       return Plotly.relayout(plot, { 'scene.camera.eye': { x: c.ctr.x + (c.eye.x - c.ctr.x) * k, y: c.ctr.y + (c.eye.y - c.ctr.y) * k, z: c.ctr.z + (c.eye.z - c.ctr.z) * k } }).then(() => 1); });
     await lib.sleep(500);
     const s1 = await st(p);
-    out.push({ name: `${view} 4 倍で pixelRatio ×1.52（全点オブジェクトを包んだ）`, ok: near(s1.applied.pixelRatio / s1.applied.basePR, Math.pow(4, 0.3), 0.02) && s1.applied.wrapped === s1.applied.n, info: `wrapped=${s1.applied.wrapped}/${s1.applied.n} ` + `zoom=${s1.zoom} ratio=${(s1.applied.pixelRatio / s1.applied.basePR).toFixed(3)}` });
+    out.push({ name: `${view} 4 倍で pixelRatio ×1.23（倍率^0.15、全点オブジェクトを包んだ）`, ok: near(s1.applied.pixelRatio / s1.applied.basePR, Math.pow(4, 0.15), 0.02) && s1.applied.wrapped === s1.applied.n, info: `wrapped=${s1.applied.wrapped}/${s1.applied.n} ` + `zoom=${s1.zoom} ratio=${(s1.applied.pixelRatio / s1.applied.basePR).toFixed(3)}` });
     await p.evaluate(() => Plotly.relayout(plot, { 'scene.camera.eye': homeCam.eye, 'scene.camera.center': homeCam.ctr, 'scene.camera.up': homeCam.up }).then(() => 1)); await lib.sleep(500);
     const s2 = await st(p);
     out.push({ name: `${view} 全体に戻すと基準に戻る`, ok: s2.scale === 1 && s2.applied.pixelRatio === s2.applied.basePR });
@@ -46,7 +47,7 @@ module.exports = async ({ browser, url, lib }) => {
       for (let i = 0; i < 6; i++) { await p.mouse.wheel({ deltaY: -100 }); await lib.sleep(50); }
       await lib.sleep(300);
       const s3 = await st(p);
-      out.push({ name: 'globe ホイールのズームにも追随', ok: s3.zoom > 2 && near(s3.applied.pixelRatio / s3.applied.basePR, Math.min(3.5 / s3.base.size, Math.pow(s3.zoom, 0.3)), 0.03), info: `zoom=${s3.zoom} ratio=${(s3.applied.pixelRatio / s3.applied.basePR).toFixed(3)}` });
+      out.push({ name: 'globe ホイールのズームにも追随', ok: s3.zoom > 2 && near(s3.applied.pixelRatio / s3.applied.basePR, Math.min(1.5, Math.pow(s3.zoom, 0.15)), 0.03), info: `zoom=${s3.zoom} ratio=${(s3.applied.pixelRatio / s3.applied.basePR).toFixed(3)}` });
     }
     out.push({ name: `${view} ページエラーなし`, ok: p._errors.length === 0, info: p._errors.slice(0, 2).join(' | ') });
     await p.close();

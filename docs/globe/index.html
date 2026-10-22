@@ -2098,9 +2098,11 @@ function initTouch3d() {
 //    scene.markerOptions で上書きするので、そちらの値も書き換えておく（Plotly の再適用でも同じ大きさが出る）。
 //  - 3D/球面: gl-scatter3d の pixelRatio（頂点シェーダの一様変数。全グリフを一様に拡大）を描く直前だけ倍率分大きくする
 //    （draw 系を包む。再送なし、数 ms）。不透明度は色に焼き込まれているので触らない。
-// 直径＝基準 × 倍率^0.3（間隔ほどは大きくしない）、上限 2D 5px・3D/球面 3.5px。2D の不透明度は倍率 8 で 0.85 まで。
+// 直径＝基準 × 倍率^指数（間隔ほどは大きくしない）、上限あり（下の定数）。2D の不透明度は倍率 8 で 0.85 まで。
 // 凡例の切替などで Plotly がトレースを作り直すと基準に戻るので、plotly_restyle のあとに当て直す。
-var PS_EXP = 0.3, PS_CAP = is3d ? 3.5 : 5, PS_OPACITY_MAX = 0.85, PS_OPACITY_ZOOM = 8;
+// 見かけの直径は 2D が名目どおり（2.2px）、3D/球面はグリフ描画の都合で名目 1.3〜1.4 に対し約 5.5px ある（画面の計測、2026-10-22）。
+// そのため 3D/球面は控えめに: 倍率^0.15、上限 ×1.5（見かけ約 8px）。2D は倍率^0.3、上限 5px
+var PS_EXP = is3d ? 0.15 : 0.3, PS_MAX_SCALE = is3d ? 1.5 : 5 / 2.2, PS_OPACITY_MAX = 0.85, PS_OPACITY_ZOOM = 8;
 var ps = { scale: 1, timer: null, lastLive: 0, base: null, basePR: null, dataIdx: null };
 function psBase() {
   if (ps.base) return ps.base;
@@ -2120,7 +2122,7 @@ function zoomFactor() {  // 全体表示の幅 ÷ 現在の幅（3D・球面は�
   }
   return Math.max(1, z);
 }
-function pointScaleFor(z) { return Math.min(PS_CAP / psBase().size, Math.pow(z, PS_EXP)); }
+function pointScaleFor(z) { return Math.min(PS_MAX_SCALE, Math.pow(z, PS_EXP)); }
 function pointOpacityFor(z) {
   var b = psBase().opacity;
   return +(b + (PS_OPACITY_MAX - b) * Math.min(1, Math.log(z) / Math.log(PS_OPACITY_ZOOM))).toFixed(3);
