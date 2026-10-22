@@ -1867,6 +1867,7 @@ function applyCam(c) {  // 1 フレームに 1 回だけ relayout（イベント
     cam3.raf = false;
     if (!cam3.pending) return;
     var pc = cam3.pending; cam3.pending = null;
+    pointSizeApply('nodraw');  // 点の大きさを倍率に合わせる（同じフレームで描かれる）
     Plotly.relayout(plot, { 'scene.camera.eye': pc.eye, 'scene.camera.center': pc.ctr, 'scene.camera.up': pc.up })
       .then(function () { updateSelectionPos(); adaptDepth(); });
   });
@@ -2090,50 +2091,89 @@ function initTouch3d() {
 }
 
 // ---- 拡大に応じた点の大きさ（3 ビュー共通、2026-10-22）----
-// 点は画素固定なので、寄ると間隔だけ広がって点が小さく薄く見える（ユーザ指摘）。倍率（全体表示に対する拡大率）の段階が
-// 変わったときだけ、ズームが止まってから 1 回 restyle する（marker.size の restyle は 2D 200ms・3D/球面 550ms なので毎フレームは無理）。
-// 直径は倍率の平方根に比例（間隔ほどは大きくしない）、上限あり。不透明度は寄るほど上げる（重なりが減るため）。
-var PS_STEP = 1.5, PS_MAX_LEVEL = 8, PS_OPACITY_MAX = 0.9;
-var ps = { level: 0, timer: null, busy: false, dirty: false, base: null };
+// 点は画素固定なので、寄ると間隔だけ広がって点が小さく薄く見える（ユーザ指摘）。倍率（全体表示に対する拡大率）に応じて連続的に
+// 直径を変える。Plotly.restyle は 2D 200ms・3D 550ms かかり、段階的に当てても「ズームが止まってから点が跳ねる」遅れが目立った
+// （ユーザ指摘、同日）ので、描画ライブラリの状態を直接触る:
+//  - 2D: regl-scatter2d の群ごとの size・opacity だけ update（20〜45ms。位置は再送しない）。Plotly は範囲変更のたびに
+//    scene.markerOptions で上書きするので、そちらの値も書き換えておく（Plotly の再適用でも同じ大きさが出る）。
+//  - 3D/球面: gl-scatter3d の pixelRatio（頂点シェーダの一様変数。全グリフを一様に拡大）を描く直前だけ倍率分大きくする
+//    （draw 系を包む。再送なし、数 ms）。不透明度は色に焼き込まれているので触らない。
+// 直径＝基準 × 倍率^0.3（間隔ほどは大きくしない）、上限 2D 5px・3D/球面 3.5px。2D の不透明度は倍率 8 で 0.85 まで。
+// 凡例の切替などで Plotly がトレースを作り直すと基準に戻るので、plotly_restyle のあとに当て直す。
+var PS_EXP = 0.3, PS_CAP = is3d ? 3.5 : 5, PS_OPACITY_MAX = 0.85, PS_OPACITY_ZOOM = 8;
+var ps = { scale: 1, timer: null, lastLive: 0, base: null, basePR: null, dataIdx: null };
 function psBase() {
   if (ps.base) return ps.base;
-  var i = M.traces.findIndex(function (t) { return t.k === 'd'; }), m = plot.data[i].marker;
-  ps.base = { size: m.size, opacity: m.opacity, cap: is3d ? 5 : 7 };
+  ps.dataIdx = M.traces.map(function (t, i) { return t.k === 'd' ? i : -1; }).filter(function (i) { return i >= 0; });
+  var m = plot.data[ps.dataIdx[0]].marker;
+  ps.base = { size: m.size, opacity: m.opacity };
   return ps.base;
 }
-function zoomFactor() {  // 全体表示の幅 ÷ 現在の幅（3D・球面は面／注視点までの視距離の比）
+function zoomFactor() {  // 全体表示の幅 ÷ 現在の幅（3D・球面は面／注視点までの視距離の比）。1 未満は 1
+  var z;
   if (!is3d) {
     var xr = plot._fullLayout.xaxis.range;
-    return homeRange ? (homeRange.x[1] - homeRange.x[0]) / Math.max(xr[1] - xr[0], 1e-9) : 1;
+    z = homeRange ? (homeRange.x[1] - homeRange.x[0]) / Math.max(xr[1] - xr[0], 1e-9) : 1;
+  } else {
+    var c = camNow(), d = vlen(vsub(c.eye, c.ctr)), d0 = homeCam ? vlen(vsub(homeCam.eye, homeCam.ctr)) : d, R = surfaceR();
+    z = Math.max(d0 - R, 1e-6) / Math.max(d - R, 1e-6);
   }
-  var c = liveCamera(), d = vlen(vsub(c.eye, c.ctr)), d0 = homeCam ? vlen(vsub(homeCam.eye, homeCam.ctr)) : d, R = surfaceR();
-  return Math.max(d0 - R, 1e-6) / Math.max(d - R, 1e-6);
+  return Math.max(1, z);
 }
-function pointSizeLevel() {
-  var z = Math.max(zoomFactor(), 1e-9);
-  return Math.max(0, Math.min(PS_MAX_LEVEL, Math.floor(Math.log(z) / Math.log(PS_STEP) + 1e-9)));
+function pointScaleFor(z) { return Math.min(PS_CAP / psBase().size, Math.pow(z, PS_EXP)); }
+function pointOpacityFor(z) {
+  var b = psBase().opacity;
+  return +(b + (PS_OPACITY_MAX - b) * Math.min(1, Math.log(z) / Math.log(PS_OPACITY_ZOOM))).toFixed(3);
 }
-function pointSizeFor(L) {
-  var b = psBase();
-  return { size: +Math.min(b.cap, b.size * Math.pow(PS_STEP, L / 2)).toFixed(2),
-           opacity: +(b.opacity + (PS_OPACITY_MAX - b.opacity) * Math.min(1, L / 4)).toFixed(3) };
+function pointSizeApply(force) {
+  var z = zoomFactor(), sc = pointScaleFor(z);
+  if (!force && Math.abs(sc - ps.scale) < 0.02 * ps.scale) return;  // 2% 未満の変化は描き直さない
+  ps.scale = sc;
+  var b = psBase(), size = +(b.size * sc).toFixed(2);
+  if (!is3d) {
+    var scene = plot._fullLayout._plots && plot._fullLayout._plots.xy && plot._fullLayout._plots.xy._scene;
+    if (!scene || !scene.scatter2d || !scene.markerOptions) return;
+    var op = pointOpacityFor(z), upd = scene.markerOptions.map(function () { return {}; });
+    ps.dataIdx.forEach(function (i) {
+      var o = scene.markerOptions[i]; if (!o) return;
+      o.size = size; o.opacity = op;  // Plotly の再適用（範囲変更のたび）でも同じ値が出るように
+      upd[i] = { size: size, opacity: op };
+    });
+    scene.scatter2d.update(upd);
+    scene.draw();
+  } else {
+    var sc3 = plot._fullLayout.scene && plot._fullLayout.scene._scene, g = sc3 && sc3.glplot;
+    if (!g) return;
+    if (ps.basePR === null) ps.basePR = g.pixelRatio || 1;
+    // gl-plot3d は毎フレーム各オブジェクトの pixelRatio を自分の値で上書きしてから draw を呼ぶので、値を置くだけでは効かない。
+    // 点のオブジェクトの draw 系を包み、描く直前だけ pixelRatio を倍率分だけ大きくする（終わったら戻す）
+    g.objects.forEach(function (ob) {
+      if (ob.pointCount === undefined || ob._psWrapped) return;
+      ob._psWrapped = true;
+      ['draw', 'drawTransparent', 'drawPick'].forEach(function (k) {
+        var f = ob[k]; if (typeof f !== 'function') return;
+        ob[k] = function () { var pr0 = this.pixelRatio; this.pixelRatio = pr0 * ps.scale; var r = f.apply(this, arguments); this.pixelRatio = pr0; return r; };
+      });
+    });
+    if (force !== 'nodraw') g.redraw();
+  }
 }
-function pointSizeSchedule() { clearTimeout(ps.timer); ps.timer = setTimeout(pointSizeApply, 250); }
-function pointSizeApply() {
-  if (is3d && cam3.inert) { pointSizeSchedule(); return; }  // 慣性で回っている間は待つ
-  var L = pointSizeLevel();
-  if (L === ps.level) return;
-  if (ps.busy) { ps.dirty = true; return; }
-  var v = pointSizeFor(L), idx = M.traces.map(function (t, i) { return t.k === 'd' ? i : -1; }).filter(function (i) { return i >= 0; });
-  ps.busy = true; ps.level = L;
-  function done() { ps.busy = false; if (ps.dirty) { ps.dirty = false; pointSizeApply(); } }
-  Plotly.restyle(plot, { 'marker.size': v.size, 'marker.opacity': v.opacity }, idx).then(done, done);
+function pointSizeSchedule() {  // 連続する relayout（ホイール・07_perf の連打）の最後だけに当てる
+  clearTimeout(ps.timer); ps.timer = setTimeout(function () { pointSizeApply(); }, 120);
 }
 function initPointSize() {
   plot.on('plotly_relayout', pointSizeSchedule);
+  plot.on('plotly_relayouting', function () {  // 2D のピンチ・ドラッグ中（範囲確定前）は 150ms おきに
+    var now = performance.now();
+    if (now - ps.lastLive < 150) return;
+    ps.lastLive = now; pointSizeApply();
+  });
+  plot.on('plotly_restyle', function () { ps.scale = 1; pointSizeSchedule(); });  // トレースが作り直され基準に戻る → 当て直す
   plot._dbgPointSize = function () {  // 検証用
-    var i = M.traces.findIndex(function (t) { return t.k === 'd'; }), m = plot.data[i].marker;
-    return { level: ps.level, zoom: +zoomFactor().toFixed(2), size: m.size, opacity: m.opacity, base: psBase() };
+    var r = { zoom: +zoomFactor().toFixed(2), scale: +ps.scale.toFixed(3), size: +(psBase().size * ps.scale).toFixed(2), base: psBase() };
+    if (!is3d) { var g2 = plot._fullLayout._plots.xy._scene.scatter2d.groups[ps.dataIdx[0]]; r.applied = { size: g2.size, opacity: g2.opacity }; }
+    else { var g3 = plot._fullLayout.scene._scene.glplot, pts = g3.objects.filter(function (o) { return o.pointCount !== undefined; }); r.applied = { pixelRatio: (ps.basePR || g3.pixelRatio) * ps.scale, basePR: ps.basePR || g3.pixelRatio, wrapped: pts.filter(function (o) { return o._psWrapped; }).length, n: pts.length }; }
+    return r;
   };
 }
 

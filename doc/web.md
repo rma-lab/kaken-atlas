@@ -100,10 +100,13 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
     実機から読み直す。球の中心は Plotly のカメラ座標の原点とみなす（model 行列の平行移動は 0.002 で、ホイールの固定点は視線上の点なので影響しない）。
   - 検証は `tests/web/tests/11_globe_camera.js`（`plot._surfacePoint`・`plot._camToScreen` を使う）。
 - **拡大に応じた点の大きさ（3 ビュー共通、2026-10-22）**。点は画素固定なので寄ると間隔だけ広がって小さく薄く見える（ユーザ指摘）。
-  倍率（全体表示の幅 ÷ 現在の幅。3D・球面は面／注視点までの視距離の比）を 1.5 倍刻みの段階にし、段階が変わったときだけ、
-  `plotly_relayout` の 250ms 後に 1 回 `Plotly.restyle` で `marker.size`・`marker.opacity` を変える（`pointSizeApply`）。
-  直径＝基準 × 1.5^(段階/2)（間隔ほどは大きくしない）、上限 2D 7px・3D/球面 5px。不透明度は 4 段階で 0.9 まで上げる。慣性で回っている間は待つ。
-  実測: restyle 1 回は 2D 200ms・3D 550ms・球面 530ms（161〜208 トレース）なので毎フレームは不可。1.5 倍未満では何もしない（07_perf の前提）。
+  倍率（全体表示の幅 ÷ 現在の幅。3D・球面は面／注視点までの視距離の比）に応じて連続的に直径を変える: 直径＝基準 × 倍率^0.3、
+  上限 2D 5px・3D/球面 3.5px、2D の不透明度は倍率 8 で 0.85 まで（`pointSizeApply`）。
+  最初は 1.5 倍刻みの段階で `Plotly.restyle` していたが（2D 200ms・3D 550ms）、ズームが止まってから点が跳ねる遅れと大きさが目立った（ユーザ指摘、同日）。
+  いまは描画ライブラリの状態を直接触る: 2D は regl-scatter2d の群ごとの size・opacity だけ `update`（20〜45ms、位置は再送しない。Plotly が
+  範囲変更のたびに `scene.markerOptions` で再適用するので、その値も書き換える）。3D/球面は gl-scatter3d の `pixelRatio`（頂点シェーダの一様変数）を
+  描く直前だけ倍率分大きくする（gl-plot3d が毎フレーム上書きするので draw 系を包む。再送なし）。自前カメラでは relayout の前に当て、同じフレームで描かれる。
+  Plotly 側の relayout は最後の relayout の 120ms 後（連打中は当てない）、2D のピンチ中は 150ms おき。凡例の切替などでトレースが作り直されたら（`plotly_restyle`）当て直す。
   検証は `tests/web/tests/12_point_size.js`。
 - Plotly のカメラ座標（eye/center）は「データ座標 × dataScale に scene の model 行列を掛けた空間」。model を掛け忘れると
   3D で注視点がずれる（球面は箱が原点対称なので偶然合う）。
