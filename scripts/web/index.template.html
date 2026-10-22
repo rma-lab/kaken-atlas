@@ -2089,6 +2089,54 @@ function initTouch3d() {
   plot.addEventListener('touchcancel', function () { g3 = null; cam3.samples = []; }, { capture: true, passive: true });
 }
 
+// ---- 拡大に応じた点の大きさ（3 ビュー共通、2026-10-22）----
+// 点は画素固定なので、寄ると間隔だけ広がって点が小さく薄く見える（ユーザ指摘）。倍率（全体表示に対する拡大率）の段階が
+// 変わったときだけ、ズームが止まってから 1 回 restyle する（marker.size の restyle は 2D 200ms・3D/球面 550ms なので毎フレームは無理）。
+// 直径は倍率の平方根に比例（間隔ほどは大きくしない）、上限あり。不透明度は寄るほど上げる（重なりが減るため）。
+var PS_STEP = 1.5, PS_MAX_LEVEL = 8, PS_OPACITY_MAX = 0.9;
+var ps = { level: 0, timer: null, busy: false, dirty: false, base: null };
+function psBase() {
+  if (ps.base) return ps.base;
+  var i = M.traces.findIndex(function (t) { return t.k === 'd'; }), m = plot.data[i].marker;
+  ps.base = { size: m.size, opacity: m.opacity, cap: is3d ? 5 : 7 };
+  return ps.base;
+}
+function zoomFactor() {  // 全体表示の幅 ÷ 現在の幅（3D・球面は面／注視点までの視距離の比）
+  if (!is3d) {
+    var xr = plot._fullLayout.xaxis.range;
+    return homeRange ? (homeRange.x[1] - homeRange.x[0]) / Math.max(xr[1] - xr[0], 1e-9) : 1;
+  }
+  var c = liveCamera(), d = vlen(vsub(c.eye, c.ctr)), d0 = homeCam ? vlen(vsub(homeCam.eye, homeCam.ctr)) : d, R = surfaceR();
+  return Math.max(d0 - R, 1e-6) / Math.max(d - R, 1e-6);
+}
+function pointSizeLevel() {
+  var z = Math.max(zoomFactor(), 1e-9);
+  return Math.max(0, Math.min(PS_MAX_LEVEL, Math.floor(Math.log(z) / Math.log(PS_STEP) + 1e-9)));
+}
+function pointSizeFor(L) {
+  var b = psBase();
+  return { size: +Math.min(b.cap, b.size * Math.pow(PS_STEP, L / 2)).toFixed(2),
+           opacity: +(b.opacity + (PS_OPACITY_MAX - b.opacity) * Math.min(1, L / 4)).toFixed(3) };
+}
+function pointSizeSchedule() { clearTimeout(ps.timer); ps.timer = setTimeout(pointSizeApply, 250); }
+function pointSizeApply() {
+  if (is3d && cam3.inert) { pointSizeSchedule(); return; }  // 慣性で回っている間は待つ
+  var L = pointSizeLevel();
+  if (L === ps.level) return;
+  if (ps.busy) { ps.dirty = true; return; }
+  var v = pointSizeFor(L), idx = M.traces.map(function (t, i) { return t.k === 'd' ? i : -1; }).filter(function (i) { return i >= 0; });
+  ps.busy = true; ps.level = L;
+  function done() { ps.busy = false; if (ps.dirty) { ps.dirty = false; pointSizeApply(); } }
+  Plotly.restyle(plot, { 'marker.size': v.size, 'marker.opacity': v.opacity }, idx).then(done, done);
+}
+function initPointSize() {
+  plot.on('plotly_relayout', pointSizeSchedule);
+  plot._dbgPointSize = function () {  // 検証用
+    var i = M.traces.findIndex(function (t) { return t.k === 'd'; }), m = plot.data[i].marker;
+    return { level: ps.level, zoom: +zoomFactor().toFixed(2), size: m.size, opacity: m.opacity, base: psBase() };
+  };
+}
+
 // ---- 地名（2D と球面。3D には付けない） ----
 // 密度の峰ごとに山域を切り（scripts/compute_placenames*.py）、山域の課題の研究概要を LLM が読んで付けた名前を峰の位置に置く
 // （scripts/name_places_llm.py。無い所はキーワードから作った 2 語）。build_web_map.py が manifest の placenames に同梱する。
@@ -2291,6 +2339,7 @@ function setupUI() {
   initSheets();
   initPinch2d();
   initCamera3d();
+  initPointSize();
 }
   // setupUI
 </script>

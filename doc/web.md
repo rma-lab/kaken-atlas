@@ -99,6 +99,12 @@ uv run python scripts/build_web_map.py data/processed/umapsphere_nn15_md0.0_sp0.
   - 自前のカメラ値はフレームごとに 1 回 relayout する。外から（フライ・トゥ・検証）カメラが変わった relayout を見たら自前の最新値を捨て、
     実機から読み直す。球の中心は Plotly のカメラ座標の原点とみなす（model 行列の平行移動は 0.002 で、ホイールの固定点は視線上の点なので影響しない）。
   - 検証は `tests/web/tests/11_globe_camera.js`（`plot._surfacePoint`・`plot._camToScreen` を使う）。
+- **拡大に応じた点の大きさ（3 ビュー共通、2026-10-22）**。点は画素固定なので寄ると間隔だけ広がって小さく薄く見える（ユーザ指摘）。
+  倍率（全体表示の幅 ÷ 現在の幅。3D・球面は面／注視点までの視距離の比）を 1.5 倍刻みの段階にし、段階が変わったときだけ、
+  `plotly_relayout` の 250ms 後に 1 回 `Plotly.restyle` で `marker.size`・`marker.opacity` を変える（`pointSizeApply`）。
+  直径＝基準 × 1.5^(段階/2)（間隔ほどは大きくしない）、上限 2D 7px・3D/球面 5px。不透明度は 4 段階で 0.9 まで上げる。慣性で回っている間は待つ。
+  実測: restyle 1 回は 2D 200ms・3D 550ms・球面 530ms（161〜208 トレース）なので毎フレームは不可。1.5 倍未満では何もしない（07_perf の前提）。
+  検証は `tests/web/tests/12_point_size.js`。
 - Plotly のカメラ座標（eye/center）は「データ座標 × dataScale に scene の model 行列を掛けた空間」。model を掛け忘れると
   3D で注視点がずれる（球面は箱が原点対称なので偶然合う）。
 - iOS Safari は 16px 未満の入力欄にフォーカスすると画面を自動拡大するので、タッチ端末では検索欄を 16px にする。
