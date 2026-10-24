@@ -102,6 +102,9 @@
 - **2D は `yaxis.scaleanchor` を使わない**（範囲変更のたびに全再計算が走り、点ごとの色配列では 1 回 190ms。縦横比は JS の
   `equalScale` で自前管理。2026-09-11）。
 - **性能の問題は推測せず測る**（CDP Profiler で自己時間の上位を見る。ハーネス `ptest/glprofile.js` の流儀）。
+- 指標の計算（2026-10-24）: `scripts/compute_indicators.py`（孤立度 d1/dk15、架橋性 構成=近傍の大区分 Rao–Stirling／構造=1−kNN クラスタ係数、成長性=近傍の近年シェア、
+  非典型結合=キーワード対共起 z の 10pct、UOT 余剰=年度コホート→過去への不均衡輸送。768 次元と kNN で計算し地図座標は使わない）→ `data/processed/indicators.parquet`、
+  中間物 `data/interim/knn50.npz` ほか。`scripts/analyze_indicators.py` が相関・上位重なり・種目別を `reports/indicators/summary.md` と図に出す。POT（`pot`）を使う。
 - 補助分析: `scripts/plot_category_contrast.py`（種目群とそれ以外のシェア密度差、|差|>2σ マスク、ピーク周辺の特徴語）、
   `scripts/knn_dist_by_category.py`（768 次元の最近傍距離を種目別に比較。全件の kNN を `data/processed/knn_dist.parquet` に保存）。
 
