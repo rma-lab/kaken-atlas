@@ -88,6 +88,7 @@
 - `docs/sw.js`（Service Worker）と `docs/shards/`（3 ビュー共有の詳細データ、課題番号順）は `build_web_map.py` の生成物。
   **手で編集しない**。データを更新したら 3 ビューすべてを再生成してから commit（sw.js のデータ版が最後の生成で確定する）。
 - `reports/` は **git 管理外**（実験ノート扱い。公開物として文脈を整えるまでローカル）。
+- `reports/handoff/` は Claude Science での検討結果（git 管理外）。関連する実装の前に該当ノートを読む（入口は最新の `*_overview_for_claude_code.md`）。
 - **キーワード地名（2026-09-17、2D と球面。3D には付けない）**: 球面は `scripts/compute_placenames_sphere.py` → `placenames_sphere.json`（フィボナッチ格子、
   閾値は上位 1% 点基準、大きすぎる山域は区画分割、粗い階層は 1,000 件以上）。2D は `scripts/compute_placenames.py`（密度の峰＋密度の谷線で「山域」→ 山域のキーワードの
   集中度で上位 2 語。用語は「峰と山域」、「流域」と呼ばない）→ `data/processed/placenames_2d.json` → `build_web_map.py` が manifest に同梱
