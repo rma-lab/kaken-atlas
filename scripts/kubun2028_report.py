@@ -12,6 +12,8 @@ from pathlib import Path
 
 MD = Path("reports/kubun2028/merge_adjacency.md")
 FINDINGS = Path("reports/kubun2028/findings.md")  # 手書きの所見（merges.py の出力とは別に保守）
+QUANTUM = Path("reports/kubun2028/quantum_info.md")  # kubun2028_quantum.py の出力
+QFIG = (Path("reports/figures") / "kubun2028_quantum.png").resolve()
 FIG = Path("reports/figures").resolve()
 HTML = Path("reports/kubun2028/report_2026-10-26.html")
 PDF = Path("reports/kubun2028/report_2026-10-26.pdf")
@@ -48,7 +50,7 @@ code { font-family: Menlo, monospace; font-size: 9pt; background: #f3f2ee; paddi
 """
 
 FRONT = """
-<h1>令和 10（2028）年度 審査区分表の改正で統合・吸収される小区分は、研究内容の上で隣だったか</h1>
+<h1>令和 10（2028）年度 審査区分表の改正を研究内容の地図で検証する<br><span style="font-size:14pt;font-weight:500">統合・吸収される小区分は隣だったか／新設「量子情報」はどこにいるか</span></h1>
 <p class="meta">KAKEN-ATLAS（JSPS 科研費 26K15524）検証ノート　2026 年 10 月 26 日　対象: 2019–2025 年度開始の採択課題のうち審査区分が 1 つの 169,500 件</p>
 
 <div class="abstract">
@@ -57,7 +59,7 @@ FRONT = """
 結果、13 件のうち<b>内容と整合するものが 5 件</b>（社会法＋新領域法、生物資源保全→自然共生システム、認知脳科学→基盤脳科学、英文学＋ヨーロッパ文学、医療福祉工学→リハビリテーション科学）、
 <b>部分的に整合が 3 件</b>（中国文学、数学基礎、国際法。中区分内では近いが内容上の最近傍は別の中区分にある）、
 <b>内容と整合しないものが 4 件</b>（基礎法学＋刑事法学、理論経済学＋経済学説、日本語学＋英語学、医療技術評価→医療管理学）、判定不能が 1 件（神経系。旧区分が連続体で、新表は別の軸で切る）であった。
-統合の多くは「中区分を維持する」という制度上の制約の中で相手を選んでおり、内容上の最近傍が中区分の外にある例が複数見られる。唯一の大区分をまたぐ吸収（生物資源保全学→環境）は、データ上も最も自然な移動だった。</p>
+統合の多くは「中区分を維持する」という制度上の制約の中で相手を選んでおり、内容上の最近傍が中区分の外にある例が複数見られる。唯一の大区分をまたぐ吸収（生物資源保全学→環境）は、データ上も最も自然な移動だった。</p><p>新設される中区分 91「量子情報」については、該当する課題 890 件（語彙で特定）が 768 次元の近傍グラフで 96% 一つの連結成分に入り、地図上でも物性物理の山域に根を持つ<b>一つのまとまり</b>をなしていた。内側は「理論 vs ハードウェア」の軸で割れ、これは新小区分 91030／91010 の区別と一致する。制度が 91 を置いた 5 大区分（B・C・E・F・L）は課題の出自の 89% を覆うが、最大の出自 B は理論側とハードウェア側の両方にまたがる。5 大区分への分属は「分野が 5 つに分かれている」のではなく「一つの分野に 5 つの入口がある」状態を追認したものと読める。</p>
 </div>
 
 <h2>1. 背景</h2>
@@ -86,15 +88,15 @@ FRONT = """
 """
 
 DISCUSSION = """
-<h2 class="section">4. 考察</h2>
+<h2 class="section">6. 考察</h2>
 <p><b>中区分の枠が選択を縛っている</b>　統合の相手はほぼ例外なく同じ中区分の中から選ばれている。これは「中区分は維持を基本とする」という見直し方針の帰結だが、内容上の最近傍が別の中区分にある例が複数ある。数学基礎（最多近傍は代数学と情報学基礎論）、国際法（国際関係論）、認知脳科学（神経機能学・実験心理学）、中国文学（日本文学）がそれにあたる。中区分内では「2 番目に近い」相手に収まっており、不合理ではないが、地形から見れば次善の選択である。</p>
 <p><b>越境した唯一の例が最も整合的</b>　生物資源保全学（大区分 F 農学）から自然共生システム（大区分 K→新 M 環境）への吸収は、今回唯一の大区分をまたぐ移動であり、28 ペア中で最も区別しにくい組（精度 0.75）だった。制度が枠を越えたとき、データもそれを支持している。</p>
 <p><b>不整合 4 件の構図</b>　基礎法学＋刑事法学は、刑事法学が中区分内のどの区分からも独立した島であり、基礎法学から見て最も遠い相手である。理論経済学＋経済学説は、経済学説の内容上の隣が経済史であることを示す。日本語学＋英語学は、二つの「○語学」がそれぞれ言語学と最も混ざっており、内容上の自然な統合先は言語学である。医療技術評価学は内容が機器寄り（医用システムに最も近い）だが社会医学側に送られた。いずれも「小さい区分に家を与える」という運営上の判断として理解できるが、内容の近さは判断材料になっていないように見える。</p>
 <p><b>連続体の切り直し</b>　神経系（中区分 46）は旧 3 区分が互いにほとんど分かれず（精度 0.66–0.85）、区分だけで UMAP を計算し直しても完全に混ざる。新表はこれを「分子・細胞レベル」と「システム・個体レベル」という別の軸で 2 分する。旧ラベルでは検証できないが、連続体をどこで切っても境界は恣意的になる領域であることは分かる。令和 10 年度以降の実データで、新しい切り方が応募者の選択と一致するかを追試する価値がある。</p>
-<p><b>今後</b>　同じ方法で、新設「量子情報」の課題が地図のどこに座るか（制度は 5 大区分に分属させた）、新旧の大区分分割がどちらが内容的にまとまっているか、内容の例の増減語（+450／−383）が地図上のどの領域にあるかを検証できる。令和 10 年度のデータが入れば、地図から予測した区分選択と実際の選択を比べる追試も可能になる。</p>
+<p><b>量子情報は一つの分野に五つの入口</b>　新設される中区分 91 に当たる課題は、内容の上では一つの山域（物性物理の山域に根を持ち、固有の細山域「量子コンピュータ・量子計算」が既にある）をなす。内側の構造は理論とハードウェアの軸であり、新小区分 91030 と 91010 の区別はこの軸を正しく捉えている。一方、5 大区分への分属は出自の 89% を覆うものの、最大の出自である B（物性）は両側にまたがる。分属は応募者の現在地に合わせた入口の配置であって、内容の分割ではない。審査の実務としては合理的だが、同じ山域の課題が 5 つの大区分で別々に審査されることになる点は、次回の見直しで「一つの区分」に収斂させる余地として残る。また、量子情報の課題は大型種目と特別研究員に厚く基盤研究(C) に薄い。小区分を持たない 28% の層が新区分で初めて居場所を得る。</p><p><b>今後</b>　同じ方法で、新旧の大区分分割がどちらが内容的にまとまっているか（kNN グラフ上の分割のモジュラリティ）、内容の例の増減語（+450／−383）が地図上のどの領域にあるかを検証できる。令和 10 年度のデータが入れば、地図から予測した区分選択と実際の選択を比べる追試も可能になる。</p>
 
 <h2>付録 A. 再現</h2>
-<p>スクリプト <code>scripts/kubun2028_merges.py</code>（数表と図）、<code>scripts/kubun2028_report.py</code>（本ノート）。入力は <code>data/processed/embeddings.parquet</code>、<code>data/interim/knn50.npz</code>（k=50 近傍。<code>scripts/compute_indicators.py knn</code> で生成）、<code>data/interim/awards.parquet</code>、<code>data/reference/kubun_table.csv</code>。統合の組は <code>data/reference/shinsa_kubun_r10_mext_20260729.txt</code> 参考 2「新旧対照表」（p.142〜）から転記した。</p>
+<p>スクリプト <code>scripts/kubun2028_merges.py</code>（統合の数表と図）、<code>scripts/kubun2028_quantum.py</code>（量子情報）、<code>scripts/kubun2028_report.py</code>（本ノート）。入力は <code>data/processed/embeddings.parquet</code>、<code>data/interim/knn50.npz</code>（k=50 近傍。<code>scripts/compute_indicators.py knn</code> で生成）、<code>data/interim/awards.parquet</code>、<code>data/reference/kubun_table.csv</code>。統合の組と中区分 91 の内容の例は <code>data/reference/shinsa_kubun_r10_mext_20260729.txt</code>（参考 2「新旧対照表」p.142〜、別添 3）から転記した。量子情報の課題の特定は語彙、新小区分への振り分けは内容の例の Ruri 埋め込みとの類似による。</p>
 <p class="foot">出典: KAKEN：科学研究費助成事業データベース（国立情報学研究所）のデータを編集・加工。改正資料: 文部科学省 科学技術・学術審議会 学術分科会 科学研究費補助金審査部会「科学研究費助成事業『審査区分表』の改正等について」（令和 8 年 7 月 29 日）https://www.mext.go.jp/a_menu/shinkou/hojyo/1385136_00008.htm 。埋め込み: cl-nagoya/ruri-v3-310m。作成: KAKEN-ATLAS（JSPS 科研費 26K15524）。研究者名・所属機関は用いていない。</p>
 """
 
@@ -126,7 +128,21 @@ def main() -> None:
     body = body.replace("<p>中区分内の全ペアの分類精度（低いほど混ざっている）:</p>\n<table>", "<p>中区分内の全ペアの分類精度（低いほど混ざっている）:</p>\n<table class=\"pairs\">")
     # 冒頭の説明段落（md の指標説明）は方法節と重複するので削る
     body = re.sub(r"<p>計算は 768 次元.*?</ul>\s*", "", body, count=1, flags=re.S)
-    html = f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>審査区分表 2028 改正の内容的整合</title><style>{CSS}</style></head><body>{FRONT}{body}{DISCUSSION}</body></html>'
+    q = subprocess.run(["pandoc", str(QUANTUM), "-f", "gfm", "-t", "html"], capture_output=True, text=True, check=True).stdout
+    q = re.sub(r"<h1[^>]*>.*?</h1>\s*", "", q, count=1, flags=re.S)
+    q = re.sub(r"<p>図: reports/figures.*?</p>\s*", "", q, flags=re.S)
+    q = re.sub(r"<h2[^>]*>所見（[^<]*）</h2>", "<h3>5.1 所見</h3>", q)
+    qn = [1]
+    def qh(m):
+        qn[0] += 1
+        return f"<h3>5.{qn[0]} {m.group(1)}</h3>"
+    q = re.sub(r"<h2[^>]*>([^<]*)</h2>", qh, q)
+    qsec = ('<h2 class="section">5. 新設「中区分 91 量子情報」の課題は地図のどこにいるか</h2>'
+            '<p>制度は中区分 91（小区分 91010 ハードウェア／91020 システム／91030 基礎理論・応用）を B・C・E・F・L の 5 大区分に分属させた。'
+            '量子情報の課題が内容の上で一つの山域をなすのか、分属どおり複数の大区分に散るのか、どの既存区分から来るのかを調べた。</p>'
+            f'<figure><img src="file://{QFIG}"><figcaption>図 5.1　左: 全体地図（2D UMAP）上の量子情報の課題 890 件（色＝出自の新大区分）。中: 量子情報の課題だけで UMAP を再計算（同じ色）。右: 同じ配置を新小区分への振り分け（内容の例との Ruri 類似、参考値）で彩色。</figcaption></figure>'
+            + q)
+    html = f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>審査区分表 2028 改正の内容的整合</title><style>{CSS}</style></head><body>{FRONT}{body}{qsec}{DISCUSSION}</body></html>'
     HTML.write_text(html)
     subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
                     f"--print-to-pdf={PDF.resolve()}", f"file://{HTML.resolve()}"], check=True, capture_output=True)
