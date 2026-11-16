@@ -33,6 +33,7 @@ from sklearn.decomposition import PCA  # noqa: E402
 matplotlib.rcParams["font.family"] = "Hiragino Sans"
 SURFACE, INK, MUTED = "#fcfcfb", "#0b0b0b", "#898781"
 OUT = Path("reports/kubun2028/quantum_info.md")
+FINDINGS = Path("reports/kubun2028/quantum_findings.md")  # 手書きの所見（本スクリプトの出力とは別に保守。あれば冒頭に差し込む）
 FIGP = Path("reports/figures/kubun2028_quantum.png")
 SEED = 42
 
@@ -213,7 +214,7 @@ def main() -> None:
          "特定: 新表の内容の例に基づく量子情報の語彙（量子情報・量子計算・量子コンピュータ・量子ビット・量子通信・量子暗号・量子誤り訂正・量子アルゴリズム・量子アニーリング・"
          "量子機械学習・量子センシング・量子もつれ・NISQ・超伝導量子・イオントラップ など。量子ドット・量子多体・量子光学だけの課題は含めない。耐量子計算機暗号は量子計算機に耐える古典暗号なので語を除いて数えた）が題名に 1 回以上、または本文に 2 回以上。\n"]
     L.append("## 件数の推移\n\n| FY | 件数 | 全採択に対する千分率 |\n|---|---|---|")
-    for t in sorted(set(fy.tolist())):
+    for t in range(2019, 2026):  # 補正後に 2017–2018 開始となる 28 件は母数が小さいので表から外す
         nt = int(((fy == t) & core).sum()); tot = int((fy == t).sum())
         L.append(f"| {t} | {nt} | {1000 * nt / tot:.1f} |")
     cat = meta["category"].to_numpy()
@@ -249,6 +250,8 @@ def main() -> None:
     for b, v in top_b1:
         L.append(f"| {names1.get(int(b), b)} | {v} | {v / n:.0%} |")
     L.append(f"\n図: {FIGP}（左: 全体地図上の位置、中: 量子情報だけの UMAP を出自の新大区分で彩色、右: 同じ配置を新小区分の振り分けで彩色）\n")
+    if FINDINGS.exists():
+        L.insert(2, FINDINGS.read_text().strip() + "\n")
     OUT.write_text("\n".join(L) + "\n")
     print(f"書き出し {OUT} ({time.time() - t0:.0f}s)")
 
