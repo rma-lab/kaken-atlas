@@ -2,7 +2,9 @@
 
 import xml.etree.ElementTree as ET
 
-from kaken_atlas.parse import parse_award
+import polars as pl
+
+from kaken_atlas.parse import parse_award, warn_year_jumps
 
 FIXTURE = """\
 <grantAward id="KAKENHI-PROJECT-18K00001" projectType="project" awardNumber="18K00001">
@@ -31,6 +33,39 @@ FIXTURE = """\
   <summary xml:lang="en">
     <title>Test Project</title>
   </summary>
+</grantAward>
+"""
+
+
+RENUMBERED = """\
+<grantAward id="KAKENHI-PROJECT-23K28479" projectType="project" awardNumber="23K28479">
+  <summary xml:lang="ja">
+    <title>付け替えられた課題</title>
+    <awardNumber awardNumber="23K28479" sequence="1"/>
+    <awardNumber awardNumber="23H03791" participate="2023" sequence="2"/>
+    <category path="000355" niiCode="355">基盤研究(B)</category>
+    <allocation niiCode="kikin" participate="2024" sequence="1">基金</allocation>
+    <allocation niiCode="hojokin" participate="2023" sequence="2">補助金</allocation>
+    <projectStatus fiscalYear="2024" statusCode="granted"/>
+    <periodOfAward searchStartFiscalYear="2024" searchEndFiscalYear="2025"/>
+  </summary>
+  <summary xml:lang="en">
+    <title>Renumbered Project</title>
+    <awardNumber awardNumber="23K28479" sequence="1"/>
+    <awardNumber awardNumber="23H03791" participate="2023" sequence="2"/>
+  </summary>
+</grantAward>
+"""
+
+PUBLICLY = """\
+<grantAward id="KAKENHI-PUBLICLY-21H05898" projectType="publicly" awardNumber="21H05898">
+  <parentAward id="KAKENHI-AREA-20A403"><title xml:lang="ja">分子サイバネティクス</title><title xml:lang="en">Molecular Cybernetics</title></parentAward>
+  <summary xml:lang="ja">
+    <title>公募研究の課題</title>
+    <category path="000305" niiCode="305">学術変革領域研究(A)</category>
+    <periodOfAward searchStartFiscalYear="2021" searchEndFiscalYear="2022"/>
+  </summary>
+  <summary xml:lang="en"></summary>
 </grantAward>
 """
 
@@ -69,6 +104,47 @@ class TestParseAward:
         assert row["status_code"] == "project_closed"
         assert row["start_fy"] == 2018
         assert row["end_fy"] == 2020
+        assert row["period_start_fy_raw"] == 2018
+        assert row["old_award_numbers"] == []
+        assert row["parent_award"] is None
+        assert row["title_en"] == "Test Project"
+
+    def test_renumbered_award_uses_old_number_year(self):
+        """基金化で付け替えられた課題（実例 23H03791 → 23K28479 の形）。periodOfAward は基金としての期間（2024〜）になるが、
+        真の開始年度は旧番号の participate（2023）。"""
+        row = parse_award(make_award(RENUMBERED))
+        assert row["award_number"] == "23K28479"
+        assert row["start_fy"] == 2023
+        assert row["period_start_fy_raw"] == 2024
+        assert row["end_fy"] == 2025
+        assert row["old_award_numbers"] == ["23H03791"]
+
+    def test_participate_range_takes_first_year(self):
+        xml = RENUMBERED.replace('participate="2023"', 'participate="2021-2023"')
+        assert parse_award(make_award(xml))["start_fy"] == 2021
+
+    def test_participate_later_than_period_keeps_period(self):
+        # 旧番号の参加年が periodOfAward より後なら periodOfAward の開始年を使う（小さい方を取る）
+        xml = RENUMBERED.replace('participate="2023"', 'participate="2026"')
+        assert parse_award(make_award(xml))["start_fy"] == 2024
+
+    def test_parent_award(self):
+        row = parse_award(make_award(PUBLICLY))
+        assert row["project_type"] == "publicly"
+        assert row["parent_award"] == "20A403"
+        assert row["parent_title"] == "分子サイバネティクス"
+        assert row["title_en"] is None  # 英語 summary に題名が無い
+
+    def test_warn_year_jumps(self):
+        def block(cat, fy, n):
+            return pl.DataFrame({"category": [cat] * n, "start_fy": [fy] * n})
+
+        rows = pl.concat([
+            block("基盤研究(B)", 2022, 3000), block("基盤研究(B)", 2023, 3100), block("基盤研究(B)", 2024, 11000),
+            block("若手研究", 2023, 600), block("若手研究", 2024, 700),
+        ])
+        warnings = warn_year_jumps(rows)
+        assert len(warnings) == 1 and "基盤研究(B)" in warnings[0] and "FY2024" in warnings[0]
 
     def test_keywords(self):
         row = parse_award(make_award())

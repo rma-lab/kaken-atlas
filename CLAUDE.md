@@ -42,6 +42,13 @@
   取得済みページは自動スキップ（再実行安全）。**注意：`rw` は 20/50/100/200/500 のみ。仕様外の値は API がエラーを返さず黙って0件を返す。**
 - パース：`uv run python -m kaken_atlas.parse` → `data/interim/awards.parquet`。
   パース時はフィルタしない（declined 除外・小区分絞り込み等は `status_code`・`shokubun_codes` 列で下流にて）。
+  **開始年度 `start_fy` は旧課題番号で補正する（2026-11-16）**: 基金化で付け替えられた継続課題（基盤B 7,707 件ほか計 8,923 件）は
+  新番号の別レコードで `periodOfAward` が基金としての期間になるため、`min(periodOfAward 開始年, 旧番号の participate の最初の年)` を取る。
+  生の値は `period_start_fy_raw`、旧番号は `old_award_numbers`。同時に親課題 `parent_award`/`parent_title`（学術変革領域）と公式英題 `title_en` も持つ。
+  種目×年度の件数が前年の 2 倍を超えると警告（再発防止）。**コーパスの絞り込みは `period_start_fy_raw` で行い、行の集合と順序を変えない**
+  （embeddings と行対応。`corpus --check-order --keep-embedded-text` で検査しつつ再生成）。**注意**: 英語で応募された 2,098 件は
+  埋め込み時（2026-08-10）の text に題名が入っていない（題名の英語 summary からの補完は 08-28 に追加）。corpus.parquet の text は埋め込み時のものを
+  保持し、差分は `data/interim/corpus_text_drift.parquet`。次回の埋め込み更新（X 版上げ）で解消する。
 - **採択時の研究概要（`abstract_initial`）は2019年度採択分から**しか存在しない。2018年度開始課題は
   成果概要（`abstract_achievement`）のみ → **埋め込みコーパスは2019年度以降に限定（2018年度は除外）**（2026-08決定）。
   2019年度以降は 209,734件中 206,906件（98.7%）に `abstract_initial` あり。
