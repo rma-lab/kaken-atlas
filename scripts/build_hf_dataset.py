@@ -1,6 +1,6 @@
 """Hugging Face Datasets 用の公開データ一式を組み立てる（rma-lab/kaken-atlas-embeddings）。
 
-入れるもの: 課題番号、Ruri v3 の埋め込み（768 次元）、タイトル・キーワード・種目・年度（地図サイトで既に公開している範囲）、
+入れるもの: 課題番号、Ruri v3 の埋め込み（768 次元）、タイトル（和・公式英題）・キーワード・種目・親課題（領域）・年度（補正後と記録上の値、旧課題番号）、
 2D/3D/球面の座標、内容由来の色、キーワード地名の山域、768 次元の最近傍距離、色の輪のノード、地名と凡例の JSON。
 入れないもの: 研究概要の本文（課題番号から KAKEN で引ける。一括再配布はしない）、研究者名・所属機関（サイトの方針）、配分額。
 
@@ -37,7 +37,8 @@ N_SHARDS = 4
 
 def main() -> None:
     corpus = pl.read_parquet(P / "corpus.parquet", columns=[
-        "award_number", "kaken_id", "category", "shokubun_codes", "start_fy", "end_fy", "n_tokens"])
+        "award_number", "kaken_id", "title", "title_en", "category", "parent_award", "shokubun_codes",
+        "start_fy", "period_start_fy_raw", "old_award_numbers", "end_fy", "n_tokens"])
     n = corpus.height
     keys = corpus["award_number"]
 
@@ -46,8 +47,8 @@ def main() -> None:
         assert df.height == n and bool((df["award_number"] == keys).all()), f"{path}: 行順が corpus と違う"
         return df.drop("award_number")
 
-    # タイトルは awards.parquet から（英語のみの課題のタイトルを補完済み。corpus 側は 2,098 件が null）
-    kw = pl.read_parquet("data/interim/awards.parquet", columns=["award_number", "title", "keywords"])
+    # キーワードは awards.parquet から（corpus は text に連結済みで列を持たない）
+    kw = pl.read_parquet("data/interim/awards.parquet", columns=["award_number", "keywords"])
     dai = load_dai_labels()
     places = json.loads((P / "placenames_2d.json").read_text(encoding="utf-8"))
     name_of = [{p["id"]: "・".join(p["words"]) for p in lv["places"]} for lv in places["levels"]]
@@ -73,8 +74,9 @@ def main() -> None:
             pl.col("dai").alias("division"),
             pl.col("dai").replace_strict(DAI_GLOSS, default=None).alias("division_name"),
         )
-        .select("award_number", "kaken_url", "title", "keywords", "category", "division", "division_name",
-                "shokubun_codes", "start_fy", "end_fy", "n_tokens")
+        .select("award_number", "kaken_url", "title", "title_en", "keywords", "category", "parent_award",
+                "division", "division_name", "shokubun_codes",
+                "start_fy", "period_start_fy_raw", "old_award_numbers", "end_fy", "n_tokens")
     )
     assert bool((meta["award_number"] == keys).all())
     meta = pl.concat([meta, u2, u3, sp, col, bas, knn], how="horizontal").with_columns(

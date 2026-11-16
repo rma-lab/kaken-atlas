@@ -26,6 +26,9 @@ configs:
 
 # KAKEN-ATLAS Embeddings
 
+> **v1.1 (2026-11-17)**: `start_fy` corrected for 8,923 projects and four columns added. Embeddings and coordinates are unchanged.
+> See [Changes](#changes). Pin a version with `revision="v1.0"` / `revision="v1.1"`.
+
 Text embeddings and map coordinates for **{{N}} Japanese research grants** (KAKENHI, Grants-in-Aid for Scientific Research,
 projects starting in fiscal years 2019–2025). This is the data behind the interactive map of science
 **[KAKEN-ATLAS](https://rma-lab.github.io/kaken-atlas/)** ([source code](https://github.com/rma-lab/kaken-atlas)).
@@ -75,10 +78,14 @@ Row order is identical in every file, and `award_number` is a unique key.
 | `award_number` | KAKENHI award number (string, e.g. `23K20061`). Unique key |
 | `kaken_url` | Project page on KAKEN (abstract, members, outputs) |
 | `title`, `keywords` | Project title and author keywords (Japanese; some projects are in English) |
+| `title_en` | Official English title from the KAKEN record (available for about two thirds of the projects; `null` otherwise. Recent projects are filled in later by KAKEN) |
 | `category` | Grant category (研究種目), e.g. 基盤研究(C), 若手研究 |
+| `parent_award` | For projects belonging to a research area (学術変革領域研究, 新学術領域研究): the area's award number (e.g. `20A403`). `null` otherwise |
 | `division`, `division_name` | Broad review division A–K derived from the official review-section table. `複数` = spans several divisions, `区分なし` = outside the scheme (e.g. JSPS fellows) |
 | `shokubun_codes` | Official review-section codes (5-digit strings; keep the leading zeros) |
-| `start_fy`, `end_fy` | Japanese fiscal years |
+| `start_fy`, `end_fy` | Japanese fiscal years in which the project started and ends. **Use `start_fy`** as the start year. It is corrected for projects that were renumbered when converted to fund-type grants (see below) |
+| `period_start_fy_raw` | Start year as written in the KAKEN record of the current award number. Differs from `start_fy` for 8,923 projects. Kept for traceability only |
+| `old_award_numbers` | Earlier award numbers of the same project (e.g. `["23H03791"]` for `23K28479`), when the project was renumbered. Empty list otherwise |
 | `n_tokens` | Length of the embedded text in Ruri v3 tokens (median 168, max 661) |
 | `umap2d_x`, `umap2d_y` | 2D UMAP (cosine, n_neighbors=15, min_dist=0.1, seed=42) |
 | `umap3d_x/y/z` | 3D UMAP, same settings |
@@ -91,9 +98,13 @@ Row order is identical in every file, and `award_number` is a unique key.
 
 ## How it was made
 
-1. **Data**: 238,997 records (FY2018–2025) fetched from the KAKEN OpenSearch API. The corpus keeps projects starting in
-   FY2019–2025, excludes declined ones, and requires the abstract written at the time of award ({{N}} projects).
+1. **Data**: 238,997 records (FY2018–2025) fetched from the KAKEN OpenSearch API. The corpus keeps projects whose KAKEN record
+   starts in FY2019–2025, excludes declined ones, and requires the abstract written at the time of award ({{N}} projects).
    FY2018 is excluded because only outcome abstracts exist for it; mixing proposal text and report text would bias the space.
+   **Start year**: when a running project was converted from a subsidy-type to a fund-type grant (e.g. 基盤研究(B) in FY2023,
+   JSPS fellowships in FY2021), KAKEN issued a new award number and the record's period starts at the conversion year.
+   `start_fy` therefore takes the earlier of the record's start year and the first year attached to the old award number,
+   which recovers the true start for 8,923 projects (28 of them began in FY2017–2018 and are kept).
 2. **Embedding**: `cl-nagoya/ruri-v3-310m` (ModernBERT-Ja), empty prefix (semantic encoding), L2 normalization.
    Computed on one NVIDIA A40 of the JAIST HAKUSAN cluster in 29 minutes.
 3. **Dimensionality reduction**: UMAP on cosine distance, fixed seed. The spherical version optimizes great-circle distance
@@ -131,6 +142,16 @@ Suggested credit: *Source: KAKEN database (National Institute of Informatics), e
 
 The embedding model Ruri v3 is Apache-2.0. The code of KAKEN-ATLAS is MIT.
 
+## Changes
+
+- **v1.1 (2026-11-17)** — `start_fy` corrected for 8,923 projects (4.3%). In v1.0 it was read from the KAKEN record of the
+  current award number, which for projects renumbered at the conversion to fund-type grants is the conversion year, not the
+  true start: 7,707 基盤研究(B) projects that began in FY2019–2023 appeared as FY2024, and 1,153 JSPS fellowships that began in
+  FY2019–2021 appeared as FY2022. Any per-year analysis made with v1.0 should be redone. New columns: `title_en`,
+  `parent_award`, `period_start_fy_raw` (the v1.0 value), `old_award_numbers`. Embeddings, coordinates, colors, place names
+  and nearest-neighbor distances are unchanged, and rows are in the same order.
+- **v1.0 (2026-09-17)** — initial release.
+
 ## Citation
 
 ```bibtex
@@ -165,7 +186,8 @@ Japan Advanced Institute of Science and Technology (JAIST). Comments and correct
 
 ### ファイル
 
-- `metadata/`: 1 課題 1 行。課題番号、KAKEN の URL、タイトル、キーワード、種目、大区分、小区分コード、年度、2D・3D・球面の座標、
+- `metadata/`: 1 課題 1 行。課題番号、KAKEN の URL、タイトル（和文と公式英題）、キーワード、種目、領域の親課題番号、大区分、小区分コード、
+  年度（`start_fy` が開始年度。`period_start_fy_raw` は KAKEN の記録上の値、`old_award_numbers` は基金化前の旧課題番号）、2D・3D・球面の座標、
   点の色（色相と合意度）、地名の山域（42 と 129 の 2 階層）とキーワード地名（基準の語。サイトの表示は各山域の概要を LLM が読んで付けた名前）、768 次元での最近傍距離。
 - `embeddings/`: 課題番号と 768 次元ベクトル（float32、L2 正規化済み）。4 分割。行順は `metadata` と同じです。
 - `extras/`: 地名の JSON、色の凡例、色の輪のノード（198 × 768）。
@@ -176,6 +198,16 @@ Japan Advanced Institute of Science and Technology (JAIST). Comments and correct
 - **UMAP が保つのは局所の近傍関係だけです。** 離れた領域どうしの距離、面積、空白の形に意味はありません。近さは 768 次元で測ってください。
 - 採択時概要は申請書の要約で、成果とはずれます。英語のみの課題は配置の妥当性が下がります。
 - 公式の区分（大区分、小区分コード）は比較のために添えたもので、空間を作るのには使っていません。
+
+### 更新履歴
+
+- **v1.1（2026-11-17）** — 開始年度 `start_fy` を 8,923 件（4.3%）で訂正しました。v1.0 では現在の課題番号の記録にある研究期間の開始年を
+  使っていましたが、補助金から基金に移行した継続課題（令和 5 年度補正予算による基盤研究(B) の基金化など）は新しい課題番号が付番され、
+  記録上の期間が移行年度から始まるため、2019〜2023 年度開始の基盤研究(B) 7,707 件が 2024 年度開始に、2019〜2021 年度開始の
+  特別研究員奨励費 1,153 件が 2022 年度開始になっていました。訂正後は、記録上の開始年と旧課題番号に付く最初の年度の小さい方を取ります。
+  v1.0 で年度別の集計をした場合はやり直してください。列を 4 つ追加（`title_en`、`parent_award`、`period_start_fy_raw`＝v1.0 の値、
+  `old_award_numbers`）。埋め込み・座標・色・地名・最近傍距離は変わらず、行順も同じです。`revision="v1.0"` で旧版を取得できます。
+- **v1.0（2026-09-17）** — 初版。
 
 ### 利用条件
 
